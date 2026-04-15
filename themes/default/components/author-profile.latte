@@ -1,0 +1,10 @@
+{if isset($author) && $author}
+<div class="author-profile">
+    {if $author['avatar_path']}
+        <img src="{$author['avatar_path']}" alt="{$author['name']}" class="author-avatar" width="80" height="80">
+    {/if}
+    <div class="author-info">
+        <h3 class="author-name">{$author['name']}</h3>
+    </div>
+</div>
+{/if}

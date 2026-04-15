@@ -1,0 +1,9 @@
+[
+    {
+        "id": "019d8f00-28cc-72ae-b37a-852ec3b4e9c1",
+        "source_path": "\/old-path",
+        "target_url": "\/hello-world",
+        "status_code": 301,
+        "created_at": "2026-04-15 11:37:25"
+    }
+]

@@ -1,0 +1,53 @@
+# Dependencies
+/vendor/
+/node_modules/
+
+# Environment / local configuration
+config.php
+.env
+.env.local
+.env.*.local
+
+# Internal documentation (not for public release)
+/docs-internal/
+
+# Storage (runtime-generated)
+/storage/cache/
+/storage/logs/
+/storage/sessions/
+/storage/tmp/
+/storage/uploads/
+/storage/backups/
+
+# Public assets built output
+/public/uploads/
+/public/cache/
+
+# IDE / OS
+.idea/
+.vscode/
+.claude/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Composer
+composer.phar
+
+# Build artifacts
+/dist/
+/build/
+
+# Test coverage
+/coverage/
+.phpunit.result.cache
+.phpunit.cache/
+
+# Phinx
+.phinx.cache/
+
+CLAUDE.md

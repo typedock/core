@@ -1,0 +1,13 @@
+{if !empty($tags)}
+<div class="widget widget-tag-cloud">
+    <h3 class="widget-title">Tags</h3>
+    <div class="tag-cloud">
+        {foreach $tags as $tag}
+        <a href="/tag/{$tag['slug']}" class="tag-cloud-item"
+           style="font-size: {min(1.8, 0.8 + ($tag['post_count'] * 0.1))}em">
+            {$tag['name']}
+        </a>
+        {/foreach}
+    </div>
+</div>
+{/if}

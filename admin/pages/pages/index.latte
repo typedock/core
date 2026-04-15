@@ -1,0 +1,30 @@
+{layout '../../layouts/admin-base.latte'}
+{block page_title}Pages{/block}
+{block content}
+<div class="page-header">
+    <h1>Pages</h1>
+    <a href="/admin/pages/create" class="btn btn-primary">New Page</a>
+</div>
+<table class="data-table">
+    <thead>
+        <tr><th>Title</th><th>Slug</th><th>Status</th><th>Updated</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+        {foreach $pages as $page}
+        <tr>
+            <td><a href="/admin/pages/{$page['id']}/edit">{$page['title']}</a></td>
+            <td><code>{$page['slug']}</code></td>
+            <td><span class="badge badge-{$page['status']}">{$page['status']}</span></td>
+            <td>{$page['updated_at']|date:'Y/m/d'}</td>
+            <td>
+                <a href="/admin/pages/{$page['id']}/edit" class="btn btn-sm">Edit</a>
+                <form method="post" action="/admin/pages/{$page['id']}/delete" style="display:inline">
+                    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this item?')">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {/foreach}
+    </tbody>
+</table>
+{/block}

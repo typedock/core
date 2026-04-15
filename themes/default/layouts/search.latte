@@ -1,0 +1,35 @@
+{layout 'base.latte'}
+
+{block title}Search results for "{$query}" - {$site->name}{/block}
+
+{block content}
+<div class="container">
+    <div class="content-area">
+        <h1 class="search-title">
+            {if $query !== ''}
+                Search results for "{$query}" ({$total})
+            {else}
+                Search
+            {/if}
+        </h1>
+
+        <form class="search-form" action="/search" method="get">
+            <input type="search" name="q" value="{$query}" placeholder="Enter keywords...">
+            <button type="submit">Search</button>
+        </form>
+
+        {if !empty($results)}
+            <div class="search-results">
+                {foreach $results as $post}
+                <article class="search-result">
+                    <h2><a href="{config('app.url')}/blog/{$post['slug']}">{$post['title']}</a></h2>
+                    {if $post['excerpt']}<p>{$post['excerpt']}</p>{/if}
+                </article>
+                {/foreach}
+            </div>
+        {elseif $query !== ''}
+            <p class="no-results">No posts matching "{$query}" were found.</p>
+        {/if}
+    </div>
+</div>
+{/block}

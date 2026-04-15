@@ -1,0 +1,51 @@
+{layout '../layouts/admin-base.latte'}
+
+{block page_title}Dashboard{/block}
+
+{block content}
+<div class="dashboard">
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>Posts</h3>
+            <div class="stat-number">{$stats['posts'] ?? 0}</div>
+        </div>
+        <div class="stat-card">
+            <h3>Pages</h3>
+            <div class="stat-number">{$stats['pages'] ?? 0}</div>
+        </div>
+        <div class="stat-card">
+            <h3>Media</h3>
+            <div class="stat-number">{$stats['media'] ?? 0}</div>
+        </div>
+        <div class="stat-card">
+            <h3>Users</h3>
+            <div class="stat-number">{$stats['users'] ?? 0}</div>
+        </div>
+    </div>
+
+    <div class="recent-section">
+        <h2>Recent Posts</h2>
+        {if empty($recent_posts)}
+            <p>No posts yet. <a href="/admin/posts/create">Create your first post</a></p>
+        {else}
+        <table class="data-table">
+            <thead>
+                <tr><th>Title</th><th>Status</th><th>Updated</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {foreach $recent_posts as $post}
+                <tr>
+                    <td><a href="/admin/posts/{$post['id']}/edit">{$post['title']}</a></td>
+                    <td><span class="badge badge-{$post['status']}">{$post['status']}</span></td>
+                    <td>{$post['updated_at']|date:'Y/m/d'}</td>
+                    <td>
+                        <a href="/admin/posts/{$post['id']}/edit" class="btn btn-sm">Edit</a>
+                    </td>
+                </tr>
+                {/foreach}
+            </tbody>
+        </table>
+        {/if}
+    </div>
+</div>
+{/block}

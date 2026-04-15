@@ -1,0 +1,13 @@
+{if !empty($posts)}
+<div class="related-posts">
+    <h3 class="related-posts-title">Related Posts</h3>
+    <div class="related-posts-grid">
+        {foreach $posts as $post}
+        <article class="related-post-card">
+            <h4><a href="{config('app.url')}/blog/{$post['slug']}">{$post['title']}</a></h4>
+            {if $post['excerpt']}<p>{$post['excerpt']}</p>{/if}
+        </article>
+        {/foreach}
+    </div>
+</div>
+{/if}

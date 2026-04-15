@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{block title}Admin{/block} - {$site->name ?? 'TypeDock'}</title>
+    <link rel="stylesheet" href="/admin/assets/css/admin.css">
+    {block head}{/block}
+</head>
+<body class="{block body_class}admin{/block}">
+
+<div class="admin-wrapper {if !isset($current_user)}admin-wrapper-guest{/if}">
+    {if isset($current_user)}
+    <nav class="admin-sidebar">
+        <div class="admin-logo">
+            <a href="/admin/dashboard">TypeDock</a>
+        </div>
+        <ul class="admin-menu">
+            <li><a href="/admin/dashboard" class="menu-item">Dashboard</a></li>
+            <li><a href="/admin/posts" class="menu-item">Posts</a></li>
+            <li><a href="/admin/pages" class="menu-item">Pages</a></li>
+            <li><a href="/admin/media" class="menu-item">Media</a></li>
+            <li><a href="/admin/menus" class="menu-item">Menus</a></li>
+            <li><a href="/admin/categories" class="menu-item">Categories</a></li>
+            <li><a href="/admin/tags" class="menu-item">Tags</a></li>
+            {if $current_user['role'] === 'admin'}
+            <li><a href="/admin/users" class="menu-item">Users</a></li>
+            <li><a href="/admin/settings" class="menu-item">Settings</a></li>
+            {/if}
+            <li><a href="/admin/redirects" class="menu-item">Redirects</a></li>
+            <li><a href="/admin/slots" class="menu-item">Slots</a></li>
+        </ul>
+        <div class="admin-user-info">
+            <span>{$current_user['name']}</span>
+            <a href="/admin/logout" class="logout-link">Log out</a>
+        </div>
+    </nav>
+    {/if}
+
+    <div class="admin-content">
+        {if isset($current_user)}
+        <header class="admin-header">
+            <div class="admin-header-title">{block page_title}Admin{/block}</div>
+        </header>
+        {/if}
+
+        {if isset($flash_success)}
+            <div class="alert alert-success">{$flash_success}</div>
+        {/if}
+        {if isset($flash_error)}
+            <div class="alert alert-error">{$flash_error}</div>
+        {/if}
+
+        <main class="admin-main">
+            {block content}{/block}
+        </main>
+    </div>
+</div>
+
+<script src="/admin/assets/js/admin.js"></script>
+{block scripts}{/block}
+</body>
+</html>

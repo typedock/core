@@ -1,0 +1,28 @@
+<?php
+declare(strict_types=1);
+
+namespace TypeDock\Component\Provider;
+
+use TypeDock\Component\DataProvider;
+use TypeDock\Component\RenderContext;
+
+class TagCloudProvider implements DataProvider
+{
+    public function resolve(array $params, RenderContext $context): array
+    {
+        $limit = min((int) ($params['limit'] ?? 30), 100);
+        $pdo   = \Flight::db();
+        $stmt  = $pdo->prepare(
+            "SELECT t.id, t.slug, t.name, COUNT(pt.page_id) as post_count
+             FROM tags t
+             LEFT JOIN page_tags pt ON pt.tag_id = t.id
+             LEFT JOIN pages p ON p.id = pt.page_id AND p.status = 'published'
+             WHERE t.locale = ?
+             GROUP BY t.id, t.slug, t.name
+             ORDER BY post_count DESC, t.name ASC
+             LIMIT ?"
+        );
+        $stmt->execute([$context->locale, $limit]);
+        return ['tags' => $stmt->fetchAll()];
+    }
+}

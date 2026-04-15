@@ -1,0 +1,50 @@
+{layout '../../layouts/admin-base.latte'}
+{block page_title}Tags{/block}
+{block content}
+<div class="page-header">
+    <h1>Tags</h1>
+</div>
+
+<div class="editor-layout" style="grid-template-columns: 1fr 320px;">
+    <div>
+        <table class="data-table">
+            <thead>
+                <tr><th>Name</th><th>Slug</th><th>Posts</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {foreach $tags as $tag}
+                <tr>
+                    <td>{$tag['name']}</td>
+                    <td><code>{$tag['slug']}</code></td>
+                    <td>{$tag['post_count'] ?? 0}</td>
+                    <td>
+                        <form method="post" action="/admin/tags/{$tag['id']}/delete" style="display:inline">
+                            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this item?')">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {/foreach}
+            </tbody>
+        </table>
+    </div>
+
+    <div>
+        <div class="sidebar-panel">
+            <h3>Add New Tag</h3>
+            <form method="post" action="/admin/tags">
+                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>Slug</label>
+                    <input type="text" name="slug" placeholder="Auto-generated">
+                </div>
+                <button type="submit" class="btn btn-primary">Add</button>
+            </form>
+        </div>
+    </div>
+</div>
+{/block}

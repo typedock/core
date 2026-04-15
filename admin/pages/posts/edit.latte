@@ -1,0 +1,89 @@
+{layout '../../layouts/admin-base.latte'}
+
+{block page_title}{$post['id'] ?? '' ? 'Edit Post' : 'New Post'}{/block}
+
+{block head}
+<link rel="stylesheet" href="/admin/assets/css/editor.css">
+{/block}
+
+{block content}
+<form method="post" action="{$form_action}" id="post-form">
+    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+    <input type="hidden" name="page_type" value="post">
+    <input type="hidden" name="body" id="body-field" value="{$post['body'] ?? ''}">
+
+    <div class="editor-layout">
+        <div class="editor-main">
+            <div class="form-group">
+                <input type="text" name="title" id="post-title"
+                       value="{$post['title'] ?? ''}"
+                       placeholder="Enter title..."
+                       class="title-input" required>
+            </div>
+
+            <div class="form-group">
+                <label>Slug</label>
+                <input type="text" name="slug" id="post-slug"
+                       value="{$post['slug'] ?? ''}"
+                       placeholder="url-slug">
+            </div>
+
+            <!-- Block Editor Island -->
+            <div id="block-editor" data-body="{$post['body'] ?? '[]'}"></div>
+        </div>
+
+        <div class="editor-sidebar">
+            <div class="sidebar-panel">
+                <h3>Publish Settings</h3>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select name="status">
+                        <option value="draft" {($post['status'] ?? 'draft')==='draft'?'selected':''}>Draft</option>
+                        <option value="review" {($post['status'] ?? '')==='review'?'selected':''}>In Review</option>
+                        <option value="published" {($post['status'] ?? '')==='published'?'selected':''}>Published</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Publish Date</label>
+                    <input type="datetime-local" name="published_at"
+                           value="{$post['published_at'] ?? ''}">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    {if isset($post['id'])}
+                    <a href="/blog/{$post['slug']}" target="_blank" class="btn btn-secondary">Preview</a>
+                    {/if}
+                </div>
+            </div>
+
+            <div class="sidebar-panel">
+                <h3>Categories</h3>
+                {foreach $categories as $cat}
+                <label class="checkbox-label">
+                    <input type="checkbox" name="category_ids[]" value="{$cat['id']}"
+                           {in_array($cat['id'], $selected_categories ?? []) ? 'checked' : ''}>
+                    {$cat['name']}
+                </label>
+                {/foreach}
+            </div>
+
+            <div class="sidebar-panel">
+                <h3>Tags</h3>
+                <input type="text" name="tags_input" id="tags-input"
+                       value="{implode(', ', $selected_tag_names ?? [])}"
+                       placeholder="Enter tags separated by commas...">
+                <small>Example: PHP, WordPress, CMS</small>
+            </div>
+
+            <div class="sidebar-panel">
+                <h3>Excerpt</h3>
+                <textarea name="excerpt" rows="3">{$post['excerpt'] ?? ''}</textarea>
+            </div>
+        </div>
+    </div>
+</form>
+{/block}
+
+{block scripts}
+<script src="/admin/assets/js/editor.js"></script>
+{/block}

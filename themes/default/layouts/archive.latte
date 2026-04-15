@@ -1,0 +1,48 @@
+{layout 'base.latte'}
+
+{block title}
+    {if isset($category)}Category: {$category['name']} - {$site->name}
+    {elseif isset($tag)}Tag: {$tag['name']} - {$site->name}
+    {else}Blog - {$site->name}
+    {/if}
+{/block}
+
+{block content}
+<div class="container">
+    <div class="content-area">
+        {if isset($category)}
+            <h1 class="archive-title">Category: {$category['name']}</h1>
+        {elseif isset($tag)}
+            <h1 class="archive-title">Tag: {$tag['name']}</h1>
+        {else}
+            <h1 class="archive-title">Blog</h1>
+        {/if}
+
+        {if empty($posts)}
+            <p class="no-posts">No posts found.</p>
+        {else}
+            <div class="post-list">
+                {foreach $posts as $post}
+                <article class="post-card">
+                    <h2 class="post-card-title">
+                        <a href="{config('app.url')}/blog/{$post['slug']}">{$post['title']}</a>
+                    </h2>
+                    {if $post['excerpt']}
+                        <p class="post-card-excerpt">{$post['excerpt']}</p>
+                    {/if}
+                    {if $post['published_at']}
+                        <time class="post-card-date" datetime="{$post['published_at']}">{$post['published_at']|date:'F j, Y'}</time>
+                    {/if}
+                </article>
+                {/foreach}
+            </div>
+
+            {include '../partials/pagination.latte', total: $total, current_page: $current_page, per_page: $per_page}
+        {/if}
+    </div>
+
+    <aside class="sidebar">
+        {=slot('sidebar')|noescape}
+    </aside>
+</div>
+{/block}

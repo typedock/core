@@ -1,0 +1,41 @@
+{layout '../layouts/admin-base.latte'}
+
+{block title}Two-Factor Authentication - {$site->name}{/block}
+
+{block body_class}login-page{/block}
+
+{block content}
+<div class="login-container">
+    <div class="login-box">
+        <div class="login-logo">
+            <h1>{$site->name}</h1>
+            <p>Two-Factor Authentication</p>
+        </div>
+
+        {if isset($error)}
+            <div class="alert alert-error">{$error}</div>
+        {/if}
+
+        <p class="help-text">Enter the 6-digit code sent to your email address.</p>
+
+        <form method="post" action="/admin/login/2fa" class="login-form">
+            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+            <input type="hidden" name="user_id" value="{$user_id}">
+
+            <div class="form-group">
+                <label for="code">Verification Code</label>
+                <input type="text" id="code" name="code" required
+                       maxlength="6" pattern="[0-9]{6}"
+                       autocomplete="one-time-code" autofocus
+                       placeholder="000000">
+            </div>
+
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary btn-block">Confirm</button>
+            </div>
+        </form>
+
+        <p class="back-link"><a href="/admin/login">← Back to login</a></p>
+    </div>
+</div>
+{/block}

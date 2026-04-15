@@ -1,0 +1,21 @@
+{var $totalPages = (int) ceil($total / $per_page)}
+{if $totalPages > 1}
+<nav class="pagination" aria-label="Pagination">
+    {if $current_page > 1}
+        <a href="?page={$current_page - 1}" class="pagination-prev">← Previous</a>
+    {/if}
+
+    {var $start = max(1, $current_page - 2)}{var $end = min($totalPages, $current_page + 2)}
+    {for $i = $start; $i <= $end; $i++}
+        {if $i === $current_page}
+            <span class="pagination-current">{$i}</span>
+        {else}
+            <a href="?page={$i}" class="pagination-link">{$i}</a>
+        {/if}
+    {/for}
+
+    {if $current_page < $totalPages}
+        <a href="?page={$current_page + 1}" class="pagination-next">Next →</a>
+    {/if}
+</nav>
+{/if}

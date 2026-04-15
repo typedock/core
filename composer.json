@@ -1,0 +1,46 @@
+{
+    "name": "typedock/typedock",
+    "description": "TypeDock CMS - A modern PHP CMS",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.2",
+        "flightphp/core": "^3.17",
+        "flightphp/active-record": "^0.7",
+        "latte/latte": "^3.1",
+        "robmorgan/phinx": "^0.16",
+        "ramsey/uuid": "^4.7",
+        "league/commonmark": "^2.5",
+        "phpmailer/phpmailer": "^6.9"
+    },
+    "suggest": {
+        "intervention/image": "Required for image resizing and thumbnails",
+        "aws/aws-sdk-php": "Required for S3-compatible storage"
+    },
+    "autoload": {
+        "psr-4": {
+            "TypeDock\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "TypeDock\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "migrate": "php cli/migrate.php",
+        "install-cms": "php cli/install.php",
+        "cache-clear": "php cli/cache-clear.php",
+        "export": "php cli/export.php",
+        "import": "php cli/import.php"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

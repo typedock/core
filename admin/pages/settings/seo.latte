@@ -1,0 +1,26 @@
+{layout '../../layouts/admin-base.latte'}
+{block page_title}SEO Settings{/block}
+{block content}
+<h1>SEO Settings</h1>
+<nav class="settings-nav">
+    <a href="/admin/settings/general">General</a>
+    <a href="/admin/settings/seo" class="active">SEO</a>
+    <a href="/admin/settings/modules">Modules</a>
+</nav>
+<form method="post" action="/admin/settings/seo">
+    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+    <div class="form-group">
+        <label>Default SEO Title</label>
+        <input type="text" name="seo_title" value="{$seo['seo_title'] ?? ''}">
+    </div>
+    <div class="form-group">
+        <label>Default Meta Description</label>
+        <textarea name="meta_description" rows="3">{$seo['meta_description'] ?? ''}</textarea>
+    </div>
+    <div class="form-group">
+        <label>robots.txt Directives</label>
+        <input type="text" name="robots" value="{$seo['robots'] ?? 'index,follow'}" placeholder="index,follow">
+    </div>
+    <button type="submit" class="btn btn-primary">Save</button>
+</form>
+{/block}

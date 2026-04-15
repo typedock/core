@@ -1,0 +1,37 @@
+{layout '../../layouts/admin-base.latte'}
+{block page_title}Slot Placements{/block}
+{block content}
+<h1>Slot Placements</h1>
+<p class="help-text">Configure which components are displayed in each slot.</p>
+
+{foreach $slots as $slotName => $slotConfig}
+<div class="slot-section" data-slot="{$slotName}">
+    <h2>{$slotConfig['label'] ?? $slotName}</h2>
+    <div class="slot-placements" id="slot-{$slotName}">
+        {foreach $slotConfig['placements'] as $placement}
+        <div class="placement-item" data-id="{$placement['id']}">
+            <span class="drag-handle">≡</span>
+            <span class="component-name">{$placement['component_type']}</span>
+            <form method="post" action="/admin/slots" style="display:inline">
+                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                <input type="hidden" name="action" value="remove">
+                <input type="hidden" name="placement_id" value="{$placement['id']}">
+                <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+            </form>
+        </div>
+        {/foreach}
+    </div>
+    <form method="post" action="/admin/slots" class="add-component-form">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <input type="hidden" name="action" value="add">
+        <input type="hidden" name="slot_name" value="{$slotName}">
+        <select name="component_type">
+            {foreach $available_components as $comp_type => $comp_def}
+            <option value="{$comp_type}">{$comp_def->name}</option>
+            {/foreach}
+        </select>
+        <button type="submit" class="btn btn-sm">Add</button>
+    </form>
+</div>
+{/foreach}
+{/block}

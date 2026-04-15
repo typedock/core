@@ -1,0 +1,12 @@
+<nav class="breadcrumb" aria-label="Breadcrumb">
+    <ol class="breadcrumb-list">
+        <li class="breadcrumb-item"><a href="/">Home</a></li>
+        {if isset($category)}
+            <li class="breadcrumb-item"><span>{$category['name']}</span></li>
+        {elseif isset($tag)}
+            <li class="breadcrumb-item"><span>{$tag['name']}</span></li>
+        {elseif isset($page)}
+            <li class="breadcrumb-item"><span>{$page->title}</span></li>
+        {/if}
+    </ol>
+</nav>

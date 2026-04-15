@@ -1,0 +1,13 @@
+{if !empty($archives)}
+<div class="widget widget-archive">
+    <h3 class="widget-title">Archive</h3>
+    <ul class="archive-list">
+        {foreach $archives as $archive}
+        <li>
+            <a href="/blog?month={$archive['month']}">{$archive['month']|date:'F Y'}</a>
+            <span class="count">({$archive['count']})</span>
+        </li>
+        {/foreach}
+    </ul>
+</div>
+{/if}

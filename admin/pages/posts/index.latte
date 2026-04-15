@@ -1,0 +1,69 @@
+{layout '../../layouts/admin-base.latte'}
+
+{block page_title}Posts{/block}
+
+{block content}
+<div class="page-header">
+    <h1>Posts</h1>
+    <a href="/admin/posts/create" class="btn btn-primary">New Post</a>
+</div>
+
+<form class="filter-form" method="get">
+    <select name="status">
+        <option value="">All</option>
+        <option value="draft" {$filters['status']==='draft'?'selected':''}>Draft</option>
+        <option value="review" {$filters['status']==='review'?'selected':''}>In Review</option>
+        <option value="published" {$filters['status']==='published'?'selected':''}>Published</option>
+        <option value="trash" {$filters['status']==='trash'?'selected':''}>Trash</option>
+    </select>
+    <input type="search" name="search" value="{$filters['search'] ?? ''}" placeholder="Search keywords...">
+    <button type="submit" class="btn">Filter</button>
+</form>
+
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Author</th>
+            <th>Updated</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {foreach $posts as $post}
+        <tr>
+            <td>
+                <a href="/admin/posts/{$post['id']}/edit">{$post['title']}</a>
+                {if $post['status'] === 'published'}
+                    <a href="/blog/{$post['slug']}" target="_blank" class="preview-link">↗</a>
+                {/if}
+            </td>
+            <td><span class="badge badge-{$post['status']}">{$post['status']}</span></td>
+            <td>{$post['author_name'] ?? '-'}</td>
+            <td>{$post['updated_at']|date:'Y/m/d'}</td>
+            <td>
+                <a href="/admin/posts/{$post['id']}/edit" class="btn btn-sm">Edit</a>
+                <form method="post" action="/admin/posts/{$post['id']}/delete" style="display:inline">
+                    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this item?')">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {/foreach}
+    </tbody>
+</table>
+
+{if $total > $per_page}
+<div class="pagination-wrapper">
+    {var $totalPages = (int) ceil($total / $per_page)}
+    {for $i = 1; $i <= $totalPages; $i++}
+        {if $i === $current_page}
+            <span class="pagination-current">{$i}</span>
+        {else}
+            <a href="?page={$i}&status={$filters['status'] ?? ''}&search={$filters['search'] ?? ''}">{$i}</a>
+        {/if}
+    {/for}
+</div>
+{/if}
+{/block}

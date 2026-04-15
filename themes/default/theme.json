@@ -1,0 +1,31 @@
+{
+    "name": "Default Theme",
+    "version": "1.0.0",
+    "description": "TypeDock Default Theme",
+    "author": "TypeDock",
+    "slots": {
+        "sidebar": {
+            "label": "Sidebar",
+            "context": ["post", "page", "archive"],
+            "defaults": [
+                {"component": "search_form"},
+                {"component": "latest_posts", "params": {"count": 5}},
+                {"component": "category_list"},
+                {"component": "tag_cloud", "params": {"limit": 20}}
+            ]
+        },
+        "after_content": {
+            "label": "After Content",
+            "context": ["post"],
+            "defaults": [
+                {"component": "related_posts", "params": {"count": 6}},
+                {"component": "author_profile"}
+            ]
+        },
+        "footer_widgets": {
+            "label": "Footer Widgets",
+            "context": ["all"],
+            "defaults": []
+        }
+    }
+}

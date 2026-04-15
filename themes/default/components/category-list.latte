@@ -1,0 +1,15 @@
+{if !empty($categories)}
+<div class="widget widget-category-list">
+    <h3 class="widget-title">Categories</h3>
+    <ul class="category-list">
+        {foreach $categories as $cat}
+        {if !$cat['parent_id']}
+        <li>
+            <a href="/category/{$cat['slug']}">{$cat['name']}</a>
+            {if $cat['post_count'] > 0}<span class="count">({$cat['post_count']})</span>{/if}
+        </li>
+        {/if}
+        {/foreach}
+    </ul>
+</div>
+{/if}

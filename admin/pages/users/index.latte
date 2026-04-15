@@ -1,0 +1,31 @@
+{layout '../../layouts/admin-base.latte'}
+{block page_title}Users{/block}
+{block content}
+<div class="page-header">
+    <h1>Users</h1>
+    <a href="/admin/users/create" class="btn btn-primary">New User</a>
+</div>
+<table class="data-table">
+    <thead>
+        <tr><th>Name</th><th>Email</th><th>Role</th><th>Last Login</th><th>Registered</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+        {foreach $users as $user}
+        <tr>
+            <td>{$user['name']}</td>
+            <td>{$user['email']}</td>
+            <td><span class="badge badge-{$user['role'] === 'admin' ? 'published' : 'draft'}">{$user['role']}</span></td>
+            <td>{$user['last_login_at'] ? ($user['last_login_at']|date:'Y/m/d H:i') : '-'}</td>
+            <td>{$user['created_at']|date:'Y/m/d'}</td>
+            <td>
+                <a href="/admin/users/{$user['id']}/edit" class="btn btn-sm">Edit</a>
+                <form method="post" action="/admin/users/{$user['id']}/delete" style="display:inline">
+                    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this item?')">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {/foreach}
+    </tbody>
+</table>
+{/block}

@@ -1,0 +1,84 @@
+{layout '../../layouts/admin-base.latte'}
+{block page_title}Edit Menu: {$menu['name']}{/block}
+{block content}
+<div class="page-header">
+    <h1>Edit Menu: {$menu['name']}</h1>
+    <a href="/admin/menus" class="btn btn-secondary">← Back to list</a>
+</div>
+
+<div class="editor-layout">
+    <div>
+        <div class="sidebar-panel" style="margin-bottom: 1.5rem;">
+            <h3>Rename Menu</h3>
+            <form method="post" action="/admin/menus/{$menu['id']}/update">
+                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                <div class="form-group">
+                    <input type="text" name="name" value="{$menu['name']}" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Update</button>
+            </form>
+        </div>
+
+        <h3>Menu Items</h3>
+        {if empty($items)}
+            <p>No menu items yet. Add one using the form on the right.</p>
+        {else}
+        <table class="data-table">
+            <thead>
+                <tr><th>Label</th><th>URL</th><th>Type</th><th>Order</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {foreach $items as $item}
+                <tr>
+                    <td>{$item['label']}</td>
+                    <td><code>{$item['url']}</code></td>
+                    <td>{$item['type']}</td>
+                    <td>{$item['sort_order']}</td>
+                    <td>
+                        <form method="post" action="/admin/menus/{$menu['id']}/items/{$item['id']}/delete" style="display:inline">
+                            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this item?')">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {/foreach}
+            </tbody>
+        </table>
+        {/if}
+    </div>
+
+    <div>
+        <div class="sidebar-panel">
+            <h3>Add Item</h3>
+            <form method="post" action="/admin/menus/{$menu['id']}/items">
+                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                <div class="form-group">
+                    <label>Label</label>
+                    <input type="text" name="label" required placeholder="e.g. Home">
+                </div>
+                <div class="form-group">
+                    <label>URL</label>
+                    <input type="text" name="url" required placeholder="e.g. / or https://...">
+                </div>
+                <div class="form-group">
+                    <label>Type</label>
+                    <select name="type">
+                        <option value="custom">Custom Link</option>
+                        <option value="page">Page</option>
+                        <option value="post">Post</option>
+                        <option value="category">Category</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>target</label>
+                    <select name="target">
+                        <option value="_self">Same tab (_self)</option>
+                        <option value="_blank">New tab (_blank)</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Add</button>
+            </form>
+        </div>
+    </div>
+</div>
+{/block}

@@ -1,0 +1,361 @@
+<?php
+declare(strict_types=1);
+
+namespace TypeDock\Content;
+
+class PageService
+{
+    public const STATUS_DRAFT     = 'draft';
+    public const STATUS_REVIEW    = 'review';
+    public const STATUS_SCHEDULED = 'scheduled';
+    public const STATUS_PUBLISHED = 'published';
+    public const STATUS_TRASH     = 'trash';
+
+    public const TYPE_POST = 'post';
+    public const TYPE_PAGE = 'page';
+
+    public function __construct(
+        private readonly \PDO $pdo,
+        private readonly SlugValidator $slugValidator = new SlugValidator()
+    ) {}
+
+    /**
+     * List pages with filtering and pagination.
+     *
+     * @param  array<string, mixed> $options
+     * @return array{items: array<array<string, mixed>>, total: int, page: int, per_page: int}
+     */
+    public function list(array $options = []): array
+    {
+        $where    = ['p.status != ?'];
+        $params   = [self::STATUS_TRASH];
+        $perPage  = min((int) ($options['per_page'] ?? 20), 100);
+        $page     = max(1, (int) ($options['page'] ?? 1));
+        $offset   = ($page - 1) * $perPage;
+
+        if (isset($options['status'])) {
+            $where[]  = 'p.status = ?';
+            $params[] = $options['status'];
+        }
+        if (isset($options['page_type'])) {
+            $where[]  = 'p.page_type = ?';
+            $params[] = $options['page_type'];
+        }
+        if (isset($options['author_id'])) {
+            $where[]  = 'p.author_id = ?';
+            $params[] = $options['author_id'];
+        }
+        if (isset($options['locale'])) {
+            $where[]  = 'p.locale = ?';
+            $params[] = $options['locale'];
+        }
+        if (isset($options['search'])) {
+            $where[]  = '(p.title LIKE ? OR p.excerpt LIKE ?)';
+            $params[] = '%' . $options['search'] . '%';
+            $params[] = '%' . $options['search'] . '%';
+        }
+
+        $whereStr = implode(' AND ', $where);
+
+        $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM pages p WHERE {$whereStr}");
+        $countStmt->execute($params);
+        $total = (int) $countStmt->fetchColumn();
+
+        $order = match ($options['order_by'] ?? 'updated_at') {
+            'published_at' => 'p.published_at DESC',
+            'title'        => 'p.title ASC',
+            default        => 'p.updated_at DESC',
+        };
+
+        $listParams   = array_merge($params, [$perPage, $offset]);
+        $stmt = $this->pdo->prepare(
+            "SELECT p.id, p.slug, p.title, p.excerpt, p.page_type, p.status,
+                    p.author_id, p.locale, p.published_at, p.created_at, p.updated_at,
+                    u.name as author_name
+             FROM pages p
+             LEFT JOIN users u ON u.id = p.author_id
+             WHERE {$whereStr}
+             ORDER BY {$order}
+             LIMIT ? OFFSET ?"
+        );
+        $stmt->execute($listParams);
+        $items = $stmt->fetchAll();
+
+        return ['items' => $items, 'total' => $total, 'page' => $page, 'per_page' => $perPage];
+    }
+
+    /**
+     * Find a single page by ID.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function find(string $id): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT p.*, u.name as author_name
+             FROM pages p
+             LEFT JOIN users u ON u.id = p.author_id
+             WHERE p.id = ? LIMIT 1'
+        );
+        $stmt->execute([$id]);
+        $row = $stmt->fetch();
+        return $row !== false ? $row : null;
+    }
+
+    /**
+     * Find page by slug.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findBySlug(string $slug, string $locale = 'en', ?string $status = null): ?array
+    {
+        $sql    = 'SELECT p.*, u.name as author_name FROM pages p LEFT JOIN users u ON u.id = p.author_id WHERE p.slug = ? AND p.locale = ?';
+        $params = [$slug, $locale];
+
+        if ($status !== null) {
+            $sql    .= ' AND p.status = ?';
+            $params[] = $status;
+        }
+
+        $stmt = $this->pdo->prepare($sql . ' LIMIT 1');
+        $stmt->execute($params);
+        $row = $stmt->fetch();
+        return $row !== false ? $row : null;
+    }
+
+    /**
+     * Create a new page.
+     *
+     * @param  array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    public function create(array $data): array
+    {
+        $now  = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $id   = \Ramsey\Uuid\Uuid::uuid7()->toString();
+
+        $slug = $data['slug'] ?? '';
+        if ($slug === '') {
+            $slug = $this->slugValidator->generateUnique((string) ($data['title'] ?? 'post'), $this->pdo);
+        } else {
+            $this->slugValidator->validate($slug);
+        }
+
+        $pageType = in_array($data['page_type'] ?? 'post', [self::TYPE_POST, self::TYPE_PAGE], true)
+            ? $data['page_type']
+            : self::TYPE_POST;
+
+        $status = $data['status'] ?? self::STATUS_DRAFT;
+
+        $publishedAt = null;
+        if ($status === self::STATUS_PUBLISHED && empty($data['published_at'])) {
+            $publishedAt = $now;
+        } elseif (!empty($data['published_at'])) {
+            $publishedAt = $data['published_at'];
+        }
+
+        $body = is_array($data['body'] ?? null) ? json_encode($data['body']) : ($data['body'] ?? null);
+
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO pages (id, slug, title, body, excerpt, page_type, status, author_id, parent_id,
+                                template, locale, translation_group_id, published_at, scheduled_at,
+                                created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        $stmt->execute([
+            $id,
+            $slug,
+            $data['title'] ?? '',
+            $body,
+            $data['excerpt'] ?? null,
+            $pageType,
+            $status,
+            $data['author_id'] ?? null,
+            $data['parent_id'] ?? null,
+            $data['template'] ?? null,
+            $data['locale'] ?? 'en',
+            $data['translation_group_id'] ?? null,
+            $publishedAt,
+            $data['scheduled_at'] ?? null,
+            $now,
+            $now,
+        ]);
+
+        $this->syncCategories($id, $data['category_ids'] ?? []);
+        $this->syncTags($id, $data['tag_ids'] ?? []);
+
+        return $this->find($id);
+    }
+
+    /**
+     * Update an existing page.
+     *
+     * @param  array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    public function update(string $id, array $data): array
+    {
+        $page = $this->find($id);
+        if ($page === null) {
+            throw new \TypeDock\Exception\NotFoundException("Page not found: {$id}");
+        }
+
+        // Save revision before updating
+        $this->saveRevision($page);
+
+        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+
+        if (isset($data['slug']) && $data['slug'] !== $page['slug']) {
+            $this->slugValidator->validate($data['slug']);
+        }
+
+        $slug = $data['slug'] ?? $page['slug'];
+
+        $status      = $data['status'] ?? $page['status'];
+        $publishedAt = $page['published_at'];
+        if ($status === self::STATUS_PUBLISHED && $page['status'] !== self::STATUS_PUBLISHED && $publishedAt === null) {
+            $publishedAt = $now;
+        } elseif (isset($data['published_at'])) {
+            $publishedAt = $data['published_at'];
+        }
+
+        $body = isset($data['body'])
+            ? (is_array($data['body']) ? json_encode($data['body']) : $data['body'])
+            : $page['body'];
+
+        $stmt = $this->pdo->prepare(
+            'UPDATE pages SET slug = ?, title = ?, body = ?, excerpt = ?, page_type = ?,
+                              status = ?, author_id = ?, parent_id = ?, template = ?,
+                              locale = ?, published_at = ?, scheduled_at = ?, updated_at = ?
+             WHERE id = ?'
+        );
+        $stmt->execute([
+            $slug,
+            $data['title'] ?? $page['title'],
+            $body,
+            $data['excerpt'] ?? $page['excerpt'],
+            $data['page_type'] ?? $page['page_type'],
+            $status,
+            $data['author_id'] ?? $page['author_id'],
+            $data['parent_id'] ?? $page['parent_id'],
+            $data['template'] ?? $page['template'],
+            $data['locale'] ?? $page['locale'],
+            $publishedAt,
+            $data['scheduled_at'] ?? $page['scheduled_at'],
+            $now,
+            $id,
+        ]);
+
+        if (isset($data['category_ids'])) {
+            $this->syncCategories($id, $data['category_ids']);
+        }
+        if (isset($data['tag_ids'])) {
+            $this->syncTags($id, $data['tag_ids']);
+        }
+
+        return $this->find($id);
+    }
+
+    /**
+     * Move page to trash.
+     */
+    public function trash(string $id): void
+    {
+        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $this->pdo->prepare('UPDATE pages SET status = ?, updated_at = ? WHERE id = ?')
+            ->execute([self::STATUS_TRASH, $now, $id]);
+    }
+
+    /**
+     * Restore page from trash to draft.
+     */
+    public function restore(string $id): void
+    {
+        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $this->pdo->prepare('UPDATE pages SET status = ?, updated_at = ? WHERE id = ?')
+            ->execute([self::STATUS_DRAFT, $now, $id]);
+    }
+
+    /**
+     * Permanently delete a page.
+     */
+    public function delete(string $id): void
+    {
+        $this->pdo->prepare('DELETE FROM pages WHERE id = ?')->execute([$id]);
+    }
+
+    /**
+     * @return array<array<string, mixed>>
+     */
+    public function getCategories(string $pageId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT c.* FROM categories c
+             JOIN page_categories pc ON pc.category_id = c.id
+             WHERE pc.page_id = ?
+             ORDER BY c.sort_order, c.name'
+        );
+        $stmt->execute([$pageId]);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * @return array<array<string, mixed>>
+     */
+    public function getTags(string $pageId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT t.* FROM tags t
+             JOIN page_tags pt ON pt.tag_id = t.id
+             WHERE pt.page_id = ?
+             ORDER BY t.name'
+        );
+        $stmt->execute([$pageId]);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * @param array<string> $categoryIds
+     */
+    private function syncCategories(string $pageId, array $categoryIds): void
+    {
+        $this->pdo->prepare('DELETE FROM page_categories WHERE page_id = ?')->execute([$pageId]);
+        $stmt = $this->pdo->prepare('INSERT INTO page_categories (page_id, category_id) VALUES (?, ?)');
+        foreach (array_unique($categoryIds) as $catId) {
+            $stmt->execute([$pageId, $catId]);
+        }
+    }
+
+    /**
+     * @param array<string> $tagIds
+     */
+    private function syncTags(string $pageId, array $tagIds): void
+    {
+        $this->pdo->prepare('DELETE FROM page_tags WHERE page_id = ?')->execute([$pageId]);
+        $stmt = $this->pdo->prepare('INSERT INTO page_tags (page_id, tag_id) VALUES (?, ?)');
+        foreach (array_unique($tagIds) as $tagId) {
+            $stmt->execute([$pageId, $tagId]);
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $page
+     */
+    private function saveRevision(array $page): void
+    {
+        $id  = \Ramsey\Uuid\Uuid::uuid7()->toString();
+        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+
+        $this->pdo->prepare(
+            'INSERT INTO page_revisions (id, page_id, title, body, author_id, created_at)
+             VALUES (?, ?, ?, ?, ?, ?)'
+        )->execute([
+            $id,
+            $page['id'],
+            $page['title'],
+            $page['body'],
+            $page['author_id'],
+            $now,
+        ]);
+    }
+}

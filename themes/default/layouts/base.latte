@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="{$site->option('site.locale') ?? 'en'}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{block title}{$site->name}{/block}</title>
+    <meta name="description" content="{block description}{/block}">
+    {block head}{/block}
+    <link rel="stylesheet" href="{$theme->url}/assets/css/style.css">
+    <link rel="alternate" type="application/rss+xml" title="{$site->name} RSS" href="/feed">
+</head>
+<body class="{$body_class ?? ''}">
+
+<header class="site-header">
+    {include '../partials/header.latte'}
+</header>
+
+<main class="site-main">
+    {block content}{/block}
+</main>
+
+<footer class="site-footer">
+    {include '../partials/footer.latte'}
+</footer>
+
+</body>
+</html>

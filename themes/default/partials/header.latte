@@ -1,0 +1,11 @@
+<div class="site-header-inner container">
+    <div class="site-branding">
+        <a href="/" class="site-title">{$site->name}</a>
+    </div>
+    <nav class="site-nav">
+        {=component('menu', ['location' => 'primary'])|noescape}
+    </nav>
+    <div class="header-search">
+        {=component('search_form')|noescape}
+    </div>
+</div>

@@ -1,0 +1,36 @@
+{layout '../../layouts/admin-base.latte'}
+{block page_title}Modules{/block}
+{block content}
+<h1>Modules and Plugins</h1>
+<nav class="settings-nav">
+    <a href="/admin/settings/general">General</a>
+    <a href="/admin/settings/seo">SEO</a>
+    <a href="/admin/settings/modules" class="active">Modules</a>
+</nav>
+<p class="help-text">Enable or disable modules in the <code>.env</code> file.</p>
+<h2>Modules</h2>
+<table class="data-table">
+    <thead><tr><th>Module</th><th>Status</th><th>Description</th></tr></thead>
+    <tbody>
+        {foreach $modules as $name => $enabled}
+        <tr>
+            <td>{$name}</td>
+            <td><span class="badge {$enabled ? 'badge-success' : 'badge-muted'}">{$enabled ? 'Enabled' : 'Disabled'}</span></td>
+            <td></td>
+        </tr>
+        {/foreach}
+    </tbody>
+</table>
+<h2>Plugins</h2>
+<table class="data-table">
+    <thead><tr><th>Plugin</th><th>Status</th></tr></thead>
+    <tbody>
+        {foreach $plugins as $name => $enabled}
+        <tr>
+            <td>{$name}</td>
+            <td><span class="badge {$enabled ? 'badge-success' : 'badge-muted'}">{$enabled ? 'Enabled' : 'Disabled'}</span></td>
+        </tr>
+        {/foreach}
+    </tbody>
+</table>
+{/block}

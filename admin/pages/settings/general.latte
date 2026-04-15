@@ -1,0 +1,39 @@
+{layout '../../layouts/admin-base.latte'}
+{block page_title}Site Settings{/block}
+{block content}
+<h1>Site Settings</h1>
+
+<nav class="settings-nav">
+    <a href="/admin/settings/general" class="active">General</a>
+    <a href="/admin/settings/seo">SEO</a>
+    <a href="/admin/settings/modules">Modules</a>
+</nav>
+
+<form method="post" action="/admin/settings/general">
+    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+
+    <div class="form-group">
+        <label for="site_name">Site Name</label>
+        <input type="text" id="site_name" name="site_name"
+               value="{$options['site.name'] ?? ''}" required>
+    </div>
+
+    <div class="form-group">
+        <label for="site_description">Site Description</label>
+        <textarea id="site_description" name="site_description" rows="3">{$options['site.description'] ?? ''}</textarea>
+    </div>
+
+    <div class="form-group">
+        <label for="scripts_head">&lt;head&gt; Additional Scripts</label>
+        <textarea id="scripts_head" name="scripts_head" rows="5" placeholder="<script>...</script>">{$options['scripts.head'] ?? ''}</textarea>
+        <small>Paste scripts such as Google Analytics here.</small>
+    </div>
+
+    <div class="form-group">
+        <label for="scripts_body">&lt;body&gt; Footer Scripts</label>
+        <textarea id="scripts_body" name="scripts_body" rows="5">{$options['scripts.body'] ?? ''}</textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+</form>
+{/block}

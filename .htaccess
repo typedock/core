@@ -1,0 +1,30 @@
+# TypeDock root .htaccess
+# Used only when the document root is the repository root (shared-hosting deploy).
+# When the document root is /public, Apache will never see this file — public/.htaccess is authoritative.
+
+Options -Indexes -ExecCGI
+
+# Deny direct access to sensitive files at the root.
+<FilesMatch "^(\.env.*|config\.php|composer\.(json|lock)|phinx\.php|CLAUDE\.md|README\.md|.*\.sql|.*\.sh|.*\.log)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Block sensitive directories outright.
+    RewriteRule ^(config|src|storage|migrations|seeds|schema|cli|vendor|tests|docs-internal|admin|build)(/|$) - [F,L]
+
+    # Let existing files/directories (public assets, themes/plugins) be served directly.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+
+    # Route everything else to public/index.php (flat deploy).
+    RewriteRule ^(.*)$ public/index.php [QSA,L]
+</IfModule>

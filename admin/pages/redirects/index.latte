@@ -1,0 +1,35 @@
+{layout '../../layouts/admin-base.latte'}
+{block page_title}Redirects{/block}
+{block content}
+<div class="page-header">
+    <h1>Redirects</h1>
+</div>
+<form method="post" action="/admin/redirects" class="inline-form">
+    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+    <input type="text" name="source_path" placeholder="/old-path" required>
+    <input type="text" name="target_url" placeholder="/new-path or https://..." required>
+    <select name="status_code">
+        <option value="301">301 (Permanent)</option>
+        <option value="302">302 (Temporary)</option>
+    </select>
+    <button type="submit" class="btn btn-primary">Add</button>
+</form>
+<table class="data-table">
+    <thead><tr><th>Source URL</th><th>Target URL</th><th>Code</th><th>Actions</th></tr></thead>
+    <tbody>
+        {foreach $redirects as $redirect}
+        <tr>
+            <td><code>{$redirect['source_path']}</code></td>
+            <td><code>{$redirect['target_url']}</code></td>
+            <td>{$redirect['status_code']}</td>
+            <td>
+                <form method="post" action="/admin/redirects/{$redirect['id']}/delete" style="display:inline">
+                    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {/foreach}
+    </tbody>
+</table>
+{/block}

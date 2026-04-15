@@ -1,0 +1,89 @@
+<?php
+declare(strict_types=1);
+
+namespace TypeDock\Middleware;
+
+class AuthMiddleware
+{
+    public function handle(): void
+    {
+        // Handled per-route via requireAuth()
+    }
+
+    public function requireAuth(?string $requiredRole = null): void
+    {
+        $user = $this->getCurrentUser();
+
+        if ($user === null) {
+            \Flight::redirect('/admin/login');
+            exit;
+        }
+
+        if ($requiredRole !== null && !$this->hasRole($user, $requiredRole)) {
+            throw new \TypeDock\Exception\ForbiddenException('Insufficient permissions');
+        }
+
+        \Flight::set('current_user', $user);
+    }
+
+    public function requireAuthJson(?string $requiredRole = null): void
+    {
+        $user = $this->getCurrentUser();
+
+        if ($user === null) {
+            http_response_code(401);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Unauthorized']);
+            exit;
+        }
+
+        if ($requiredRole !== null && !$this->hasRole($user, $requiredRole)) {
+            http_response_code(403);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Forbidden']);
+            exit;
+        }
+
+        \Flight::set('current_user', $user);
+    }
+
+    public function requireApiKey(?string $permission = null): void
+    {
+        $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+        if (!str_starts_with($header, 'Bearer ')) {
+            http_response_code(401);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Unauthorized']);
+            exit;
+        }
+
+        $token  = substr($header, 7);
+        $result = \Flight::apikey()->validate($token, $permission);
+
+        if ($result === null) {
+            http_response_code(403);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Invalid or expired API key']);
+            exit;
+        }
+
+        \Flight::set('current_api_user', $result);
+    }
+
+    private function getCurrentUser(): ?array
+    {
+        $cookieName = config('auth.cookie_name', 'cms_session');
+        $token      = $_COOKIE[$cookieName] ?? null;
+
+        if ($token === null || $token === '') {
+            return null;
+        }
+
+        return \Flight::session()->check($token);
+    }
+
+    private function hasRole(array $user, string $requiredRole): bool
+    {
+        return \Flight::permissions()->can($user, 'role:' . $requiredRole);
+    }
+}

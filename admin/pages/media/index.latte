@@ -1,0 +1,40 @@
+{layout '../../layouts/admin-base.latte'}
+{block page_title}Media Library{/block}
+{block content}
+<div class="page-header">
+    <h1>Media</h1>
+    <label for="media-upload" class="btn btn-primary">Upload</label>
+</div>
+
+<div id="media-upload-area" data-upload-url="/admin/api/media/upload" data-csrf="{$csrf_token}">
+    <input type="file" id="media-upload" multiple accept="image/*,video/*,audio/*,.pdf,.zip" style="display:none">
+    <div class="upload-drop-zone">
+        <p>Drag and drop files, or click to upload</p>
+    </div>
+</div>
+
+<div class="media-grid" id="media-grid">
+    {foreach $media as $item}
+    <div class="media-item" data-id="{$item['id']}">
+        {if str_starts_with($item['mime_type'], 'image/')}
+            <img src="{$item['url']}" alt="{$item['alt_text'] ?? ''}" loading="lazy">
+        {else}
+            <div class="media-icon">{$item['mime_type']}</div>
+        {/if}
+        <div class="media-info">
+            <span class="media-name">{$item['original_filename']}</span>
+        </div>
+        <div class="media-actions">
+            <button class="btn btn-sm copy-url-btn" data-url="{$item['url']}">Copy URL</button>
+            <form method="post" action="/admin/media/delete/{$item['id']}" style="display:inline">
+                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this item?')">Delete</button>
+            </form>
+        </div>
+    </div>
+    {/foreach}
+</div>
+{/block}
+{block scripts}
+<script src="/admin/assets/js/media-upload.js"></script>
+{/block}

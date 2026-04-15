@@ -1,0 +1,17 @@
+{layout 'base.latte'}
+
+{block title}{$page->title} - {$site->name}{/block}
+{block description}{$page->excerpt ?? ''}{/block}
+
+{block content}
+<div class="container">
+    <article class="page">
+        <header class="page-header">
+            <h1 class="page-title">{$page->title}</h1>
+        </header>
+        <div class="page-body">
+            {$page->renderedBody|noescape}
+        </div>
+    </article>
+</div>
+{/block}
