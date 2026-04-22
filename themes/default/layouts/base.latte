@@ -3,8 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{block title}{$site->name}{/block}</title>
-    <meta name="description" content="{block description}{/block}">
+
+    {*
+        SEO / OGP emission. $seo is a plain object built by SeoService::
+        resolveForPage() when rendering a single post/page; archive/search
+        routes render base.latte without $seo, in which case the {block}
+        fallbacks take over. Keeping the two paths side-by-side (isset()
+        check) avoids leaking a service call into the theme.
+    *}
+    {if isset($seo)}
+        <title>{$seo->title} - {$site->name}</title>
+        {if $seo->description}<meta name="description" content="{$seo->description}">{/if}
+        {if $seo->robots}<meta name="robots" content="{$seo->robots}">{/if}
+        {if $seo->canonical}<link rel="canonical" href="{$seo->canonical}">{/if}
+
+        <meta property="og:type" content="{$seo->ogType}">
+        <meta property="og:site_name" content="{$site->name}">
+        <meta property="og:title" content="{$seo->ogTitle}">
+        {if $seo->ogDescription}<meta property="og:description" content="{$seo->ogDescription}">{/if}
+        {if $seo->canonical}<meta property="og:url" content="{$seo->canonical}">{/if}
+        {if $seo->ogImageUrl}<meta property="og:image" content="{$seo->ogImageUrl}">{/if}
+
+        <meta name="twitter:card" content="{$seo->twitterCard}">
+        {if $seo->ogTitle}<meta name="twitter:title" content="{$seo->ogTitle}">{/if}
+        {if $seo->ogDescription}<meta name="twitter:description" content="{$seo->ogDescription}">{/if}
+        {if $seo->ogImageUrl}<meta name="twitter:image" content="{$seo->ogImageUrl}">{/if}
+
+        {$seo->jsonLd|noescape}
+    {else}
+        <title>{block title}{$site->name}{/block}</title>
+        <meta name="description" content="{block description}{/block}">
+    {/if}
+
     {block head}{/block}
     <link rel="stylesheet" href="{$theme->url}/assets/css/style.css">
     <link rel="alternate" type="application/rss+xml" title="{$site->name} RSS" href="/feed">

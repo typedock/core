@@ -4,22 +4,39 @@
 
 {block content}
 <div class="page-header">
-    <h1>Posts</h1>
-    <a href="/admin/posts/create" class="btn btn-primary">New Post</a>
+    <div>
+        <h1>Posts</h1>
+        <p class="subtitle">Blog articles, news, and long-form writing.</p>
+    </div>
+    <a href="/admin/posts/create" class="btn btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        <span>New Post</span>
+    </a>
 </div>
 
 <form class="filter-form" method="get">
-    <select name="status">
-        <option value="">All</option>
-        <option value="draft" {$filters['status']==='draft'?'selected':''}>Draft</option>
-        <option value="review" {$filters['status']==='review'?'selected':''}>In Review</option>
-        <option value="published" {$filters['status']==='published'?'selected':''}>Published</option>
-        <option value="trash" {$filters['status']==='trash'?'selected':''}>Trash</option>
+    <div class="relative flex-1 min-w-60">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-slate-400"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="search" name="search" value="{$filters['search'] ?? ''}" placeholder="Search posts…" class="!w-full !pl-8">
+    </div>
+    <select name="status" class="!w-auto">
+        <option value="">All statuses</option>
+        <option value="draft"     {$filters['status']==='draft'     ? 'selected' : ''}>Draft</option>
+        <option value="review"    {$filters['status']==='review'    ? 'selected' : ''}>In Review</option>
+        <option value="published" {$filters['status']==='published' ? 'selected' : ''}>Published</option>
+        <option value="trash"     {$filters['status']==='trash'     ? 'selected' : ''}>Trash</option>
     </select>
-    <input type="search" name="search" value="{$filters['search'] ?? ''}" placeholder="Search keywords...">
-    <button type="submit" class="btn">Filter</button>
+    <button type="submit" class="btn btn-secondary">Filter</button>
 </form>
 
+{if empty($posts)}
+    <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h12l4 4v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/><path d="M8 12h8"/></svg>
+        <h3>No posts found</h3>
+        <p>Try adjusting the filters above, or create your first post.</p>
+        <a href="/admin/posts/create" class="btn btn-primary">New Post</a>
+    </div>
+{else}
 <table class="data-table">
     <thead>
         <tr>
@@ -27,26 +44,26 @@
             <th>Status</th>
             <th>Author</th>
             <th>Updated</th>
-            <th>Actions</th>
+            <th class="text-right">Actions</th>
         </tr>
     </thead>
     <tbody>
         {foreach $posts as $post}
         <tr>
             <td>
-                <a href="/admin/posts/{$post['id']}/edit">{$post['title']}</a>
+                <a href="/admin/posts/{$post['id']}/edit" class="font-medium">{$post['title']}</a>
                 {if $post['status'] === 'published'}
-                    <a href="/blog/{$post['slug']}" target="_blank" class="preview-link">↗</a>
+                    <a href="{post_path($post['slug'])}" target="_blank" rel="noopener" class="preview-link" title="Open public page">↗</a>
                 {/if}
             </td>
             <td><span class="badge badge-{$post['status']}">{$post['status']}</span></td>
-            <td>{$post['author_name'] ?? '-'}</td>
-            <td>{$post['updated_at']|date:'Y/m/d'}</td>
-            <td>
-                <a href="/admin/posts/{$post['id']}/edit" class="btn btn-sm">Edit</a>
-                <form method="post" action="/admin/posts/{$post['id']}/delete" style="display:inline">
+            <td class="text-slate-500">{$post['author_name'] ?? '—'}</td>
+            <td class="text-slate-500">{$post['updated_at']|date:'Y/m/d'}</td>
+            <td class="actions">
+                <a href="/admin/posts/{$post['id']}/edit" class="btn btn-secondary btn-sm">Edit</a>
+                <form method="post" action="/admin/posts/{$post['id']}/delete" class="inline">
                     <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this item?')">Delete</button>
+                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this item?')">Delete</button>
                 </form>
             </td>
         </tr>
@@ -65,5 +82,6 @@
         {/if}
     {/for}
 </div>
+{/if}
 {/if}
 {/block}

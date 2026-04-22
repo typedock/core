@@ -9,6 +9,16 @@ class BackupModule implements ModuleInterface
 {
     public function register(): void
     {
-        // TODO: Register backup routes and schedules
+        \Flight::map('backup', function (): BackupService {
+            static $service = null;
+            if ($service !== null) {
+                return $service;
+            }
+            $root       = defined('TYPEDOCK_ROOT') ? TYPEDOCK_ROOT : dirname(__DIR__, 3);
+            $backupDir  = (string) config('backup.dir', $root . '/storage/backups');
+            $uploadsDir = (string) config('backup.uploads_dir', $root . '/storage/uploads');
+            $service    = new BackupService(\Flight::db(), $backupDir, $uploadsDir);
+            return $service;
+        });
     }
 }

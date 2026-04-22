@@ -9,7 +9,7 @@
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
   "workspaceFolder": "/workspace",
   "remoteUser": "root",
-  "postCreateCommand": "composer install --no-interaction 2>/dev/null; echo 'Ready.'",
+  "postCreateCommand": "composer install --no-interaction 2>/dev/null; mkdir -p storage/cache storage/logs storage/sessions storage/tmp storage/uploads storage/backups; if [ ! -f config.php ] && [ -f config.php.example ]; then cp config.php.example config.php; fi; echo 'Ready. Run `make install` or `php cli/install.php` to finish setup.'",
   "forwardPorts": [8080],
   "customizations": {
     "vscode": {

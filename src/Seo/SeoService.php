@@ -78,6 +78,35 @@ class SeoService
     }
 
     /**
+     * Load the raw per-target SEO row (no merge with global defaults).
+     *
+     * Used by the admin edit form: empty fields there mean "inherit from
+     * global", so we must NOT pre-fill them with the global defaults —
+     * otherwise saving the form would copy globals into per-target rows and
+     * the inheritance chain would silently lock to whatever global said at
+     * that moment. getMetaTags() is the right tool for render-time output;
+     * this is the right tool for editing.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findByTarget(string $targetType, ?string $targetId): ?array
+    {
+        if ($targetId === null) {
+            $stmt = $this->pdo->prepare(
+                'SELECT * FROM seo_meta WHERE target_type = ? AND target_id IS NULL LIMIT 1'
+            );
+            $stmt->execute([$targetType]);
+        } else {
+            $stmt = $this->pdo->prepare(
+                'SELECT * FROM seo_meta WHERE target_type = ? AND target_id = ? LIMIT 1'
+            );
+            $stmt->execute([$targetType, $targetId]);
+        }
+        $row = $stmt->fetch();
+        return $row !== false ? $row : null;
+    }
+
+    /**
      * Get or create SEO meta for saving.
      *
      * @param  array<string, mixed> $data
@@ -142,21 +171,109 @@ class SeoService
     }
 
     /**
+     * Build the full SEO context for a rendered page: merged meta values,
+     * OG image URL resolution, JSON-LD, and sensible fallbacks from the
+     * page row itself.
+     *
+     * Precedence (highest wins):
+     *   1. Per-page seo_meta row (explicit editor input)
+     *   2. Global seo_meta row (site defaults from /admin/settings/seo)
+     *   3. Derived from page row (title/excerpt/slug)
+     *
+     * Returned as a plain object so themes can do `{$seo->ogImageUrl}`
+     * without caring about DB shape.
+     *
+     * @param array<string, mixed> $page  Page/post row (must include id,
+     *     page_type, title, slug; excerpt/published_at/updated_at/author_name
+     *     are used when present)
+     */
+    public function resolveForPage(array $page): object
+    {
+        $type = (string) ($page['page_type'] ?? 'page');
+        $id   = (string) ($page['id'] ?? '');
+        $raw  = $this->findByTarget($type, $id) ?? [];
+        $global = $this->findByTarget('global', null) ?? [];
+
+        $pick = static function (string $key) use ($raw, $global): ?string {
+            $v = $raw[$key] ?? null;
+            if ($v !== null && $v !== '') {
+                return (string) $v;
+            }
+            $v = $global[$key] ?? null;
+            return ($v !== null && $v !== '') ? (string) $v : null;
+        };
+
+        $title       = $pick('seo_title')        ?? (string) ($page['title'] ?? '');
+        $description = $pick('meta_description') ?? (string) ($page['excerpt'] ?? '');
+        $ogTitle     = $pick('og_title')         ?? $title;
+        $ogDesc      = $pick('og_description')   ?? $description;
+        $twitterCard = $pick('twitter_card')     ?? 'summary_large_image';
+        $robots      = $pick('robots');
+        $canonical   = $pick('canonical_url')    ?? $this->defaultCanonical($page);
+        $ogImageId   = $raw['og_image_id'] ?? $global['og_image_id'] ?? null;
+        $ogImageUrl  = $ogImageId ? $this->resolveOgImageUrl((string) $ogImageId) : null;
+        $schemaType  = $pick('schema_type');
+
+        return (object) [
+            'title'          => $title,
+            'description'    => $description,
+            'canonical'      => $canonical,
+            'robots'         => $robots,
+            'ogType'         => $type === 'post' ? 'article' : 'website',
+            'ogTitle'        => $ogTitle,
+            'ogDescription'  => $ogDesc,
+            'ogImageUrl'     => $ogImageUrl,
+            'twitterCard'    => $twitterCard,
+            'schemaType'     => $schemaType,
+            'jsonLd'         => $this->generateJsonLd($page, $schemaType),
+        ];
+    }
+
+    private function defaultCanonical(array $page): string
+    {
+        $base = rtrim((string) config('app.url', ''), '/');
+        $slug = ltrim((string) ($page['slug'] ?? ''), '/');
+        $prefix = ($page['page_type'] ?? '') === 'post' ? post_path() . '/' : '/';
+        return $base . $prefix . $slug;
+    }
+
+    private function resolveOgImageUrl(string $mediaId): ?string
+    {
+        $stmt = $this->pdo->prepare('SELECT path FROM media WHERE id = ? LIMIT 1');
+        $stmt->execute([$mediaId]);
+        $path = $stmt->fetchColumn();
+        if ($path === false || $path === null || $path === '') {
+            return null;
+        }
+        $path = (string) $path;
+        if (preg_match('#^https?://#i', $path)) {
+            return $path;
+        }
+        $base = rtrim((string) config('app.url', ''), '/');
+        return $base . '/' . ltrim($path, '/');
+    }
+
+    /**
      * Generate JSON-LD structured data for a page.
      *
      * @param  array<string, mixed> $page
+     * @param  string|null          $schemaType Editor-selected Schema.org type;
+     *     overrides the default mapping (post→BlogPosting, page→WebPage).
      * @return string JSON-LD script tag
      */
-    public function generateJsonLd(array $page): string
+    public function generateJsonLd(array $page, ?string $schemaType = null): string
     {
-        $siteUrl  = config('app.url', '');
+        $siteUrl  = rtrim((string) config('app.url', ''), '/');
         $siteName = config('app.name', 'TypeDock');
+
+        $type = $schemaType ?: (($page['page_type'] ?? null) === 'post' ? 'BlogPosting' : 'WebPage');
+        $prefix = ($page['page_type'] ?? null) === 'post' ? post_path() . '/' : '/';
 
         $data = [
             '@context' => 'https://schema.org',
-            '@type'    => $page['page_type'] === 'post' ? 'BlogPosting' : 'WebPage',
+            '@type'    => $type,
             'headline' => $page['title'] ?? '',
-            'url'      => $siteUrl . '/' . ltrim((string) ($page['slug'] ?? ''), '/'),
+            'url'      => $siteUrl . $prefix . ltrim((string) ($page['slug'] ?? ''), '/'),
             'publisher' => [
                 '@type' => 'Organization',
                 'name'  => $siteName,

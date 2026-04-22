@@ -4,17 +4,7 @@ declare(strict_types=1);
 define('TYPEDOCK_ROOT', dirname(__DIR__));
 require TYPEDOCK_ROOT . '/vendor/autoload.php';
 
-$envFile = TYPEDOCK_ROOT . '/.env';
-if (file_exists($envFile)) {
-    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
-        if (str_starts_with(trim($line), '#') || !str_contains($line, '=')) {
-            continue;
-        }
-        [$key, $value] = explode('=', $line, 2);
-        $_ENV[trim($key)] = trim($value, " \t\n\r\0\x0B\"'");
-    }
-}
+typedock_load_config(TYPEDOCK_ROOT);
 
 $db     = require TYPEDOCK_ROOT . '/config/database.php';
 $driver = $db['driver'] ?? 'mysql';

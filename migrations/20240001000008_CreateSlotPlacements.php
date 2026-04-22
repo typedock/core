@@ -2,23 +2,24 @@
 
 declare(strict_types=1);
 
-use Phinx\Migration\AbstractMigration;
+use TypeDock\Core\Migration\Blueprint;
+use TypeDock\Core\Migration\Migration;
+use TypeDock\Core\Migration\Schema;
 
-final class CreateSlotPlacements extends AbstractMigration
+final class CreateSlotPlacements extends Migration
 {
-    public function change(): void
+    public function up(Schema $schema): void
     {
-        // slot_placements table
-        $slotPlacements = $this->table('slot_placements', ['id' => false, 'primary_key' => ['id']]);
-        $slotPlacements
-            ->addColumn('id', 'string', ['limit' => 36])
-            ->addColumn('slot_name', 'string', ['limit' => 100])
-            ->addColumn('component_type', 'string', ['limit' => 100])
-            ->addColumn('params', 'text', ['null' => true, 'default' => null])
-            ->addColumn('sort_order', 'integer', ['default' => 0])
-            ->addColumn('conditions', 'text', ['null' => true, 'default' => null])
-            ->addColumn('created_at', 'datetime', ['default' => 'CURRENT_TIMESTAMP'])
-            ->addIndex(['slot_name', 'sort_order'])
-            ->create();
+        $schema->create('slot_placements', function (Blueprint $t) {
+            $t->string('id', 36);
+            $t->string('slot_name', 100);
+            $t->string('component_type', 100);
+            $t->text('params')->null();
+            $t->integer('sort_order')->default(0);
+            $t->text('conditions')->null();
+            $t->datetime('created_at')->useCurrent();
+            $t->primary(['id']);
+            $t->index(['slot_name', 'sort_order']);
+        });
     }
 }

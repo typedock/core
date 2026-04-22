@@ -1,36 +1,56 @@
 {layout '../../layouts/admin-base.latte'}
+
 {block page_title}Modules{/block}
+
 {block content}
-<h1>Modules and Plugins</h1>
-<nav class="settings-nav">
+<div class="page-header">
+    <div>
+        <h1>Modules and Plugins</h1>
+        <p class="subtitle">Enable or disable modules and plugins in your <code>.env</code> file.</p>
+    </div>
+</div>
+
+<nav class="tabs">
     <a href="/admin/settings/general">General</a>
     <a href="/admin/settings/seo">SEO</a>
-    <a href="/admin/settings/modules" class="active">Modules</a>
+    <a href="/admin/settings/modules" class="is-active">Modules</a>
 </nav>
-<p class="help-text">Enable or disable modules in the <code>.env</code> file.</p>
-<h2>Modules</h2>
-<table class="data-table">
-    <thead><tr><th>Module</th><th>Status</th><th>Description</th></tr></thead>
-    <tbody>
-        {foreach $modules as $name => $enabled}
-        <tr>
-            <td>{$name}</td>
-            <td><span class="badge {$enabled ? 'badge-success' : 'badge-muted'}">{$enabled ? 'Enabled' : 'Disabled'}</span></td>
-            <td></td>
-        </tr>
-        {/foreach}
-    </tbody>
-</table>
-<h2>Plugins</h2>
-<table class="data-table">
-    <thead><tr><th>Plugin</th><th>Status</th></tr></thead>
-    <tbody>
-        {foreach $plugins as $name => $enabled}
-        <tr>
-            <td>{$name}</td>
-            <td><span class="badge {$enabled ? 'badge-success' : 'badge-muted'}">{$enabled ? 'Enabled' : 'Disabled'}</span></td>
-        </tr>
-        {/foreach}
-    </tbody>
-</table>
+
+<div class="grid gap-6 lg:grid-cols-2">
+    <div class="card">
+        <div class="card-header">
+            <h2>Modules</h2>
+            <span class="text-xs text-slate-500">Official, bundled with core</span>
+        </div>
+        <table class="data-table border-0 rounded-none shadow-none">
+            <thead><tr><th>Module</th><th>Status</th></tr></thead>
+            <tbody>
+                {foreach $modules as $name => $enabled}
+                <tr>
+                    <td class="font-medium">{$name}</td>
+                    <td><span class="badge {$enabled ? 'badge-success' : 'badge-muted'}">{$enabled ? 'Enabled' : 'Disabled'}</span></td>
+                </tr>
+                {/foreach}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2>Plugins</h2>
+            <span class="text-xs text-slate-500">Third-party, sandboxed</span>
+        </div>
+        <table class="data-table border-0 rounded-none shadow-none">
+            <thead><tr><th>Plugin</th><th>Status</th></tr></thead>
+            <tbody>
+                {foreach $plugins as $name => $enabled}
+                <tr>
+                    <td class="font-medium">{$name}</td>
+                    <td><span class="badge {$enabled ? 'badge-success' : 'badge-muted'}">{$enabled ? 'Enabled' : 'Disabled'}</span></td>
+                </tr>
+                {/foreach}
+            </tbody>
+        </table>
+    </div>
+</div>
 {/block}

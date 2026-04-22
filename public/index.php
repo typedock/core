@@ -14,15 +14,13 @@ require TYPEDOCK_ROOT . '/vendor/autoload.php';
 
 // Redirect to browser installer when not yet installed.
 $uriPath   = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
-$hasConfig = is_file(TYPEDOCK_ROOT . '/config.php') || is_file(TYPEDOCK_ROOT . '/.env');
+$hasConfig = typedock_load_config(TYPEDOCK_ROOT);
 if (!$hasConfig || !\TypeDock\Install\Installer::isInstalled(TYPEDOCK_ROOT)) {
     if ($uriPath !== '/install.php') {
         header('Location: install.php', true, 302);
         exit;
     }
 }
-
-typedock_load_config(TYPEDOCK_ROOT);
 
 // Enable verbose error output when APP_DEBUG is on, before any app code runs.
 $debug = filter_var($_ENV['APP_DEBUG'] ?? 'false', FILTER_VALIDATE_BOOL);
@@ -32,11 +30,15 @@ if ($debug) {
     error_reporting(E_ALL);
 }
 
-// Serve theme and plugin static assets directly (bypass Flight routing).
+// Serve theme and plugin static assets via PHP fallback (for php -S dev server).
+// In production, the web server should serve public/themes/ and public/plugins/ directly.
 $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
 if (preg_match('#^/(themes|plugins)/([^/]+)/assets/(.+)$#', $uri, $m)) {
     $safe = str_replace(['..', "\0"], '', $m[3]);
-    $path = TYPEDOCK_ROOT . '/' . $m[1] . '/' . $m[2] . '/assets/' . $safe;
+    // Check published assets in public/ first, then fall back to source directory.
+    $published = TYPEDOCK_ROOT . '/public/' . $m[1] . '/' . $m[2] . '/assets/' . $safe;
+    $source    = TYPEDOCK_ROOT . '/' . $m[1] . '/' . $m[2] . '/assets/' . $safe;
+    $path      = is_file($published) ? $published : $source;
     if (is_file($path)) {
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         $mime = match ($ext) {

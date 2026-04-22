@@ -2,32 +2,33 @@
 
 declare(strict_types=1);
 
-use Phinx\Migration\AbstractMigration;
+use TypeDock\Core\Migration\Blueprint;
+use TypeDock\Core\Migration\Migration;
+use TypeDock\Core\Migration\Schema;
 
-final class CreateSeoMeta extends AbstractMigration
+final class CreateSeoMeta extends Migration
 {
-    public function change(): void
+    public function up(Schema $schema): void
     {
-        // seo_meta table
-        $seoMeta = $this->table('seo_meta', ['id' => false, 'primary_key' => ['id']]);
-        $seoMeta
-            ->addColumn('id', 'string', ['limit' => 36])
-            ->addColumn('target_type', 'string', ['limit' => 50])
-            ->addColumn('target_id', 'string', ['limit' => 36, 'null' => true, 'default' => null])
-            ->addColumn('seo_title', 'string', ['limit' => 500, 'null' => true, 'default' => null])
-            ->addColumn('meta_description', 'text', ['null' => true, 'default' => null])
-            ->addColumn('canonical_url', 'string', ['limit' => 2000, 'null' => true, 'default' => null])
-            ->addColumn('robots', 'string', ['limit' => 100, 'null' => true, 'default' => null])
-            ->addColumn('og_title', 'string', ['limit' => 500, 'null' => true, 'default' => null])
-            ->addColumn('og_description', 'text', ['null' => true, 'default' => null])
-            ->addColumn('og_image_id', 'string', ['limit' => 36, 'null' => true, 'default' => null])
-            ->addColumn('twitter_card', 'string', ['limit' => 50, 'null' => true, 'default' => null])
-            ->addColumn('focus_keyword', 'string', ['limit' => 255, 'null' => true, 'default' => null])
-            ->addColumn('schema_type', 'string', ['limit' => 100, 'null' => true, 'default' => null])
-            ->addColumn('created_at', 'datetime', ['default' => 'CURRENT_TIMESTAMP'])
-            ->addColumn('updated_at', 'datetime', [])
-            ->addIndex(['target_type', 'target_id'], ['unique' => true])
-            ->addForeignKey('og_image_id', 'media', 'id', ['delete' => 'SET_NULL', 'update' => 'NO_ACTION'])
-            ->create();
+        $schema->create('seo_meta', function (Blueprint $t) {
+            $t->string('id', 36);
+            $t->string('target_type', 50);
+            $t->string('target_id', 36)->null();
+            $t->string('seo_title', 500)->null();
+            $t->text('meta_description')->null();
+            $t->string('canonical_url', 2000)->null();
+            $t->string('robots', 100)->null();
+            $t->string('og_title', 500)->null();
+            $t->text('og_description')->null();
+            $t->string('og_image_id', 36)->null();
+            $t->string('twitter_card', 50)->null();
+            $t->string('focus_keyword', 255)->null();
+            $t->string('schema_type', 100)->null();
+            $t->datetime('created_at')->useCurrent();
+            $t->datetime('updated_at');
+            $t->primary(['id']);
+            $t->unique(['target_type', 'target_id']);
+            $t->foreign('og_image_id', 'media', 'id')->nullOnDelete();
+        });
     }
 }

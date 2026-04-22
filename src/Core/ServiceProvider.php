@@ -4,6 +4,9 @@ declare(strict_types=1);
 namespace TypeDock\Core;
 
 use TypeDock\Theme\LatteFactory;
+use TypeDock\Theme\ThemeLoader;
+use TypeDock\Theme\ThemeSettingsService;
+use TypeDock\Theme\ThemeStyleRenderer;
 use TypeDock\Auth\SessionService;
 use TypeDock\Auth\ApiKeyService;
 use TypeDock\Auth\PermissionChecker;
@@ -12,6 +15,7 @@ use TypeDock\Storage\LocalStorage;
 use TypeDock\Storage\S3Storage;
 use TypeDock\Component\ComponentRegistry;
 use TypeDock\Component\ComponentRenderer;
+use TypeDock\Component\CoreComponentRegistrar;
 
 class ServiceProvider
 {
@@ -23,6 +27,7 @@ class ServiceProvider
         $this->registerStorage();
         $this->registerSearch();
         $this->registerComponents();
+        $this->registerThemeSettings();
     }
 
     private function registerDatabase(): void
@@ -156,6 +161,11 @@ class ServiceProvider
                 return $registry;
             }
             $registry = new ComponentRegistry();
+            // Seed the registry with the built-in components (search_form,
+            // latest_posts, menu, etc.) so the slot admin dropdown and the
+            // frontend `{component}` tag have something to offer out of the
+            // box. Modules and plugins can layer more via PluginContext.
+            (new CoreComponentRegistrar())->register($registry);
             return $registry;
         });
 
@@ -165,6 +175,27 @@ class ServiceProvider
                 return $renderer;
             }
             $renderer = new ComponentRenderer(\Flight::components(), \Flight::latte());
+            return $renderer;
+        });
+    }
+
+    private function registerThemeSettings(): void
+    {
+        \Flight::map('theme_settings', function (): ThemeSettingsService {
+            static $service = null;
+            if ($service !== null) {
+                return $service;
+            }
+            $service = new ThemeSettingsService(\Flight::db(), new ThemeLoader());
+            return $service;
+        });
+
+        \Flight::map('theme_style', function (): ThemeStyleRenderer {
+            static $renderer = null;
+            if ($renderer !== null) {
+                return $renderer;
+            }
+            $renderer = new ThemeStyleRenderer(\Flight::theme_settings());
             return $renderer;
         });
     }

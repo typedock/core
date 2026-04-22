@@ -1,0 +1,14 @@
+{layout 'base.latte'}
+
+{block title}404 Not Found - {$site->name}{/block}
+
+{block content}
+<div class="container">
+    <div class="error-page">
+        <p class="error-kicker">404</p>
+        <h1>We couldn't find that page.</h1>
+        <p>The link may be broken, or the page may have been moved.</p>
+        <a href="/" class="btn btn-primary">Return home</a>
+    </div>
+</div>
+{/block}

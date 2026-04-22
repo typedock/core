@@ -59,6 +59,13 @@ class LatteFactory
      */
     public function resolvePath(string $template, ?string $baseDir = null): string
     {
+        // Callers may hand us an already-resolved absolute path (e.g. the
+        // ComponentRenderer walks its own fallback chain). Respect it as-is
+        // rather than prepending the active theme dir and losing the file.
+        if ($this->isAbsolutePath($template) && file_exists($template)) {
+            return $template;
+        }
+
         if ($baseDir !== null) {
             $absolute = $baseDir . '/' . ltrim($template, '/');
             if (file_exists($absolute)) {
@@ -80,6 +87,13 @@ class LatteFactory
         }
 
         return $inTheme; // Return theme path even if not found (will error with nice message)
+    }
+
+    private function isAbsolutePath(string $path): bool
+    {
+        // Matches both POSIX (/foo) and Windows (C:\foo, C:/foo) roots.
+        return $path !== ''
+            && ($path[0] === '/' || $path[0] === '\\' || (isset($path[1]) && $path[1] === ':'));
     }
 
     public function setActiveTheme(string $theme): void

@@ -1,0 +1,91 @@
+# TypeDock development compose file.
+#
+# Default (lightest) stack — just app + nginx, using SQLite on disk:
+#   docker compose up -d
+#
+# Optional databases via profiles:
+#   docker compose --profile mysql    up -d
+#   docker compose --profile postgres up -d
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: typedock/app:dev
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - app-storage:/app/storage
+      # Upload target for MediaService with the local storage driver.
+      # Uses a named volume for the same reason storage/ does: Docker
+      # initialises it from the image layer where /app/public/uploads is
+      # owned by www-data, so php-fpm can write to it without any UID
+      # juggling against the bind-mounted host filesystem.
+      - app-uploads:/app/public/uploads
+      # Published theme/plugin assets. Named volumes — not bind mounts —
+      # so writes from the app container succeed without UID juggling
+      # against the host filesystem (same pattern as app-uploads). They
+      # MUST be mirrored onto the nginx service (read-only) as well so
+      # nginx sees the same view; otherwise AssetPublisher's writes land
+      # in the volume while nginx keeps serving the stale host directory.
+      - app-themes:/app/public/themes
+      - app-plugins:/app/public/plugins
+    env_file:
+      - path: docker.env
+        required: false
+    expose:
+      - "9000"
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/app:ro
+      - app-storage:/app/storage:ro
+      - app-uploads:/app/public/uploads:ro
+      # Must mirror every rw volume the app service declares underneath
+      # /app/public so nginx reads the same bytes AssetPublisher wrote.
+      - app-themes:/app/public/themes:ro
+      - app-plugins:/app/public/plugins:ro
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.0
+    profiles: ["mysql"]
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: typedock
+      MYSQL_USER: typedock
+      MYSQL_PASSWORD: typedock
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["postgres"]
+    environment:
+      POSTGRES_USER: typedock
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: typedock
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  app-storage:
+  app-uploads:
+  app-themes:
+  app-plugins:
+  mysql-data:
+  pg-data:

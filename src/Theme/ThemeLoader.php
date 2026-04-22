@@ -28,6 +28,37 @@ class ThemeLoader
     }
 
     /**
+     * Resolve the currently active theme from site_options. Falls back to 'default'
+     * if the option is missing, malformed, or points to a theme that no longer exists.
+     */
+    public function resolveActiveTheme(\PDO $pdo): string
+    {
+        try {
+            $stmt = $pdo->prepare("SELECT value FROM site_options WHERE key_name = 'theme.active' LIMIT 1");
+            $stmt->execute();
+            $val = $stmt->fetchColumn();
+            if ($val !== false) {
+                $decoded = json_decode((string) $val, true);
+                if (is_string($decoded) && $decoded !== '' && is_dir($this->themesDir . '/' . $decoded)) {
+                    return $decoded;
+                }
+            }
+        } catch (\Throwable) {
+            // Fall through to default — happens e.g. before install has run.
+        }
+        return 'default';
+    }
+
+    public function themeExists(string $themeName): bool
+    {
+        if (!preg_match('/^[A-Za-z0-9_\-]+$/', $themeName)) {
+            return false;
+        }
+        return is_dir($this->themesDir . '/' . $themeName)
+            && is_file($this->themesDir . '/' . $themeName . '/theme.json');
+    }
+
+    /**
      * Switch active theme: clear slot_placements, insert defaults from theme.json.
      */
     public function activateTheme(string $themeName, \PDO $pdo): void
@@ -38,8 +69,13 @@ class ThemeLoader
 
         $pdo->beginTransaction();
         try {
-            // Clear existing placements
+            // Clear existing placements — the new theme will declare its own
+            // set of slots and seed them from theme.json defaults below.
             $pdo->exec('DELETE FROM slot_placements');
+
+            // Theme settings are theme-specific (keys come from the old theme's
+            // settings schema). Drop them so the new theme's defaults win.
+            $pdo->prepare("DELETE FROM site_options WHERE key_name = 'theme_settings'")->execute();
 
             // Insert defaults
             foreach ($slots as $slotName => $slotConfig) {
@@ -79,6 +115,16 @@ class ThemeLoader
             $pdo->rollBack();
             throw $e;
         }
+
+        // Publish assets after the DB transaction commits so the new theme's
+        // CSS/JS are immediately reachable under /themes/{name}/assets/.
+        // A publish failure is non-fatal — the activation itself has succeeded
+        // and operators can rerun `php cli/assets-publish.php` to recover.
+        try {
+            (new \TypeDock\Core\AssetPublisher(TYPEDOCK_ROOT))->publishTheme($themeName);
+        } catch (\Throwable) {
+            // Swallow; the web server may still serve assets via the PHP fallback.
+        }
     }
 
     /**
@@ -96,10 +142,30 @@ class ThemeLoader
             if ($entry === '.' || $entry === '..') {
                 continue;
             }
-            if (is_dir($this->themesDir . '/' . $entry)) {
+            if (is_dir($this->themesDir . '/' . $entry) && is_file($this->themesDir . '/' . $entry . '/theme.json')) {
                 $themes[] = $entry;
             }
         }
+        sort($themes);
         return $themes;
+    }
+
+    /**
+     * Resolve the public screenshot URL for a theme, if one exists.
+     *
+     * Screenshots are looked up inside the theme's assets directory because the
+     * AssetPublisher publishes `themes/{name}/assets/` → `public/themes/{name}/assets/`
+     * and that's the only location we can guarantee the web server will serve.
+     */
+    public function screenshotUrl(string $themeName): ?string
+    {
+        $assetsDir = $this->themesDir . '/' . $themeName . '/assets';
+        foreach (['screenshot.svg', 'screenshot.png', 'screenshot.jpg', 'screenshot.webp'] as $candidate) {
+            if (is_file($assetsDir . '/' . $candidate)) {
+                $base = rtrim((string) config('app.url', ''), '/');
+                return $base . '/themes/' . $themeName . '/assets/' . $candidate;
+            }
+        }
+        return null;
     }
 }

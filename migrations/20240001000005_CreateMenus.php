@@ -2,41 +2,41 @@
 
 declare(strict_types=1);
 
-use Phinx\Migration\AbstractMigration;
+use TypeDock\Core\Migration\Blueprint;
+use TypeDock\Core\Migration\Migration;
+use TypeDock\Core\Migration\Schema;
 
-final class CreateMenus extends AbstractMigration
+final class CreateMenus extends Migration
 {
-    public function change(): void
+    public function up(Schema $schema): void
     {
-        // menus table
-        $menus = $this->table('menus', ['id' => false, 'primary_key' => ['id']]);
-        $menus
-            ->addColumn('id', 'string', ['limit' => 36])
-            ->addColumn('name', 'string', ['limit' => 255])
-            ->addColumn('location', 'string', ['limit' => 100])
-            ->addColumn('locale', 'string', ['limit' => 10, 'default' => 'en'])
-            ->addColumn('created_at', 'datetime', ['default' => 'CURRENT_TIMESTAMP'])
-            ->addColumn('updated_at', 'datetime', [])
-            ->addIndex(['location', 'locale'], ['unique' => true])
-            ->create();
+        $schema->create('menus', function (Blueprint $t) {
+            $t->string('id', 36);
+            $t->string('name', 255);
+            $t->string('location', 100);
+            $t->string('locale', 10)->default('en');
+            $t->datetime('created_at')->useCurrent();
+            $t->datetime('updated_at');
+            $t->primary(['id']);
+            $t->unique(['location', 'locale']);
+        });
 
-        // menu_items table
-        $menuItems = $this->table('menu_items', ['id' => false, 'primary_key' => ['id']]);
-        $menuItems
-            ->addColumn('id', 'string', ['limit' => 36])
-            ->addColumn('menu_id', 'string', ['limit' => 36])
-            ->addColumn('parent_id', 'string', ['limit' => 36, 'null' => true, 'default' => null])
-            ->addColumn('label', 'string', ['limit' => 255])
-            ->addColumn('url', 'string', ['limit' => 2000, 'null' => true, 'default' => null])
-            ->addColumn('target_type', 'string', ['limit' => 20, 'null' => true, 'default' => null])
-            ->addColumn('target_id', 'string', ['limit' => 36, 'null' => true, 'default' => null])
-            ->addColumn('css_class', 'string', ['limit' => 255, 'null' => true, 'default' => null])
-            ->addColumn('icon', 'string', ['limit' => 100, 'null' => true, 'default' => null])
-            ->addColumn('sort_order', 'integer', ['default' => 0])
-            ->addColumn('created_at', 'datetime', ['default' => 'CURRENT_TIMESTAMP'])
-            ->addIndex(['menu_id', 'sort_order'])
-            ->addForeignKey('menu_id', 'menus', 'id', ['delete' => 'CASCADE', 'update' => 'NO_ACTION'])
-            ->addForeignKey('parent_id', 'menu_items', 'id', ['delete' => 'CASCADE', 'update' => 'NO_ACTION'])
-            ->create();
+        $schema->create('menu_items', function (Blueprint $t) {
+            $t->string('id', 36);
+            $t->string('menu_id', 36);
+            $t->string('parent_id', 36)->null();
+            $t->string('label', 255);
+            $t->string('url', 2000)->null();
+            $t->string('target_type', 20)->null();
+            $t->string('target_id', 36)->null();
+            $t->string('css_class', 255)->null();
+            $t->string('icon', 100)->null();
+            $t->integer('sort_order')->default(0);
+            $t->datetime('created_at')->useCurrent();
+            $t->primary(['id']);
+            $t->index(['menu_id', 'sort_order']);
+            $t->foreign('menu_id', 'menus', 'id')->cascadeOnDelete();
+            $t->foreign('parent_id', 'menu_items', 'id')->cascadeOnDelete();
+        });
     }
 }

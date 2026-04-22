@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" role="img" aria-label="Kinari theme screenshot">
+    <defs>
+        <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#fbfaf7"/>
+            <stop offset="100%" stop-color="#f3f1ed"/>
+        </linearGradient>
+    </defs>
+    <rect width="640" height="400" fill="url(#paper)"/>
+
+    <!-- header -->
+    <rect x="0" y="0" width="640" height="56" fill="#1f1d1b"/>
+    <rect x="28" y="22" width="90" height="12" rx="2" fill="#f5f3ef"/>
+    <rect x="380" y="24" width="36" height="8" rx="2" fill="#b8b3ab"/>
+    <rect x="430" y="24" width="36" height="8" rx="2" fill="#b8b3ab"/>
+    <rect x="480" y="24" width="36" height="8" rx="2" fill="#b8b3ab"/>
+    <rect x="530" y="24" width="80" height="18" rx="9" fill="#8c2a3a"/>
+
+    <!-- hero -->
+    <rect x="28" y="78" width="584" height="88" rx="6" fill="#f5f2ec"/>
+    <rect x="56" y="100" width="260" height="14" rx="2" fill="#1f1d1b"/>
+    <rect x="56" y="122" width="380" height="8" rx="2" fill="#4a4642"/>
+    <rect x="56" y="136" width="300" height="8" rx="2" fill="#4a4642"/>
+    <rect x="480" y="116" width="96" height="24" rx="4" fill="#8c2a3a"/>
+
+    <!-- content + sidebar -->
+    <rect x="28" y="182" width="420" height="150" rx="6" fill="#ffffff" stroke="#e6e3dd" stroke-width="1"/>
+    <rect x="48" y="200" width="220" height="12" rx="2" fill="#1f1d1b"/>
+    <rect x="48" y="220" width="380" height="6" rx="2" fill="#7a7671"/>
+    <rect x="48" y="232" width="360" height="6" rx="2" fill="#7a7671"/>
+    <rect x="48" y="244" width="370" height="6" rx="2" fill="#7a7671"/>
+    <rect x="48" y="268" width="110" height="22" rx="3" fill="#f3f1ed"/>
+    <rect x="166" y="268" width="110" height="22" rx="3" fill="#f3f1ed"/>
+    <rect x="284" y="268" width="110" height="22" rx="3" fill="#f3f1ed"/>
+
+    <!-- sidebar -->
+    <rect x="460" y="182" width="152" height="72" rx="6" fill="#ffffff" stroke="#e6e3dd" stroke-width="1"/>
+    <rect x="474" y="196" width="80" height="8" rx="2" fill="#1f1d1b"/>
+    <rect x="474" y="206" width="28" height="2" fill="#8c2a3a"/>
+    <rect x="474" y="216" width="120" height="6" rx="2" fill="#7a7671"/>
+    <rect x="474" y="228" width="110" height="6" rx="2" fill="#7a7671"/>
+    <rect x="474" y="240" width="100" height="6" rx="2" fill="#7a7671"/>
+    <rect x="460" y="266" width="152" height="66" rx="6" fill="#ffffff" stroke="#e6e3dd" stroke-width="1"/>
+    <rect x="474" y="280" width="70" height="8" rx="2" fill="#1f1d1b"/>
+    <rect x="474" y="290" width="24" height="2" fill="#8c2a3a"/>
+    <rect x="474" y="300" width="40" height="14" rx="7" fill="#f3f1ed"/>
+    <rect x="520" y="300" width="50" height="14" rx="7" fill="#f3f1ed"/>
+    <rect x="474" y="318" width="50" height="14" rx="7" fill="#f3f1ed"/>
+
+    <!-- footer -->
+    <rect x="0" y="348" width="640" height="52" fill="#1f1d1b"/>
+    <rect x="40" y="364" width="150" height="6" rx="2" fill="#ede8e0"/>
+    <rect x="40" y="376" width="100" height="6" rx="2" fill="#8a8580"/>
+    <rect x="240" y="364" width="150" height="6" rx="2" fill="#ede8e0"/>
+    <rect x="240" y="376" width="100" height="6" rx="2" fill="#8a8580"/>
+    <rect x="440" y="364" width="150" height="6" rx="2" fill="#ede8e0"/>
+    <rect x="440" y="376" width="100" height="6" rx="2" fill="#8a8580"/>
+</svg>

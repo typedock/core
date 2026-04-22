@@ -15,6 +15,8 @@ use TypeDock\Admin\UserController;
 use TypeDock\Admin\SettingsController;
 use TypeDock\Admin\RedirectController;
 use TypeDock\Admin\SlotController;
+use TypeDock\Admin\ThemeController;
+use TypeDock\Admin\ThemeSettingsController;
 use TypeDock\Frontend\FrontendController;
 use TypeDock\Api\ApiController;
 use TypeDock\Middleware\AuthMiddleware;
@@ -151,29 +153,24 @@ class Router
             (new MediaController())->destroy($id);
         });
 
-        // Menus
+        // Menus (location-driven — themes declare locations in theme.json)
         \Flight::route('GET /admin/menus', function () use ($auth) {
             $auth->requireAuth();
             (new MenuController())->index();
         });
-        \Flight::route('POST /admin/menus', function () use ($auth, $csrf) {
+        \Flight::route('GET /admin/menus/@location', function (string $location) use ($auth) {
+            $auth->requireAuth();
+            (new MenuController())->edit($location);
+        });
+        \Flight::route('POST /admin/menus/@location/items', function (string $location) use ($auth, $csrf) {
             $auth->requireAuth();
             $csrf->verifyOrFail();
-            (new MenuController())->store();
+            (new MenuController())->storeItem($location);
         });
-        \Flight::route('GET /admin/menus/@id', function (string $id) use ($auth) {
-            $auth->requireAuth();
-            (new MenuController())->edit($id);
-        });
-        \Flight::route('POST /admin/menus/@id', function (string $id) use ($auth, $csrf) {
+        \Flight::route('POST /admin/menus/@location/items/@itemId/delete', function (string $location, string $itemId) use ($auth, $csrf) {
             $auth->requireAuth();
             $csrf->verifyOrFail();
-            (new MenuController())->update($id);
-        });
-        \Flight::route('POST /admin/menus/@id/delete', function (string $id) use ($auth, $csrf) {
-            $auth->requireAuth();
-            $csrf->verifyOrFail();
-            (new MenuController())->destroy($id);
+            (new MenuController())->destroyItem($location, $itemId);
         });
 
         // Categories
@@ -292,10 +289,45 @@ class Router
             (new SlotController())->update();
         });
 
+        // Themes
+        \Flight::route('GET /admin/themes', function () use ($auth) {
+            $auth->requireAuth('admin');
+            (new ThemeController())->index();
+        });
+        \Flight::route('POST /admin/themes/activate', function () use ($auth, $csrf) {
+            $auth->requireAuth('admin');
+            $csrf->verifyOrFail();
+            (new ThemeController())->activate();
+        });
+        \Flight::route('GET /admin/themes/preview', function () use ($auth) {
+            $auth->requireAuth('admin');
+            (new ThemeController())->preview();
+        });
+
+        // Theme settings
+        \Flight::route('GET /admin/theme-settings', function () use ($auth) {
+            $auth->requireAuth('admin');
+            (new ThemeSettingsController())->index();
+        });
+        \Flight::route('POST /admin/theme-settings', function () use ($auth, $csrf) {
+            $auth->requireAuth('admin');
+            $csrf->verifyOrFail();
+            (new ThemeSettingsController())->update();
+        });
+        \Flight::route('POST /admin/theme-settings/reset', function () use ($auth, $csrf) {
+            $auth->requireAuth('admin');
+            $csrf->verifyOrFail();
+            (new ThemeSettingsController())->reset();
+        });
+
         // Admin internal API (for JS islands)
         \Flight::route('POST /admin/api/media/upload', function () use ($auth) {
             $auth->requireAuthJson();
             (new MediaController())->upload();
+        });
+        \Flight::route('GET /admin/api/media', function () use ($auth) {
+            $auth->requireAuthJson();
+            (new MediaController())->browse();
         });
         \Flight::route('POST /admin/api/pages/@id/autosave', function (string $id) use ($auth) {
             $auth->requireAuthJson();
@@ -330,16 +362,22 @@ class Router
 
     private function registerBlogRoutes(): void
     {
-        // Blog archive
-        \Flight::route('GET /blog', function () {
+        // Posts archive slug is configurable via Settings → General. Default
+        // is 'blog' for new installs; operators can switch to 'journal',
+        // 'news', etc. The value is sanitised on save so the interpolation
+        // here cannot introduce path-traversal or regex metacharacters.
+        $postsSlug = posts_archive_slug();
+
+        // Posts archive
+        \Flight::route('GET /' . $postsSlug, function () {
             (new FrontendController())->blogIndex();
         });
-        \Flight::route('GET /blog/page/@page', function (string $page) {
+        \Flight::route('GET /' . $postsSlug . '/page/@page', function (string $page) {
             (new FrontendController())->blogIndex((int) $page);
         });
 
-        // Blog single post
-        \Flight::route('GET /blog/@slug', function (string $slug) {
+        // Single post
+        \Flight::route('GET /' . $postsSlug . '/@slug', function (string $slug) {
             (new FrontendController())->blogPost($slug);
         });
 
@@ -370,6 +408,14 @@ class Router
         // Homepage
         \Flight::route('GET /', function () {
             (new FrontendController())->homepage();
+        });
+
+        // When the homepage is the posts archive, `/page/N` should paginate
+        // it. In 'page' mode this route is unused — a static home page is
+        // unpaginated — but registering it unconditionally is harmless: the
+        // controller re-checks home_mode and delegates appropriately.
+        \Flight::route('GET /page/@page', function (string $page) {
+            (new FrontendController())->homepage((int) $page);
         });
 
         // Catchall for static pages (must be last)

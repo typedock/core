@@ -1,37 +1,415 @@
 {layout '../../layouts/admin-base.latte'}
+
 {block page_title}Slot Placements{/block}
+
 {block content}
-<h1>Slot Placements</h1>
-<p class="help-text">Configure which components are displayed in each slot.</p>
+<div class="page-header">
+    <div>
+        <h1>Slot Placements</h1>
+        <p class="subtitle">
+            Slots defined by the active theme: <strong>{$active_theme_label ?? ''}</strong>
+            <code class="text-xs text-slate-500 ml-1">{$active_theme ?? ''}</code>.
+            Switch themes under <a href="/admin/themes">Themes</a>.
+        </p>
+    </div>
+</div>
+
+{if empty($slots)}
+    <div class="empty-state">
+        <h3>No slots declared</h3>
+        <p>The active theme's <code>theme.json</code> has no <code>slots</code> block to manage.</p>
+    </div>
+{/if}
+
+{if !empty($orphan_placements)}
+<div class="alert alert-warning mb-4">
+    <span>
+        Orphan placements detected for slots the active theme doesn't declare:
+        {foreach $orphan_placements as $o}<code>{$o['slot_name']}</code> ({$o['n']}){sep}, {/sep}{/foreach}.
+        Re-activating the theme from <a href="/admin/themes">Themes</a> will clear them.
+    </span>
+</div>
+{/if}
 
 {foreach $slots as $slotName => $slotConfig}
+{var $slotContexts = isset($slotConfig['context']) ? implode(', ', (array) $slotConfig['context']) : 'all'}
 <div class="slot-section" data-slot="{$slotName}">
     <h2>{$slotConfig['label'] ?? $slotName}</h2>
+    <p class="slot-context-note text-xs text-slate-500">
+        Renders on: <code>{$slotContexts}</code>
+    </p>
+
     <div class="slot-placements" id="slot-{$slotName}">
-        {foreach $slotConfig['placements'] as $placement}
-        <div class="placement-item" data-id="{$placement['id']}">
-            <span class="drag-handle">≡</span>
-            <span class="component-name">{$placement['component_type']}</span>
-            <form method="post" action="/admin/slots" style="display:inline">
-                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-                <input type="hidden" name="action" value="remove">
-                <input type="hidden" name="placement_id" value="{$placement['id']}">
-                <button type="submit" class="btn btn-sm btn-danger">Remove</button>
-            </form>
-        </div>
-        {/foreach}
+        {if empty($slotConfig['placements'])}
+            <p class="text-sm text-slate-500">No components placed in this slot yet.</p>
+        {else}
+            {foreach $slotConfig['placements'] as $placement}
+            {var $def      = $available_components[$placement['component_type']] ?? null}
+            {var $values   = !empty($placement['params']) ? (array) json_decode((string) $placement['params'], true) : []}
+            {var $hasParams = $def !== null && !empty($def->params)}
+            {var $pid      = $placement['id']}
+            {var $incompatible = !empty($placement['incompatible'])}
+            <div class="placement-item {if $incompatible}placement-incompatible{/if}" data-id="{$pid}">
+                {if $incompatible}
+                <div class="placement-warning">
+                    <strong>Incompatible placement.</strong>
+                    This component supports <code>{implode(', ', $def->supportedContexts)}</code> contexts;
+                    this slot renders on <code>{$slotContexts}</code>. It will be skipped at render time.
+                </div>
+                {/if}
+                <div class="placement-row">
+                    <span class="drag-handle" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                    </span>
+                    <span class="component-name">
+                        <span class="component-name-label">{$def->name ?? $placement['component_type']}</span>
+                        <code class="component-name-type">{$placement['component_type']}</code>
+                    </span>
+                    <div class="placement-actions">
+                        {if $hasParams}
+                        <button type="button" class="btn btn-ghost btn-xs placement-edit-toggle"
+                                aria-expanded="false" aria-controls="params-{$pid}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                            <span>Edit</span>
+                        </button>
+                        {/if}
+                        <form method="post" action="/admin/slots" class="inline">
+                            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                            <input type="hidden" name="action" value="remove">
+                            <input type="hidden" name="placement_id" value="{$pid}">
+                            <button type="submit" class="btn btn-xs placement-remove"
+                                    onclick="return confirm('Remove this component from the slot?');">Remove</button>
+                        </form>
+                    </div>
+                </div>
+
+                {if $hasParams}
+                <div id="params-{$pid}" class="placement-params" hidden>
+                    <form method="post" action="/admin/slots" class="placement-params-form">
+                        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                        <input type="hidden" name="action" value="params">
+                        <input type="hidden" name="placement_id" value="{$pid}">
+                        {foreach $def->params as $spec}
+                            {var $name    = $spec['name'] ?? ''}
+                            {var $label   = $spec['label'] ?? $spec['name'] ?? ''}
+                            {var $type    = $spec['type'] ?? 'text'}
+                            {var $current = $values[$name] ?? ($spec['default'] ?? '')}
+                            {var $hint    = $spec['hint'] ?? ''}
+                            <div class="form-group">
+                                <label for="p_{$pid}_{$name}">{$label}</label>
+                                {if $type === 'textarea'}
+                                    <textarea id="p_{$pid}_{$name}" name="params[{$name}]" rows="6" class="font-mono text-xs">{$current}</textarea>
+                                {elseif $type === 'number'}
+                                    <input type="number" id="p_{$pid}_{$name}" name="params[{$name}]" value="{$current}">
+                                {elseif $type === 'bool' || $type === 'boolean'}
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="p_{$pid}_{$name}" name="params[{$name}]" value="1" {if $current}checked{/if}>
+                                        <span>Enabled</span>
+                                    </label>
+                                {elseif $type === 'select'}
+                                    <select id="p_{$pid}_{$name}" name="params[{$name}]">
+                                        {foreach ($spec['options'] ?? []) as $optVal => $optLabel}
+                                            <option value="{$optVal}" {if (string) $current === (string) $optVal}selected{/if}>{$optLabel}</option>
+                                        {/foreach}
+                                    </select>
+                                {elseif $type === 'repeater'}
+                                    {var $rows = is_array($current) ? $current : []}
+                                    {var $fieldSpecs = $spec['fields'] ?? []}
+                                    <div class="repeater"
+                                         data-repeater
+                                         data-repeater-name="params[{$name}]">
+                                        <div class="repeater-rows" data-repeater-rows>
+                                            {foreach $rows as $i => $row}
+                                                <div class="repeater-row" data-repeater-row>
+                                                    <span class="repeater-handle" aria-hidden="true">
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                                                    </span>
+                                                    {foreach $fieldSpecs as $fk => $fs}
+                                                        {var $fType = $fs['type'] ?? 'text'}
+                                                        {var $fLabel = $fs['label'] ?? $fk}
+                                                        {var $fValue = $row[$fk] ?? ''}
+                                                        {if $fType === 'select'}
+                                                            <select name="params[{$name}][{$i}][{$fk}]" aria-label="{$fLabel}">
+                                                                {foreach ($fs['options'] ?? []) as $optVal => $optLabel}
+                                                                    <option value="{$optVal}" {if (string) $fValue === (string) $optVal}selected{/if}>{$optLabel}</option>
+                                                                {/foreach}
+                                                            </select>
+                                                        {else}
+                                                            <input type="{$fType === 'url' ? 'url' : 'text'}"
+                                                                   name="params[{$name}][{$i}][{$fk}]"
+                                                                   value="{$fValue}"
+                                                                   placeholder="{$fLabel}"
+                                                                   aria-label="{$fLabel}">
+                                                        {/if}
+                                                    {/foreach}
+                                                    <button type="button" class="btn btn-xs repeater-remove" aria-label="Remove row">×</button>
+                                                </div>
+                                            {/foreach}
+                                        </div>
+                                        <template data-repeater-template>
+                                            <div class="repeater-row" data-repeater-row>
+                                                <span class="repeater-handle" aria-hidden="true">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                                                </span>
+                                                {foreach $fieldSpecs as $fk => $fs}
+                                                    {var $fType = $fs['type'] ?? 'text'}
+                                                    {var $fLabel = $fs['label'] ?? $fk}
+                                                    {if $fType === 'select'}
+                                                        <select name="params[{$name}][__INDEX__][{$fk}]" aria-label="{$fLabel}">
+                                                            {foreach ($fs['options'] ?? []) as $optVal => $optLabel}
+                                                                <option value="{$optVal}">{$optLabel}</option>
+                                                            {/foreach}
+                                                        </select>
+                                                    {else}
+                                                        <input type="{$fType === 'url' ? 'url' : 'text'}"
+                                                               name="params[{$name}][__INDEX__][{$fk}]"
+                                                               value=""
+                                                               placeholder="{$fLabel}"
+                                                               aria-label="{$fLabel}">
+                                                    {/if}
+                                                {/foreach}
+                                                <button type="button" class="btn btn-xs repeater-remove" aria-label="Remove row">×</button>
+                                            </div>
+                                        </template>
+                                        <button type="button" class="btn btn-secondary btn-xs repeater-add">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                                            <span>Add row</span>
+                                        </button>
+                                    </div>
+                                {else}
+                                    <input type="text" id="p_{$pid}_{$name}" name="params[{$name}]" value="{$current}">
+                                {/if}
+                                {if $hint}<small class="form-hint">{$hint}</small>{/if}
+                            </div>
+                        {/foreach}
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary btn-sm">Save parameters</button>
+                        </div>
+                    </form>
+                </div>
+                {/if}
+            </div>
+            {/foreach}
+        {/if}
     </div>
+
+    {if empty($slotConfig['compatible_components'])}
+        <p class="text-sm text-slate-500">No components are compatible with this slot's contexts.</p>
+    {else}
     <form method="post" action="/admin/slots" class="add-component-form">
         <input type="hidden" name="_csrf_token" value="{$csrf_token}">
         <input type="hidden" name="action" value="add">
         <input type="hidden" name="slot_name" value="{$slotName}">
-        <select name="component_type">
-            {foreach $available_components as $comp_type => $comp_def}
+        <select name="component_type" class="!w-auto min-w-48">
+            {foreach $slotConfig['compatible_components'] as $comp_type => $comp_def}
             <option value="{$comp_type}">{$comp_def->name}</option>
             {/foreach}
         </select>
-        <button type="submit" class="btn btn-sm">Add</button>
+        <button type="submit" class="btn btn-secondary btn-sm">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            <span>Add Component</span>
+        </button>
     </form>
+    {/if}
 </div>
 {/foreach}
+
+<style>
+    /* Override admin.css which sets .placement-item to display:flex / align-items:center.
+       We need a stacked layout so the params form can sit below the row. */
+    .placement-item {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 0 !important;
+    }
+    .placement-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        width: 100%;
+    }
+    .component-name {
+        display: flex;
+        align-items: baseline;
+        gap: 0.5rem;
+        min-width: 0;
+        flex: 1;
+    }
+    .component-name-label { font-weight: 600; color: #334155; }
+    .component-name-type {
+        font-size: 0.75rem;
+        color: #94a3b8;
+        background: transparent;
+        padding: 0;
+    }
+    .placement-actions {
+        margin-left: auto;
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
+    /* Outline danger for the remove button — still recognisably destructive,
+       but subdued enough that it doesn't dominate the row. */
+    .btn.placement-remove {
+        background: transparent;
+        color: #b91c1c;
+        border: 1px solid #fecaca;
+    }
+    .btn.placement-remove:hover,
+    .btn.placement-remove:focus-visible {
+        background: #fef2f2;
+        border-color: #f87171;
+        color: #991b1b;
+    }
+
+    .placement-edit-toggle[aria-expanded="true"] {
+        background: #f1f5f9;
+        color: #334155;
+    }
+
+    .placement-params {
+        margin-top: 0.75rem;
+        padding: 0.75rem 1rem;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+    }
+    .placement-params[hidden] { display: none; }
+    .placement-params-form .form-group { margin: 0 0 0.75rem; }
+    .placement-params-form .form-group:last-of-type { margin-bottom: 0.75rem; }
+    .placement-params-form .form-actions { margin-top: 0.5rem; }
+
+    .placement-incompatible { border-left: 3px solid #f59e0b; padding-left: 0.5rem; }
+    .placement-warning {
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        color: #92400e;
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.8125rem;
+        margin-bottom: 0.5rem;
+    }
+    .slot-context-note { margin: -0.25rem 0 0.75rem; }
+    .slot-context-note code { background: transparent; padding: 0; color: inherit; }
+
+    .repeater { display: flex; flex-direction: column; gap: 0.5rem; }
+    .repeater-rows { display: flex; flex-direction: column; gap: 0.4rem; }
+    .repeater-row {
+        display: flex; align-items: center; gap: 0.4rem;
+        padding: 0.4rem 0.5rem;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+    }
+    .repeater-row.is-dragging { opacity: 0.5; }
+    .repeater-row > input,
+    .repeater-row > select { flex: 1; min-width: 0; }
+    .repeater-handle { cursor: grab; color: #94a3b8; flex: 0 0 auto; }
+    .repeater-handle:active { cursor: grabbing; }
+    .repeater-remove {
+        background: transparent; border: 1px solid #fecaca;
+        color: #b91c1c; padding: 0 0.5rem; line-height: 1.4;
+    }
+    .repeater-remove:hover { background: #fef2f2; border-color: #f87171; }
+    .repeater-add { align-self: flex-start; }
+</style>
+
+<script>
+    // Lightweight toggle for the per-placement Edit pane. Keeps aria-expanded in
+    // sync with the panel's visibility so assistive tech sees the correct state.
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.placement-edit-toggle');
+        if (!btn) return;
+        const id    = btn.getAttribute('aria-controls');
+        const panel = id ? document.getElementById(id) : null;
+        if (!panel) return;
+        const open = panel.hasAttribute('hidden');
+        if (open) {
+            panel.removeAttribute('hidden');
+            btn.setAttribute('aria-expanded', 'true');
+        } else {
+            panel.setAttribute('hidden', '');
+            btn.setAttribute('aria-expanded', 'false');
+        }
+    });
+
+    // Repeater field: add / remove rows and keep the numeric field indices
+    // contiguous so PHP deserialises the submission back into a clean array.
+    (function () {
+        function reindex(repeater) {
+            const rows = repeater.querySelectorAll('[data-repeater-rows] > [data-repeater-row]');
+            rows.forEach(function (row, i) {
+                row.querySelectorAll('input, select, textarea').forEach(function (field) {
+                    field.name = field.name.replace(/\[(\d+|__INDEX__)\]/, '[' + i + ']');
+                });
+            });
+        }
+
+        document.addEventListener('click', function (e) {
+            const add = e.target.closest('.repeater-add');
+            if (add) {
+                const repeater = add.closest('[data-repeater]');
+                const tpl      = repeater.querySelector('[data-repeater-template]');
+                const rows     = repeater.querySelector('[data-repeater-rows]');
+                if (!tpl || !rows) return;
+                const clone = tpl.content.firstElementChild.cloneNode(true);
+                rows.appendChild(clone);
+                reindex(repeater);
+                return;
+            }
+            const rm = e.target.closest('.repeater-remove');
+            if (rm) {
+                const repeater = rm.closest('[data-repeater]');
+                const row      = rm.closest('[data-repeater-row]');
+                if (row) row.remove();
+                if (repeater) reindex(repeater);
+            }
+        });
+
+        // Minimal drag-to-reorder without an external lib. Good enough for the
+        // low-row-count cases our repeaters see; degrades to manual arrange
+        // via add/remove if the browser blocks drag events.
+        document.querySelectorAll('[data-repeater]').forEach(function (repeater) {
+            const rows = repeater.querySelector('[data-repeater-rows]');
+            if (!rows) return;
+            let dragging = null;
+
+            rows.addEventListener('mousedown', function (e) {
+                const handle = e.target.closest('.repeater-handle');
+                if (!handle) return;
+                const row = handle.closest('[data-repeater-row]');
+                if (!row) return;
+                row.draggable = true;
+            });
+
+            rows.addEventListener('dragstart', function (e) {
+                const row = e.target.closest('[data-repeater-row]');
+                if (!row) return;
+                dragging = row;
+                row.classList.add('is-dragging');
+                e.dataTransfer.effectAllowed = 'move';
+            });
+
+            rows.addEventListener('dragover', function (e) {
+                if (!dragging) return;
+                e.preventDefault();
+                const over = e.target.closest('[data-repeater-row]');
+                if (!over || over === dragging) return;
+                const rect   = over.getBoundingClientRect();
+                const after  = (e.clientY - rect.top) / rect.height > 0.5;
+                over.parentNode.insertBefore(dragging, after ? over.nextSibling : over);
+            });
+
+            rows.addEventListener('dragend', function () {
+                if (!dragging) return;
+                dragging.classList.remove('is-dragging');
+                dragging.draggable = false;
+                dragging = null;
+                reindex(repeater);
+            });
+        });
+    })();
+</script>
 {/block}

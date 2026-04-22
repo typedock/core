@@ -1,35 +1,48 @@
 {layout '../../layouts/admin-base.latte'}
+
 {block page_title}Tags{/block}
+
 {block content}
 <div class="page-header">
-    <h1>Tags</h1>
+    <div>
+        <h1>Tags</h1>
+        <p class="subtitle">Flat, non-hierarchical labels for posts.</p>
+    </div>
 </div>
 
-<div class="editor-layout" style="grid-template-columns: 1fr 320px;">
+<div class="columns-main-sidebar">
     <div>
+        {if empty($tags)}
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12 12 20l-8-8V4h8Z"/><circle cx="8" cy="8" r="1.5"/></svg>
+                <h3>No tags yet</h3>
+                <p>Create tags on the right to group posts by topic.</p>
+            </div>
+        {else}
         <table class="data-table">
             <thead>
-                <tr><th>Name</th><th>Slug</th><th>Posts</th><th>Actions</th></tr>
+                <tr><th>Name</th><th>Slug</th><th>Posts</th><th class="text-right">Actions</th></tr>
             </thead>
             <tbody>
                 {foreach $tags as $tag}
                 <tr>
-                    <td>{$tag['name']}</td>
+                    <td class="font-medium">{$tag['name']}</td>
                     <td><code>{$tag['slug']}</code></td>
-                    <td>{$tag['post_count'] ?? 0}</td>
-                    <td>
-                        <form method="post" action="/admin/tags/{$tag['id']}/delete" style="display:inline">
+                    <td class="text-slate-500">{$tag['post_count'] ?? 0}</td>
+                    <td class="actions">
+                        <form method="post" action="/admin/tags/{$tag['id']}/delete" class="inline">
                             <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this item?')">Delete</button>
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this item?')">Delete</button>
                         </form>
                     </td>
                 </tr>
                 {/foreach}
             </tbody>
         </table>
+        {/if}
     </div>
 
-    <div>
+    <aside>
         <div class="sidebar-panel">
             <h3>Add New Tag</h3>
             <form method="post" action="/admin/tags">
@@ -42,9 +55,9 @@
                     <label>Slug</label>
                     <input type="text" name="slug" placeholder="Auto-generated">
                 </div>
-                <button type="submit" class="btn btn-primary">Add</button>
+                <button type="submit" class="btn btn-primary btn-block">Add Tag</button>
             </form>
         </div>
-    </div>
+    </aside>
 </div>
 {/block}

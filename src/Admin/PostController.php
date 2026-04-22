@@ -6,6 +6,7 @@ namespace TypeDock\Admin;
 use TypeDock\Content\PageService;
 use TypeDock\Content\CategoryService;
 use TypeDock\Content\TagService;
+use TypeDock\Seo\SeoService;
 
 class PostController extends BaseAdminController
 {
@@ -56,6 +57,7 @@ class PostController extends BaseAdminController
             'selected_categories' => [],
             'selected_tag_names'  => [],
             'form_action'         => '/admin/posts/create',
+            'theme_layouts'       => $this->themeLayouts(),
         ]);
     }
 
@@ -68,7 +70,11 @@ class PostController extends BaseAdminController
 
         try {
             $page = $this->service()->create($data);
-            $this->redirect('/admin/posts/' . $page['id'] . '/edit', 'Post created successfully.');
+            (new SeoService(\Flight::db()))->upsert('post', $page['id'], $this->collectSeoInput());
+            $this->redirect(
+                '/admin/posts/' . $page['id'] . '/edit',
+                $this->saveMessage('Post', $page)
+            );
         } catch (\TypeDock\Exception\ValidationException $e) {
             $this->renderEditWithErrors($e->getErrors(), null);
         }
@@ -88,13 +94,18 @@ class PostController extends BaseAdminController
         $selectedCats = array_column($pageService->getCategories($id), 'id');
         $selectedTags = array_column($pageService->getTags($id), 'name');
 
+        $seo = (new SeoService(\Flight::db()))->findByTarget('post', $id) ?? [];
+
         $this->render('pages/posts/edit.latte', [
             'post'                => $page,
             'categories'          => $catService->list(),
             'selected_categories' => $selectedCats,
             'selected_tag_names'  => $selectedTags,
             'form_action'         => '/admin/posts/' . $id . '/edit',
+            'public_url'          => $this->publicUrlFor($page),
+            'seo'                 => $seo,
             'flash_success'       => $this->getFlash('success'),
+            'theme_layouts'       => $this->themeLayouts(),
         ]);
     }
 
@@ -109,7 +120,12 @@ class PostController extends BaseAdminController
 
         try {
             $this->service()->update($id, $data);
-            $this->redirect('/admin/posts/' . $id . '/edit', 'Post updated successfully.');
+            (new SeoService(\Flight::db()))->upsert('post', $id, $this->collectSeoInput());
+            $page = $this->service()->find($id);
+            $this->redirect(
+                '/admin/posts/' . $id . '/edit',
+                $this->saveMessage('Post', $page)
+            );
         } catch (\TypeDock\Exception\ValidationException $e) {
             $page = $this->service()->find($id);
             $this->renderEditWithErrors($e->getErrors(), $page);
@@ -154,6 +170,7 @@ class PostController extends BaseAdminController
             'page_type'    => $_POST['page_type'] ?? 'post',
             'published_at' => !empty($_POST['published_at']) ? $_POST['published_at'] : null,
             'category_ids' => $_POST['category_ids'] ?? [],
+            'layout'       => trim((string) ($_POST['layout'] ?? '')) ?: null,
         ];
     }
 
@@ -170,7 +187,10 @@ class PostController extends BaseAdminController
             'selected_categories' => $_POST['category_ids'] ?? [],
             'selected_tag_names'  => array_filter(array_map('trim', explode(',', $_POST['tags_input'] ?? ''))),
             'form_action'         => $post ? '/admin/posts/' . $post['id'] . '/edit' : '/admin/posts/create',
+            'public_url'          => $this->publicUrlFor($post),
+            'seo'                 => $this->collectSeoInput(),
             'errors'              => $errors,
+            'theme_layouts'       => $this->themeLayouts(),
         ]);
     }
 }

@@ -82,7 +82,7 @@ WordPress solves a huge range of problems brilliantly. TypeDock makes different 
                 │
 ┌───────────────▼─────────────────────────────────────────────┐
 │     Database (MySQL / PostgreSQL / SQLite)                  │
-│     Managed by Phinx migrations                             │
+│     Managed by the built-in migration runner                │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -91,13 +91,33 @@ WordPress solves a huge range of problems brilliantly. TypeDock makes different 
 - **PHP** 8.2+
 - **[FlightPHP](https://flightphp.com/)** 3.17+ — micro framework
 - **[Latte](https://latte.nette.org/)** 3.1+ — template engine with context-aware escaping
-- **[Phinx](https://phinx.org/)** 0.16+ — migrations
 - **[Ramsey UUID](https://uuid.ramsey.dev/)** — UUID v7 primary keys
 - **[league/commonmark](https://commonmark.thephpleague.com/)** — Markdown
 - **[PHPMailer](https://github.com/PHPMailer/PHPMailer)** — email
 - **MySQL 8+** / **PostgreSQL 14+** / **SQLite 3.35+**
 
 ## Quick start
+
+### Docker (recommended for local dev)
+
+```bash
+# One-liner: build + start app (php-fpm) + nginx on http://localhost:8080
+make dev
+
+# With MySQL or Postgres instead of SQLite:
+make dev-mysql
+make dev-postgres
+
+# Helpful follow-ups:
+make install     # run the CLI installer inside the container
+make migrate     # run Phinx migrations
+make shell       # shell into the app container
+make down        # stop everything
+```
+
+The default stack uses SQLite on disk (no database container needed). MySQL and
+Postgres are gated behind compose profiles so they only start when you ask for
+them.
 
 ### Shared hosting (no command line)
 
@@ -117,12 +137,20 @@ composer install
 # 2. Prepare storage directories
 mkdir -p storage/{cache,logs,sessions,tmp,uploads,backups}
 
-# 3. Start a dev server
+# 3. Build admin CSS (core-developer only — distributions ship prebuilt)
+make assets            # or: npm install && npm run build:css
+
+# 4. Start a dev server
 php -S localhost:8000 -t public
 
-# 4. Open http://localhost:8000/ — the browser installer runs on first access.
+# 5. Open http://localhost:8000/ — the browser installer runs on first access.
 #    (Or edit config.php directly; see config.php.example for all keys.)
 ```
+
+> **Note** — The zero-build promise applies to end users: the shared-hosting
+> zip ships with `public/admin/assets/css/admin.css` already compiled, so
+> Tailwind is never required on the host. Only core developers working on
+> the admin UI need Node.js and `make assets` (or `make assets-watch`).
 
 Then visit:
 
@@ -155,7 +183,7 @@ typedock/
 ├── public/          Entry point (index.php + .htaccess)
 ├── src/             PSR-4: TypeDock\ (Core, Auth, Content, Media, Seo, Component, Theme, Admin, Api, Module, Plugin)
 ├── config/          app, database, cache, auth, mail, filesystems, modules
-├── migrations/      Phinx migrations (11 tables)
+├── migrations/      Database migrations (driver-agnostic schema builder)
 ├── themes/default/  Default theme (layouts, partials, components, assets, theme.json)
 ├── admin/           Admin UI Latte templates + CSS/JS
 ├── cli/             install, migrate, cache-clear, export scripts
@@ -242,7 +270,7 @@ This split means plugins cannot break the site or steal data from other plugins 
 
 ```bash
 php cli/install.php         # Interactive install (create admin, activate theme)
-vendor/bin/phinx migrate    # Apply DB migrations
+php cli/migrate.php          # Apply DB migrations
 php cli/cache-clear.php     # Clear template + HTML cache
 php cli/export.php          # Export all content to JSON
 ```

@@ -1,0 +1,71 @@
+{layout 'base.latte'}
+
+{block title}{$site->name}{/block}
+
+{block content}
+{*
+   Home page — only rendered when `/` serves the posts archive (archive home
+   mode) or when a Page is chosen as home and `home.latte` is preferred over
+   `page.latte`. The JOURNAL kicker differs from `/archive.latte` on purpose:
+   here we welcome the visitor, on /{posts_archive_slug} we announce "Latest
+   stories".
+*}
+<section class="hero hero--home">
+    <div class="container hero-inner">
+        <p class="hero-kicker">Welcome</p>
+        <h1 class="hero-title">{$site->name}</h1>
+        {if $site->option('site.description')}
+            <p class="hero-excerpt">{$site->option('site.description')}</p>
+        {/if}
+        <div class="hero-slot">
+            {=slot('home_hero')|noescape}
+        </div>
+    </div>
+</section>
+
+<div class="container post-layout">
+    <div class="archive">
+        <header class="archive-header">
+            <p class="archive-kicker">Journal</p>
+            <h1 class="archive-title">Latest stories</h1>
+        </header>
+
+        {if empty($posts)}
+            <p class="no-posts">No posts to display yet.</p>
+        {else}
+            <div class="post-grid">
+                {foreach $posts as $post}
+                <article class="post-card">
+                    <h2 class="post-card-title">
+                        <a href="{$site->postUrl($post['slug'])}">{$post['title']}</a>
+                    </h2>
+                    <div class="post-card-meta">
+                        {if $post['published_at']}
+                            <time datetime="{$post['published_at']}">{$post['published_at']|date:'M j, Y'}</time>
+                        {/if}
+                        {if $post['author_name'] ?? ''}
+                            <span class="entry-meta-sep" aria-hidden="true">·</span>
+                            <span>{$post['author_name']}</span>
+                        {/if}
+                    </div>
+                    {if $post['excerpt']}
+                        <p class="post-card-excerpt">{$post['excerpt']}</p>
+                    {/if}
+                    <a href="{$site->postUrl($post['slug'])}" class="post-card-more">Read →</a>
+                </article>
+                {/foreach}
+            </div>
+
+            {include '../partials/pagination.latte'}
+        {/if}
+
+        <div class="home-bottom">
+            {=slot('home_bottom')|noescape}
+        </div>
+    </div>
+
+    <aside class="sidebar" aria-label="Sidebar">
+        {=slot('sidebar')|noescape}
+    </aside>
+</div>
+{/block}

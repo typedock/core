@@ -5,12 +5,9 @@ namespace TypeDock\Install;
 
 use DateTimeImmutable;
 use PDO;
-use Phinx\Config\Config as PhinxConfig;
-use Phinx\Migration\Manager as PhinxManager;
 use Ramsey\Uuid\Uuid;
 use RuntimeException;
-use Symfony\Component\Console\Input\StringInput;
-use Symfony\Component\Console\Output\BufferedOutput;
+use TypeDock\Core\Migration\Migrator;
 
 /**
  * Shared installation logic used by both the CLI and the browser wizard.
@@ -32,7 +29,7 @@ final class Installer
     }
 
     /**
-     * @return array{php:bool,extensions:array<string,bool>,optional:array<string,bool>,writable:array<string,bool>,mod_rewrite:bool|null}
+     * @return array{php:bool,extensions:array<string,bool>,optional:array<string,bool>,writable:array<string,bool>,env_configured:bool,mod_rewrite:bool|null}
      */
     public function checkEnvironment(): array
     {
@@ -53,8 +50,8 @@ final class Installer
             'storage/cache'    => is_writable($this->root . '/storage/cache'),
             'storage/logs'     => is_writable($this->root . '/storage/logs'),
             'storage/sessions' => is_writable($this->root . '/storage/sessions'),
-            'storage/uploads'  => is_writable($this->root . '/storage/uploads'),
-            'root (for .env)'  => is_writable($this->root),
+            'public/uploads'   => is_writable($this->root . '/public/uploads'),
+            'root (for config.php)' => is_writable($this->root),
         ];
 
         $rewrite = null;
@@ -62,12 +59,17 @@ final class Installer
             $rewrite = in_array('mod_rewrite', apache_get_modules(), true);
         }
 
+        // When DB_DRIVER is already provided as a real environment variable
+        // (e.g. docker-compose, Kubernetes, systemd), config.php is redundant.
+        $envConfigured = (getenv('DB_DRIVER') !== false);
+
         return [
-            'php'         => PHP_VERSION_ID >= 80200,
-            'extensions'  => $ext,
-            'optional'    => $opt,
-            'writable'    => $writable,
-            'mod_rewrite' => $rewrite,
+            'php'            => PHP_VERSION_ID >= 80200,
+            'extensions'     => $ext,
+            'optional'       => $opt,
+            'writable'       => $writable,
+            'env_configured' => $envConfigured,
+            'mod_rewrite'    => $rewrite,
         ];
     }
 
@@ -79,11 +81,52 @@ final class Installer
     public function testDatabase(array $db): ?string
     {
         try {
+            // For SQLite, the file is auto-created by PDO on connect, but only
+            // if its parent directory already exists. Create it proactively so
+            // operators pointing at a fresh storage path don't get a misleading
+            // connection error before the wizard can surface it.
+            if (($db['driver'] ?? '') === 'sqlite') {
+                $path = (string) ($db['sqlite_path'] ?? '');
+                if ($path !== '') {
+                    $dir = dirname($path);
+                    if (!is_dir($dir)) {
+                        @mkdir($dir, 0775, true);
+                    }
+                }
+            }
             $this->makePdo($db);
             return null;
         } catch (\Throwable $e) {
             return $e->getMessage();
         }
+    }
+
+    /**
+     * Build a DB config array from real environment variables. Returns null
+     * when DB_DRIVER is not set, signalling the wizard should use its own
+     * defaults.
+     *
+     * @return array{driver:string,host:string,port:int,database:string,username:string,password:string,charset:string,sqlite_path:string}|null
+     */
+    public function dbFromEnv(): ?array
+    {
+        $driver = getenv('DB_DRIVER');
+        if ($driver === false || $driver === '') {
+            return null;
+        }
+        $sqlitePath = getenv('DB_SQLITE_PATH');
+        return [
+            'driver'      => (string) $driver,
+            'host'        => (string) (getenv('DB_HOST') ?: '127.0.0.1'),
+            'port'        => (int) (getenv('DB_PORT') ?: ($driver === 'pgsql' ? 5432 : 3306)),
+            'database'    => (string) (getenv('DB_DATABASE') ?: ''),
+            'username'    => (string) (getenv('DB_USERNAME') ?: ''),
+            'password'    => (string) (getenv('DB_PASSWORD') ?: ''),
+            'charset'     => (string) (getenv('DB_CHARSET') ?: 'utf8mb4'),
+            'sqlite_path' => (string) ($sqlitePath !== false && $sqlitePath !== ''
+                ? $sqlitePath
+                : $this->root . '/storage/database.sqlite'),
+        ];
     }
 
     /**
@@ -138,21 +181,34 @@ final class Installer
         $lines[] = '';
 
         $path = $this->root . '/config.php';
-        if (file_put_contents($path, implode("\n", $lines), LOCK_EX) === false) {
-            throw new RuntimeException('Failed to write ' . $path);
+        $written = @file_put_contents($path, implode("\n", $lines), LOCK_EX);
+        if ($written === false) {
+            // When configuration is already provided via environment variables
+            // (docker-compose, Kubernetes, systemd, etc.), config.php is
+            // redundant — skip without error.
+            if (getenv('DB_DRIVER') === false) {
+                throw new RuntimeException('Failed to write ' . $path);
+            }
+            return;
         }
         @chmod($path, 0600);
     }
 
     /**
-     * Run all pending Phinx migrations via the PHP API (no shell).
+     * Run all pending migrations via the PHP API (no shell). Safe to call from
+     * both the CLI and the browser install wizard.
+     *
+     * @return array{applied: list<array{version:string,name:string}>, errors: list<array{version:string,name:string,message:string}>}
      */
-    public function runMigrations(): void
+    public function runMigrations(): array
     {
-        $configArr = require $this->root . '/phinx.php';
-        $config    = new PhinxConfig($configArr, $this->root . '/phinx.php');
-        $manager   = new PhinxManager($config, new StringInput(''), new BufferedOutput());
-        $manager->migrate('default');
+        $db  = require $this->root . '/config/database.php';
+        $pdo = $this->makePdo($db);
+        if (($db['driver'] ?? '') === 'sqlite') {
+            $pdo->exec('PRAGMA foreign_keys = ON');
+        }
+        $migrator = new Migrator($pdo, (string) $db['driver'], $this->root . '/migrations');
+        return $migrator->migrate();
     }
 
     /**
@@ -179,6 +235,65 @@ final class Installer
         )->execute([$id, $email, $hash, $name !== '' ? $name : $email, 'admin', $now, $now]);
 
         return $id;
+    }
+
+    /**
+     * Activate a theme during install. Seeds `site_options.theme.active` and the
+     * `slot_placements` defaults declared in that theme's theme.json so a fresh
+     * site has something to render before the operator touches the admin.
+     *
+     * @param array{driver:string,host?:string,port?:int|string,database?:string,username?:string,password?:string,sqlite_path?:string,charset?:string} $db
+     */
+    public function activateTheme(array $db, string $themeName = 'default'): void
+    {
+        $pdo = $this->makePdo($db);
+        if (($db['driver'] ?? '') === 'sqlite') {
+            $pdo->exec('PRAGMA foreign_keys = ON');
+        }
+        (new \TypeDock\Theme\ThemeLoader())->activateTheme($themeName, $pdo);
+    }
+
+    /**
+     * Seed the `site_options` table with the values collected by the wizard.
+     * Without this the admin Settings → General page renders with empty
+     * fields on a fresh install, because `SettingsController::getOptions()`
+     * only reads from this table (not from config.php).
+     *
+     * Safe to re-run: each key is upserted in place.
+     *
+     * @param array{driver:string,host?:string,port?:int|string,database?:string,username?:string,password?:string,sqlite_path?:string,charset?:string} $db
+     * @param array{name?:string,description?:string,home_mode?:string,home_page_id?:string|null,posts_archive_slug?:string,posts_archive_label?:string} $site
+     */
+    public function seedSiteOptions(array $db, array $site): void
+    {
+        $pdo = $this->makePdo($db);
+        if (($db['driver'] ?? '') === 'sqlite') {
+            $pdo->exec('PRAGMA foreign_keys = ON');
+        }
+
+        $defaults = [
+            'site.name'                 => $site['name']                 ?? 'TypeDock',
+            'site.description'          => $site['description']          ?? '',
+            'site.home_mode'            => $site['home_mode']            ?? 'archive',
+            'site.home_page_id'         => $site['home_page_id']         ?? null,
+            'site.posts_archive_slug'   => $site['posts_archive_slug']   ?? 'blog',
+            'site.posts_archive_label' => $site['posts_archive_label'] ?? 'Blog',
+        ];
+
+        $now = (new DateTimeImmutable())->format('Y-m-d H:i:s');
+        $select = $pdo->prepare('SELECT key_name FROM site_options WHERE key_name = ? LIMIT 1');
+        $update = $pdo->prepare('UPDATE site_options SET value = ?, group_name = ?, updated_at = ? WHERE key_name = ?');
+        $insert = $pdo->prepare('INSERT INTO site_options (key_name, value, group_name, updated_at) VALUES (?, ?, ?, ?)');
+
+        foreach ($defaults as $key => $value) {
+            $json = json_encode($value);
+            $select->execute([$key]);
+            if ($select->fetch() !== false) {
+                $update->execute([$json, 'general', $now, $key]);
+            } else {
+                $insert->execute([$key, $json, 'general', $now]);
+            }
+        }
     }
 
     public function lock(string $version): void

@@ -1,38 +1,45 @@
 {layout '../layouts/admin-base.latte'}
 
-{block title}Two-Factor Authentication - {$site->name}{/block}
-
+{block title}Two-Factor Authentication{/block}
 {block body_class}login-page{/block}
 
 {block content}
 <div class="login-container">
     <div class="login-box">
         <div class="login-logo">
+            <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-white">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
+                    <rect x="3" y="11" width="18" height="11" rx="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+            </div>
             <h1>{$site->name}</h1>
             <p>Two-Factor Authentication</p>
         </div>
 
         {if isset($error)}
-            <div class="alert alert-error">{$error}</div>
+            <div class="alert alert-error mb-4">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>
+                <span>{$error}</span>
+            </div>
         {/if}
 
-        <p class="help-text">Enter the 6-digit code sent to your email address.</p>
+        <p class="mb-4 text-sm text-slate-600">Enter the 6-digit code sent to your email address.</p>
 
-        <form method="post" action="/admin/login/2fa" class="login-form">
+        <form method="post" action="/admin/login/2fa" class="space-y-4">
             <input type="hidden" name="_csrf_token" value="{$csrf_token}">
             <input type="hidden" name="user_id" value="{$user_id}">
 
-            <div class="form-group">
+            <div class="form-group mb-0">
                 <label for="code">Verification Code</label>
                 <input type="text" id="code" name="code" required
                        maxlength="6" pattern="[0-9]{6}"
                        autocomplete="one-time-code" autofocus
-                       placeholder="000000">
+                       placeholder="000000"
+                       class="text-center font-mono text-lg tracking-[0.5em]">
             </div>
 
-            <div class="form-group">
-                <button type="submit" class="btn btn-primary btn-block">Confirm</button>
-            </div>
+            <button type="submit" class="btn btn-primary btn-block">Confirm</button>
         </form>
 
         <p class="back-link"><a href="/admin/login">← Back to login</a></p>

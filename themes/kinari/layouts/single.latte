@@ -1,0 +1,45 @@
+{layout 'base.latte'}
+
+{block title}{$page->title} - {$site->name}{/block}
+{block description}{$page->excerpt ?? ''}{/block}
+
+{block content}
+<div class="container post-layout">
+    <article class="post">
+        {* Breadcrumb must live inside .post — .post-layout is a two-column
+           grid, so placing the breadcrumb as a direct child would make it
+           consume the sidebar column and push the article into the sidebar
+           slot. Keeping it inside the article keeps the grid clean. *}
+        {include '../partials/breadcrumb.latte'}
+        <header class="entry-header">
+            <h1 class="entry-title">{$page->title}</h1>
+            <div class="entry-meta">
+                {if $page->publishedAt}
+                    <time datetime="{$page->publishedAt}">{$page->publishedAt|date:'F j, Y'}</time>
+                {/if}
+                {if $page->author->name}
+                    <span class="entry-meta-sep" aria-hidden="true">·</span>
+                    <span class="entry-author">{$page->author->name}</span>
+                {/if}
+            </div>
+            {if $page->excerpt}<p class="entry-lede">{$page->excerpt}</p>{/if}
+        </header>
+
+        <div class="slot-before-content">
+            {=slot('before_content')|noescape}
+        </div>
+
+        <div class="entry-content">
+            {$page->renderedBody|noescape}
+        </div>
+
+        <footer class="entry-footer">
+            {=slot('after_content')|noescape}
+        </footer>
+    </article>
+
+    <aside class="sidebar" aria-label="Sidebar">
+        {=slot('sidebar')|noescape}
+    </aside>
+</div>
+{/block}

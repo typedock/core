@@ -1,9 +1,19 @@
+{*
+    Admin base layout.
+
+    Active-menu highlighting is driven by $current_path, which
+    BaseAdminController::render() sets from REQUEST_URI. Each sidebar item
+    declares its own "match prefix" and we flag it active when the current
+    path starts with that prefix — so /admin/posts/42/edit highlights "Posts"
+    just like /admin/posts does.
+*}
+{var $path = $current_path ?? ''}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{block title}Admin{/block} - {$site->name ?? 'TypeDock'}</title>
+    <title>{block title}Admin{/block} — {$site->name ?? 'TypeDock'}</title>
     <link rel="stylesheet" href="/admin/assets/css/admin.css">
     {block head}{/block}
 </head>
@@ -13,45 +23,112 @@
     {if isset($current_user)}
     <nav class="admin-sidebar">
         <div class="admin-logo">
-            <a href="/admin/dashboard">TypeDock</a>
+            <a href="/admin/dashboard" class="admin-logo-mark" aria-label="TypeDock">
+                {* Lightning bolt — stylised TypeDock mark. *}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z"/>
+                </svg>
+            </a>
+            <a href="/admin/dashboard" class="admin-logo-text">{$site->name ?? 'TypeDock'}</a>
         </div>
-        <ul class="admin-menu">
-            <li><a href="/admin/dashboard" class="menu-item">Dashboard</a></li>
-            <li><a href="/admin/posts" class="menu-item">Posts</a></li>
-            <li><a href="/admin/pages" class="menu-item">Pages</a></li>
-            <li><a href="/admin/media" class="menu-item">Media</a></li>
-            <li><a href="/admin/menus" class="menu-item">Menus</a></li>
-            <li><a href="/admin/categories" class="menu-item">Categories</a></li>
-            <li><a href="/admin/tags" class="menu-item">Tags</a></li>
+
+        <div class="admin-menu">
+            <div class="admin-menu-section">Overview</div>
+            <a href="/admin/dashboard" class="menu-item {if str_starts_with($path, '/admin/dashboard')}is-active{/if}">
+                {include 'icon-dashboard'}<span>Dashboard</span>
+            </a>
+
+            <div class="admin-menu-section">Content</div>
+            <a href="/admin/posts" class="menu-item {if str_starts_with($path, '/admin/posts')}is-active{/if}">
+                {include 'icon-post'}<span>Posts</span>
+            </a>
+            <a href="/admin/pages" class="menu-item {if str_starts_with($path, '/admin/pages')}is-active{/if}">
+                {include 'icon-page'}<span>Pages</span>
+            </a>
+            <a href="/admin/media" class="menu-item {if str_starts_with($path, '/admin/media')}is-active{/if}">
+                {include 'icon-media'}<span>Media</span>
+            </a>
+            <a href="/admin/categories" class="menu-item {if str_starts_with($path, '/admin/categories')}is-active{/if}">
+                {include 'icon-folder'}<span>Categories</span>
+            </a>
+            <a href="/admin/tags" class="menu-item {if str_starts_with($path, '/admin/tags')}is-active{/if}">
+                {include 'icon-tag'}<span>Tags</span>
+            </a>
+            <a href="/admin/collections" class="menu-item {if str_starts_with($path, '/admin/collections')}is-active{/if}">
+                {include 'icon-collection'}<span>Collections</span>
+            </a>
+
+            <div class="admin-menu-section">Appearance</div>
             {if $current_user['role'] === 'admin'}
-            <li><a href="/admin/users" class="menu-item">Users</a></li>
-            <li><a href="/admin/settings" class="menu-item">Settings</a></li>
+            <a href="/admin/themes" class="menu-item {if str_starts_with($path, '/admin/themes')}is-active{/if}">
+                {include 'icon-theme'}<span>Themes</span>
+            </a>
+            <a href="/admin/theme-settings" class="menu-item {if str_starts_with($path, '/admin/theme-settings')}is-active{/if}">
+                {include 'icon-sliders'}<span>Theme settings</span>
+            </a>
             {/if}
-            <li><a href="/admin/redirects" class="menu-item">Redirects</a></li>
-            <li><a href="/admin/slots" class="menu-item">Slots</a></li>
-        </ul>
+            <a href="/admin/menus" class="menu-item {if str_starts_with($path, '/admin/menus')}is-active{/if}">
+                {include 'icon-menu'}<span>Menus</span>
+            </a>
+            <a href="/admin/slots" class="menu-item {if str_starts_with($path, '/admin/slots')}is-active{/if}">
+                {include 'icon-slot'}<span>Slots</span>
+            </a>
+
+            <div class="admin-menu-section">Site</div>
+            <a href="/admin/redirects" class="menu-item {if str_starts_with($path, '/admin/redirects')}is-active{/if}">
+                {include 'icon-redirect'}<span>Redirects</span>
+            </a>
+            {if $current_user['role'] === 'admin'}
+            <a href="/admin/users" class="menu-item {if str_starts_with($path, '/admin/users')}is-active{/if}">
+                {include 'icon-users'}<span>Users</span>
+            </a>
+            <a href="/admin/settings" class="menu-item {if str_starts_with($path, '/admin/settings')}is-active{/if}">
+                {include 'icon-settings'}<span>Settings</span>
+            </a>
+            {/if}
+        </div>
+
         <div class="admin-user-info">
-            <span>{$current_user['name']}</span>
-            <a href="/admin/logout" class="logout-link">Log out</a>
+            <div class="admin-user-avatar" aria-hidden="true">
+                {substr((string) $current_user['name'], 0, 1)|upper}
+            </div>
+            <div class="min-w-0 flex-1">
+                <span class="username">{$current_user['name']}</span>
+                <a href="/admin/logout" class="logout-link">Log out</a>
+            </div>
         </div>
     </nav>
     {/if}
 
-    <div class="admin-content">
+    <div class="{if isset($current_user)}admin-content{/if}">
         {if isset($current_user)}
         <header class="admin-header">
-            <div class="admin-header-title">{block page_title}Admin{/block}</div>
+            <div class="admin-header-title">
+                <strong>{block page_title}Admin{/block}</strong>
+            </div>
+            <div class="ml-auto flex items-center gap-2 text-sm text-slate-500">
+                <a href="/" target="_blank" rel="noopener"
+                   class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 hover:bg-slate-100 hover:text-slate-700">
+                    {include 'icon-external'}<span>View site</span>
+                </a>
+            </div>
         </header>
         {/if}
 
-        {if isset($flash_success)}
-            <div class="alert alert-success">{$flash_success}</div>
-        {/if}
-        {if isset($flash_error)}
-            <div class="alert alert-error">{$flash_error}</div>
-        {/if}
+        <main class="{if isset($current_user)}admin-main{/if}">
+            {if isset($flash_success)}
+                <div class="alert alert-success mb-4">
+                    {include 'icon-check'}
+                    <span>{$flash_success}</span>
+                </div>
+            {/if}
+            {if isset($flash_error)}
+                <div class="alert alert-error mb-4">
+                    {include 'icon-alert'}
+                    <span>{$flash_error}</span>
+                </div>
+            {/if}
 
-        <main class="admin-main">
             {block content}{/block}
         </main>
     </div>
@@ -59,5 +136,35 @@
 
 <script src="/admin/assets/js/admin.js"></script>
 {block scripts}{/block}
-</body>
-</html>
+
+{* ---------------------------------------------------------------------------
+   Icons — inline SVGs (Lucide-flavoured). Keeping them inline avoids an icon
+   runtime and keeps the admin bundle to a single CSS file. Each define
+   outputs just the <svg>, so call sites decide sizing via Tailwind classes.
+   ------------------------------------------------------------------------ *}
+{define icon-dashboard}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>{/define}
+{define icon-post}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h12l4 4v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/><path d="M8 8h6"/><path d="M8 12h8"/><path d="M8 16h5"/></svg>{/define}
+{define icon-page}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/></svg>{/define}
+{define icon-media}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.6"/><path d="m21 16-5-5-10 10"/></svg>{/define}
+{define icon-folder}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/></svg>{/define}
+{define icon-tag}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12 12 20l-8-8V4h8Z"/><circle cx="8" cy="8" r="1.5"/></svg>{/define}
+{define icon-collection}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>{/define}
+{define icon-menu}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg>{/define}
+{define icon-slot}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="6" rx="1"/><rect x="3" y="14" width="10" height="6" rx="1"/><rect x="15" y="14" width="6" height="6" rx="1"/></svg>{/define}
+{define icon-theme}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a6 9 0 0 0 0 18"/><circle cx="7" cy="9" r="1"/><circle cx="17" cy="9" r="1"/><circle cx="17" cy="15" r="1"/></svg>{/define}
+{define icon-sliders}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>{/define}
+{define icon-eye}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>{/define}
+{define icon-redirect}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11a5 5 0 0 1 5 5v0"/><path d="m15 3 4 4-4 4"/><path d="M21 17H10a5 5 0 0 1-5-5v0"/><path d="m9 21-4-4 4-4"/></svg>{/define}
+{define icon-users}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>{/define}
+{define icon-settings}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>{/define}
+{define icon-external}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="m10 14 11-11"/></svg>{/define}
+{define icon-check}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg>{/define}
+{define icon-alert}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>{/define}
+{define icon-plus}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>{/define}
+{define icon-edit}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>{/define}
+{define icon-trash}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>{/define}
+{define icon-upload}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>{/define}
+{define icon-search}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>{/define}
+{define icon-filter}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>{/define}
+{define icon-link}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>{/define}
+{define icon-copy}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>{/define}

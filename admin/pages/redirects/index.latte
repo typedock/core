@@ -1,35 +1,62 @@
 {layout '../../layouts/admin-base.latte'}
+
 {block page_title}Redirects{/block}
+
 {block content}
 <div class="page-header">
-    <h1>Redirects</h1>
+    <div>
+        <h1>Redirects</h1>
+        <p class="subtitle">Send old URLs to new destinations with a 301 or 302 status.</p>
+    </div>
 </div>
+
 <form method="post" action="/admin/redirects" class="inline-form">
     <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-    <input type="text" name="source_path" placeholder="/old-path" required>
-    <input type="text" name="target_url" placeholder="/new-path or https://..." required>
-    <select name="status_code">
-        <option value="301">301 (Permanent)</option>
-        <option value="302">302 (Temporary)</option>
-    </select>
-    <button type="submit" class="btn btn-primary">Add</button>
+    <div class="form-group mb-0 flex-1 min-w-48">
+        <label>Source path</label>
+        <input type="text" name="source_path" placeholder="/old-path" required>
+    </div>
+    <div class="form-group mb-0 flex-1 min-w-48">
+        <label>Target URL</label>
+        <input type="text" name="target_url" placeholder="/new-path or https://…" required>
+    </div>
+    <div class="form-group mb-0">
+        <label>Code</label>
+        <select name="status_code">
+            <option value="301">301 (Permanent)</option>
+            <option value="302">302 (Temporary)</option>
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        <span>Add</span>
+    </button>
 </form>
+
+{if empty($redirects)}
+    <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11a5 5 0 0 1 5 5"/><path d="m15 3 4 4-4 4"/><path d="M21 17H10a5 5 0 0 1-5-5"/><path d="m9 21-4-4 4-4"/></svg>
+        <h3>No redirects configured</h3>
+        <p>Add a rule above to redirect an old URL to a new destination.</p>
+    </div>
+{else}
 <table class="data-table">
-    <thead><tr><th>Source URL</th><th>Target URL</th><th>Code</th><th>Actions</th></tr></thead>
+    <thead><tr><th>Source URL</th><th>Target URL</th><th>Code</th><th class="text-right">Actions</th></tr></thead>
     <tbody>
         {foreach $redirects as $redirect}
         <tr>
             <td><code>{$redirect['source_path']}</code></td>
             <td><code>{$redirect['target_url']}</code></td>
-            <td>{$redirect['status_code']}</td>
-            <td>
-                <form method="post" action="/admin/redirects/{$redirect['id']}/delete" style="display:inline">
+            <td><span class="badge badge-info">{$redirect['status_code']}</span></td>
+            <td class="actions">
+                <form method="post" action="/admin/redirects/{$redirect['id']}/delete" class="inline">
                     <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this item?')">Delete</button>
                 </form>
             </td>
         </tr>
         {/foreach}
     </tbody>
 </table>
+{/if}
 {/block}

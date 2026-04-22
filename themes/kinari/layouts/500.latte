@@ -1,0 +1,14 @@
+{layout 'base.latte'}
+
+{block title}Server Error - {$site->name}{/block}
+
+{block content}
+<div class="container">
+    <div class="error-page">
+        <p class="error-kicker">500</p>
+        <h1>Something went wrong on our end.</h1>
+        <p>We've logged the issue. Please try again in a moment.</p>
+        <a href="/" class="btn btn-primary">Return home</a>
+    </div>
+</div>
+{/block}

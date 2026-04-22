@@ -1,0 +1,247 @@
+{layout '../../layouts/admin-base.latte'}
+
+{block page_title}Theme Settings{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <h1>Theme Settings</h1>
+        <p class="subtitle">
+            Customise <strong>{$active_theme_label}</strong>
+            <code class="text-xs text-slate-500 ml-1">{$active_theme}</code>.
+            These settings are specific to the active theme and reset when a different theme is activated.
+            Manage content placement under <a href="/admin/slots">Slots</a>.
+        </p>
+    </div>
+</div>
+
+{if empty($schema)}
+    <div class="empty-state">
+        <h3>No settings available</h3>
+        <p>The active theme's <code>theme.json</code> has no <code>settings</code> block. Ask the theme author to expose configuration options, or switch to a theme that supports them under <a href="/admin/themes">Themes</a>.</p>
+    </div>
+{else}
+
+<div class="theme-settings">
+    <div class="theme-settings-tabs" role="tablist" aria-label="Settings groups">
+        {foreach $schema as $groupKey => $group}
+            <button type="button"
+                    class="theme-settings-tab {if $iterator->first}is-active{/if}"
+                    role="tab"
+                    aria-selected="{if $iterator->first}true{else}false{/if}"
+                    aria-controls="panel-{$groupKey}"
+                    id="tab-{$groupKey}"
+                    data-target="panel-{$groupKey}">
+                {$group['label']}
+            </button>
+        {/foreach}
+    </div>
+
+    <form method="post" action="/admin/theme-settings" class="theme-settings-form">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+
+        {foreach $schema as $groupKey => $group}
+            {var $panelId = 'panel-' . $groupKey}
+            <section class="theme-settings-panel {if !$iterator->first}is-hidden{/if}"
+                     role="tabpanel"
+                     id="{$panelId}"
+                     aria-labelledby="tab-{$groupKey}">
+                <h2 class="theme-settings-panel-title">{$group['label']}</h2>
+
+                {foreach $group['fields'] as $fieldKey => $field}
+                    {var $name    = $groupKey . '.' . $fieldKey}
+                    {var $inputId = 'setting-' . $groupKey . '-' . $fieldKey}
+                    {var $value   = $values[$groupKey][$fieldKey] ?? ($field['default'] ?? '')}
+                    {var $type    = $field['type'] ?? 'text'}
+                    {var $label   = $field['label'] ?? $fieldKey}
+                    {var $hint    = $field['hint'] ?? ''}
+
+                    <div class="form-group">
+                        <label for="{$inputId}">{$label}</label>
+
+                        {if $type === 'color'}
+                            <div class="color-field">
+                                <input type="color"
+                                       id="{$inputId}"
+                                       data-color-sync="{$inputId}-text"
+                                       value="{$value}">
+                                <input type="text"
+                                       id="{$inputId}-text"
+                                       name="settings[{$name}]"
+                                       value="{$value}"
+                                       size="10"
+                                       class="color-field-hex"
+                                       data-color-source="{$inputId}"
+                                       autocomplete="off"
+                                       inputmode="text"
+                                       maxlength="7">
+                            </div>
+
+                        {elseif $type === 'boolean'}
+                            <label class="checkbox-label">
+                                <input type="checkbox"
+                                       id="{$inputId}"
+                                       name="settings[{$name}]"
+                                       value="1"
+                                       {if $value}checked{/if}>
+                                <span>Enabled</span>
+                            </label>
+
+                        {elseif $type === 'select'}
+                            <select id="{$inputId}" name="settings[{$name}]">
+                                {foreach $field['options'] as $optVal => $optLabel}
+                                    <option value="{$optVal}" {if (string) $value === (string) $optVal}selected{/if}>{$optLabel}</option>
+                                {/foreach}
+                            </select>
+
+                        {elseif $type === 'number'}
+                            <input type="number"
+                                   id="{$inputId}"
+                                   name="settings[{$name}]"
+                                   value="{$value}">
+
+                        {elseif $type === 'url'}
+                            <input type="url"
+                                   id="{$inputId}"
+                                   name="settings[{$name}]"
+                                   value="{$value}">
+
+                        {elseif $type === 'textarea'}
+                            <textarea id="{$inputId}"
+                                      name="settings[{$name}]"
+                                      rows="5">{$value}</textarea>
+
+                        {elseif $type === 'image'}
+                            <div class="image-field">
+                                <input type="text"
+                                       id="{$inputId}"
+                                       name="settings[{$name}]"
+                                       value="{$value}"
+                                       placeholder="Paste an image URL or media ID"
+                                       class="image-field-input">
+                                <p class="form-hint">Media picker integration is not yet wired in — paste the URL from the Media library for now.</p>
+                            </div>
+
+                        {else}
+                            <input type="text"
+                                   id="{$inputId}"
+                                   name="settings[{$name}]"
+                                   value="{$value}">
+                        {/if}
+
+                        {if $hint}<small class="form-hint">{$hint}</small>{/if}
+                    </div>
+                {/foreach}
+            </section>
+        {/foreach}
+
+        <div class="form-actions sticky-actions">
+            <button type="submit" class="btn btn-primary">Save settings</button>
+            <button type="submit" formaction="/admin/theme-settings/reset" class="btn btn-ghost" formnovalidate
+                    onclick="return confirm('Reset all theme settings back to theme defaults?');">
+                Reset to defaults
+            </button>
+            <a href="/admin/themes" class="btn btn-ghost">Back to themes</a>
+        </div>
+    </form>
+</div>
+
+<style>
+    .theme-settings-tabs {
+        display: flex;
+        gap: 0.25rem;
+        flex-wrap: wrap;
+        border-bottom: 1px solid #e2e8f0;
+        margin-bottom: 1.5rem;
+    }
+    .theme-settings-tab {
+        border: 0;
+        background: transparent;
+        padding: 0.625rem 1rem;
+        font: inherit;
+        color: #64748b;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+    }
+    .theme-settings-tab:hover { color: #334155; }
+    .theme-settings-tab.is-active {
+        color: #0f172a;
+        border-bottom-color: #2563eb;
+        font-weight: 600;
+    }
+    .theme-settings-panel {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 1.25rem;
+    }
+    .theme-settings-panel.is-hidden { display: none; }
+    .theme-settings-panel-title {
+        margin: 0 0 1rem;
+        font-size: 1rem;
+        letter-spacing: 0.02em;
+        color: #475569;
+    }
+    .color-field { display: inline-flex; align-items: center; gap: 0.5rem; }
+    .color-field input[type="color"] {
+        width: 44px; height: 36px; padding: 2px;
+        border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer;
+        background: #fff;
+    }
+    .color-field-hex { max-width: 120px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .image-field-input { width: 100%; }
+    .sticky-actions {
+        position: sticky;
+        bottom: 0;
+        background: linear-gradient(to top, rgba(241, 245, 249, 1) 70%, rgba(241, 245, 249, 0));
+        padding: 1rem 0 0.5rem;
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+</style>
+
+<script>
+    (function () {
+        // Tab switching
+        const tabs   = document.querySelectorAll('.theme-settings-tab');
+        const panels = document.querySelectorAll('.theme-settings-panel');
+        tabs.forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                const target = tab.dataset.target;
+                tabs.forEach(function (t) {
+                    const active = t === tab;
+                    t.classList.toggle('is-active', active);
+                    t.setAttribute('aria-selected', active ? 'true' : 'false');
+                });
+                panels.forEach(function (p) {
+                    p.classList.toggle('is-hidden', p.id !== target);
+                });
+            });
+        });
+
+        // Two-way sync for color pickers: <input type="color"> feeds the
+        // companion text input and vice versa, so users can paste a hex code.
+        document.querySelectorAll('[data-color-sync]').forEach(function (picker) {
+            const textId = picker.dataset.colorSync;
+            const text   = document.getElementById(textId);
+            if (!text) return;
+            picker.addEventListener('input', function () { text.value = picker.value; });
+        });
+        document.querySelectorAll('[data-color-source]').forEach(function (text) {
+            const picker = document.getElementById(text.dataset.colorSource);
+            if (!picker) return;
+            text.addEventListener('input', function () {
+                const v = text.value.trim();
+                if (/^#[0-9A-Fa-f]{6}$/.test(v)) {
+                    picker.value = v;
+                }
+            });
+        });
+    })();
+</script>
+
+{/if}
+{/block}

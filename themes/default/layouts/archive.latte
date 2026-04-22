@@ -10,6 +10,7 @@
 {block content}
 <div class="container">
     <div class="content-area">
+        {include '../partials/breadcrumb.latte'}
         {if isset($category)}
             <h1 class="archive-title">Category: {$category['name']}</h1>
         {elseif isset($tag)}
@@ -25,7 +26,7 @@
                 {foreach $posts as $post}
                 <article class="post-card">
                     <h2 class="post-card-title">
-                        <a href="{config('app.url')}/blog/{$post['slug']}">{$post['title']}</a>
+                        <a href="{$site->postUrl($post['slug'])}">{$post['title']}</a>
                     </h2>
                     {if $post['excerpt']}
                         <p class="post-card-excerpt">{$post['excerpt']}</p>
@@ -37,7 +38,7 @@
                 {/foreach}
             </div>
 
-            {include '../partials/pagination.latte', total: $total, current_page: $current_page, per_page: $per_page}
+            {include '../partials/pagination.latte'}
         {/if}
     </div>
 

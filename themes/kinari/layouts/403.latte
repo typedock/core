@@ -1,0 +1,14 @@
+{layout 'base.latte'}
+
+{block title}403 Forbidden - {$site->name}{/block}
+
+{block content}
+<div class="container">
+    <div class="error-page">
+        <p class="error-kicker">403</p>
+        <h1>You don't have access to that page.</h1>
+        <p>Sign in with an account that has the right permissions, or head back home.</p>
+        <a href="/" class="btn btn-primary">Return home</a>
+    </div>
+</div>
+{/block}

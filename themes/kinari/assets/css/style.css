@@ -1,0 +1,638 @@
+/* Kinari — warm paper-toned magazine theme */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+/*
+    The admin theme-settings form injects an inline <style> block ahead of
+    this stylesheet that sets the --td-* custom properties. Each alias below
+    pulls from the corresponding --td-* variable with a fallback, so the
+    theme renders sensibly even before any settings have been saved.
+
+    Font families are driven by `body.font-style--{sans|serif|mono}` rather
+    than by --td-* vars directly, because each style also needs a matching
+    <link rel="stylesheet"> in base.latte. Keeping style → stack mapping in
+    one place (this file) is simpler than splitting it across the renderer.
+*/
+:root {
+    /* Colour aliases — the admin form writes --td-colors-* above. */
+    --color-bg: var(--td-colors-body-bg, #fbfaf7);
+    --color-surface: #ffffff;
+    --color-muted-bg: #f3f1ed;
+    --color-ink: var(--td-colors-body-text, #1f1d1b);
+    --color-ink-soft: #4a4642;
+    --color-ink-muted: #7a7671;
+    --color-border: #e6e3dd;
+    --color-accent: var(--td-colors-accent, #8c2a3a);
+    --color-accent-dark: var(--td-colors-accent-dark, #6b1f2b);
+    --color-header-bg: var(--td-colors-header-bg, #1f1d1b);
+    --color-header-text: var(--td-colors-header-text, #f5f3ef);
+    --color-footer-bg: var(--td-colors-footer-bg, #1f1d1b);
+    --color-footer-text: var(--td-colors-footer-text, #b8b3ab);
+    --color-dark: var(--td-colors-header-bg, #1f1d1b);
+
+    /* Base font stacks — overridden by body.font-style--* below. The defaults
+       here match the "serif" preset so a fresh install looks identical to the
+       theme's reference design. */
+    --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    --font-heading: "Fraunces", Georgia, "Times New Roman", serif;
+    --font-size-base: calc(var(--td-typography-font-size-base, 16) * 1px);
+
+    --container-width: 1140px;
+    --content-width: 780px;
+    --sidebar-width: 320px;
+    --radius-sm: 4px;
+    --radius: 8px;
+    --shadow-card: 0 1px 2px rgba(31, 29, 27, 0.05), 0 4px 12px rgba(31, 29, 27, 0.06);
+}
+
+/* Font presets. Each one sets both body and heading so switching from the
+   admin UI takes effect across the whole page, not just paragraphs. */
+body.font-style--sans {
+    --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    --font-heading: "Inter", system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+body.font-style--serif {
+    --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    --font-heading: "Fraunces", Georgia, "Times New Roman", serif;
+}
+body.font-style--mono {
+    --font-body: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --font-heading: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* Content width — base.latte appends `width--{key}` to the body so CSS can
+   branch on it (the setting value travels via a class, not via a var()
+   string which CSS can't compare). */
+body.width--narrow { --content-width: 680px; }
+body.width--normal { --content-width: 780px; }
+body.width--wide   { --content-width: 960px; }
+
+html { scroll-behavior: smooth; }
+
+body {
+    margin: 0;
+    font-family: var(--font-body);
+    color: var(--color-ink);
+    background: var(--color-bg);
+    line-height: 1.7;
+    font-size: var(--font-size-base);
+}
+
+h1, h2, h3, h4 { font-family: var(--font-heading); color: var(--color-ink); line-height: 1.25; letter-spacing: -0.01em; }
+a { color: var(--color-accent); text-decoration: none; transition: color 0.15s ease; }
+a:hover { color: var(--color-accent-dark); text-decoration: underline; }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+pre { background: var(--color-muted-bg); padding: 1rem 1.25rem; border-radius: var(--radius); overflow-x: auto; }
+
+.skip-link {
+    position: absolute; left: -9999px; top: auto; z-index: 100;
+    background: var(--color-dark); color: #fff; padding: 0.5rem 1rem;
+}
+.skip-link:focus { left: 1rem; top: 1rem; }
+
+/* Visually hidden but still read by screen readers. Components use this for
+   form labels (e.g. search_form's "Search" label) that would otherwise
+   appear as loose text next to the input. */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.container {
+    width: 100%;
+    max-width: var(--container-width);
+    margin: 0 auto;
+    padding: 0 1.5rem;
+}
+
+/* ------------------------------------------------------------- Header */
+.site-header {
+    background: var(--color-header-bg);
+    color: var(--color-header-text);
+    z-index: 40;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+.site-header.is-sticky {
+    position: sticky;
+    top: 0;
+}
+.site-header.header--center .site-header-inner {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+}
+.site-header a { color: inherit; }
+.site-header-inner {
+    width: 100%;
+    max-width: var(--container-width);
+    margin: 0 auto;
+    padding: 0.875rem 1.5rem;
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 1.25rem;
+}
+.site-branding { display: flex; flex-direction: column; gap: 0; }
+.site-title {
+    font-family: var(--font-heading);
+    font-size: 1.375rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    text-decoration: none;
+}
+.site-title:hover { text-decoration: none; color: #ffffff; }
+.site-tagline { font-size: 0.75rem; color: #b8b3ab; margin: 0; letter-spacing: 0.03em; }
+
+.site-nav { order: 2; }
+.menu-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+}
+.menu-list a {
+    color: inherit;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    padding: 0.25rem 0;
+    position: relative;
+}
+.menu-list a:hover { color: #ffffff; text-decoration: none; }
+.menu-list a::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: -4px;
+    height: 2px; background: var(--color-accent); transform: scaleX(0); transform-origin: left;
+    transition: transform 0.2s ease;
+}
+.menu-list a:hover::after { transform: scaleX(1); }
+.menu-list .sub-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: var(--color-dark);
+    padding: 0.5rem 0;
+    list-style: none;
+    min-width: 180px;
+    border-top: 2px solid var(--color-accent);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.menu-list .menu-item.has-children { position: relative; }
+.menu-list .menu-item.has-children:hover .sub-menu { display: block; }
+.menu-list .sub-menu .menu-item a { display: block; padding: 0.5rem 1rem; }
+
+.site-header-actions { display: flex; align-items: center; gap: 0.5rem; }
+.header-search-link {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+}
+.header-search-link:hover { background: rgba(255, 255, 255, 0.16); text-decoration: none; color: #ffffff; }
+
+.menu-toggle {
+    display: none;
+    background: transparent; border: 0; color: inherit;
+    width: 40px; height: 40px; padding: 0; cursor: pointer;
+    justify-self: end;
+}
+.menu-toggle-bars,
+.menu-toggle-bars::before,
+.menu-toggle-bars::after {
+    content: ""; display: block; width: 22px; height: 2px; background: currentColor;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+    margin: 0 auto;
+}
+.menu-toggle-bars { position: relative; }
+.menu-toggle-bars::before { position: absolute; top: -7px; left: 0; }
+.menu-toggle-bars::after  { position: absolute; top:  7px; left: 0; }
+.menu-toggle[aria-expanded="true"] .menu-toggle-bars { background: transparent; }
+.menu-toggle[aria-expanded="true"] .menu-toggle-bars::before { transform: translateY(7px) rotate(45deg); }
+.menu-toggle[aria-expanded="true"] .menu-toggle-bars::after  { transform: translateY(-7px) rotate(-45deg); }
+
+/* ------------------------------------------------------------- Hero */
+.hero {
+    background: linear-gradient(135deg, #f5f2ec 0%, #ece7de 100%);
+    border-bottom: 1px solid var(--color-border);
+    padding: 4rem 0 4.5rem;
+}
+.hero-inner { max-width: 760px; text-align: center; }
+.hero-kicker {
+    font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase;
+    color: var(--color-ink-muted); margin: 0 0 1rem;
+}
+.hero-title {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    margin: 0 0 1rem;
+    font-weight: 700;
+}
+.hero-excerpt {
+    font-size: 1.125rem; color: var(--color-ink-soft); margin: 0 auto 2rem;
+    max-width: 620px; line-height: 1.6;
+}
+.hero-slot { display: flex; justify-content: center; }
+.hero-slot .widget { background: transparent; padding: 0; margin: 0; }
+.hero-slot .search-form { display: flex; gap: 0.5rem; max-width: 460px; width: 100%; }
+
+/* ------------------------------------------------------------- Main layout */
+.site-main { padding: 3rem 0 4rem; min-height: 50vh; }
+
+.page-grid { max-width: 780px; }
+
+.post-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 3rem;
+}
+@media (min-width: 960px) {
+    .post-layout {
+        grid-template-columns: minmax(0, 1fr) var(--sidebar-width);
+        gap: 3rem;
+    }
+    body.sidebar--left .post-layout {
+        grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+    }
+    body.sidebar--left .post-layout > .sidebar { order: -1; }
+    body.sidebar--none .post-layout {
+        grid-template-columns: minmax(0, 1fr);
+        max-width: var(--content-width);
+        margin: 0 auto;
+    }
+    body.sidebar--none .post-layout > .sidebar { display: none; }
+}
+
+/* ------------------------------------------------------------- Entry (post/page) */
+.entry-header { margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--color-border); }
+.entry-title {
+    font-size: clamp(1.75rem, 3.5vw, 2.75rem);
+    margin: 0 0 0.75rem;
+    font-weight: 700;
+}
+.entry-meta {
+    font-size: 0.875rem; color: var(--color-ink-muted);
+    display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;
+}
+.entry-meta-sep { color: var(--color-border); }
+.entry-lede {
+    font-size: 1.125rem; color: var(--color-ink-soft);
+    font-style: italic; margin-top: 1rem; line-height: 1.6;
+}
+.entry-content {
+    font-size: 1.0625rem;
+    line-height: 1.8;
+    max-width: 68ch;
+}
+.entry-content h2 { font-size: 1.75rem; margin: 2.5rem 0 1rem; }
+.entry-content h3 { font-size: 1.375rem; margin: 2rem 0 0.75rem; }
+.entry-content p { margin: 0 0 1.25rem; }
+.entry-content img { max-width: 100%; height: auto; border-radius: var(--radius); }
+.entry-content blockquote {
+    border-left: 3px solid var(--color-accent);
+    padding: 0.25rem 0 0.25rem 1.25rem;
+    margin: 1.5rem 0;
+    font-family: var(--font-heading);
+    font-style: italic;
+    color: var(--color-ink-soft);
+}
+.entry-content ul, .entry-content ol { padding-left: 1.25rem; margin: 0 0 1.25rem; }
+.entry-content code { background: var(--color-muted-bg); padding: 0.125em 0.375em; border-radius: 3px; font-size: 0.875em; }
+.entry-content mark { background: rgba(140, 42, 58, 0.14); color: inherit; padding: 0.1em 0.2em; border-radius: 2px; }
+.entry-content a { text-decoration: underline; text-underline-offset: 3px; }
+
+.entry-footer { margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--color-border); display: flex; flex-direction: column; gap: 2rem; }
+.slot-before-content:not(:empty) { margin-bottom: 2rem; }
+
+/* ------------------------------------------------------------- Archive */
+.archive-header {
+    text-align: center;
+    padding: 1rem 0 2.5rem;
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: 2.5rem;
+}
+.archive-kicker {
+    font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase;
+    color: var(--color-ink-muted); margin: 0 0 0.75rem;
+}
+.archive-title { font-size: clamp(1.75rem, 3.5vw, 2.5rem); margin: 0; }
+.archive-description { color: var(--color-ink-soft); margin-top: 0.75rem; }
+
+.post-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.75rem;
+}
+@media (min-width: 640px) {
+    .post-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.post-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-card);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.post-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(31, 29, 27, 0.10); }
+.post-card-title {
+    font-size: 1.25rem;
+    margin: 0 0 0.5rem;
+    line-height: 1.3;
+}
+.post-card-title a { color: var(--color-ink); text-decoration: none; }
+.post-card-title a:hover { color: var(--color-accent); text-decoration: none; }
+.post-card-meta {
+    font-size: 0.8125rem; color: var(--color-ink-muted);
+    display: flex; flex-wrap: wrap; gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+.post-card-excerpt {
+    font-size: 0.9375rem; color: var(--color-ink-soft);
+    margin: 0 0 1rem; flex: 1;
+}
+.post-card-more {
+    font-size: 0.875rem; font-weight: 500;
+    color: var(--color-accent); align-self: flex-start;
+}
+
+.no-posts { color: var(--color-ink-muted); font-style: italic; padding: 2rem 0; text-align: center; }
+
+/* ------------------------------------------------------------- Sidebar / widgets */
+.sidebar { display: flex; flex-direction: column; gap: 1.75rem; }
+.sidebar > *,
+.footer-widgets > .footer-column > * {
+    font-size: 0.9375rem;
+}
+/* Every direct sidebar child becomes a card, regardless of whether the
+   component opted into a `.widget` wrapper. This keeps widths consistent
+   when the slot mixes wrapper-less components (search_form) with
+   wrapper-ful ones (latest_posts, category_list). */
+.widget,
+.sidebar > * {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+}
+.widget-title {
+    font-family: var(--font-heading);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    margin: 0 0 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--color-accent);
+    display: inline-block;
+}
+
+.widget ul, .widget ol { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.widget a { color: var(--color-ink); font-weight: 500; }
+.widget a:hover { color: var(--color-accent); }
+
+.tag-cloud, .tag-list { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.tag-cloud a, .tag-list a, .widget .tag {
+    display: inline-block;
+    padding: 0.25rem 0.625rem;
+    background: var(--color-muted-bg);
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    color: var(--color-ink);
+    text-decoration: none;
+}
+.tag-cloud a:hover, .tag-list a:hover { background: var(--color-accent); color: #fff; text-decoration: none; }
+
+/* ------------------------------------------------------------- Search form */
+.search-form { display: flex; gap: 0.5rem; width: 100%; }
+.search-form input[type="search"],
+.search-form input[type="text"] {
+    flex: 1; padding: 0.625rem 0.875rem;
+    border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    font-family: inherit; font-size: 0.9375rem; color: var(--color-ink);
+}
+.search-form input:focus {
+    outline: none; border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px rgba(140, 42, 58, 0.18);
+}
+.search-form button {
+    padding: 0.625rem 1.25rem;
+    background: var(--color-accent); color: #fff;
+    border: 0; border-radius: var(--radius-sm);
+    font-family: inherit; font-size: 0.9375rem; font-weight: 500;
+    cursor: pointer; transition: background 0.15s ease;
+}
+.search-form button:hover { background: var(--color-accent-dark); }
+
+.search-form-hero { max-width: 520px; margin: 0 auto 2.5rem; }
+
+/* ------------------------------------------------------------- Pagination */
+.pagination {
+    display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap;
+    margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--color-border);
+}
+.pagination a, .pagination-current {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 2.25rem; height: 2.25rem; padding: 0 0.75rem;
+    border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+    text-decoration: none; font-size: 0.9375rem; color: var(--color-ink);
+    background: var(--color-surface);
+}
+.pagination a:hover { border-color: var(--color-accent); color: var(--color-accent); text-decoration: none; }
+.pagination-current { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
+
+/* ------------------------------------------------------------- Buttons */
+.btn {
+    display: inline-block;
+    padding: 0.625rem 1.5rem;
+    background: var(--color-accent); color: #fff;
+    border: 0; border-radius: var(--radius-sm);
+    font: inherit; font-weight: 500;
+    cursor: pointer; text-decoration: none;
+    transition: background 0.15s ease;
+}
+.btn:hover { background: var(--color-accent-dark); color: #fff; text-decoration: none; }
+.btn-primary { background: var(--color-accent); }
+
+/* ------------------------------------------------------------- Blocks */
+.block { margin: 1.5rem 0; }
+.block-image figure { margin: 0; }
+.block-image img { max-width: 100%; height: auto; border-radius: var(--radius); }
+.block-image figcaption { color: var(--color-ink-muted); font-size: 0.875rem; text-align: center; margin-top: 0.5rem; }
+.block-bookmark {
+    border: 1px solid var(--color-border); border-radius: var(--radius);
+    overflow: hidden; background: var(--color-surface);
+}
+.bookmark-inner { display: flex; text-decoration: none; color: var(--color-ink); padding: 1rem; gap: 1rem; }
+.bookmark-inner:hover { text-decoration: none; background: var(--color-muted-bg); }
+.bookmark-title { font-weight: 600; display: block; }
+.bookmark-url { color: var(--color-accent); font-size: 0.875rem; }
+
+/* ------------------------------------------------------------- Footer */
+.site-footer {
+    background: var(--color-footer-bg);
+    color: var(--color-footer-text);
+    padding: 3.5rem 0 1.5rem;
+    margin-top: 5rem;
+}
+.site-footer a { color: #ede8e0; }
+.site-footer a:hover { color: #fff; }
+.site-footer-inner { max-width: var(--container-width); margin: 0 auto; padding: 0 1.5rem; }
+
+.footer-widgets {
+    display: grid;
+    gap: 2.5rem;
+    grid-template-columns: 1fr;
+    padding-bottom: 2.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+@media (min-width: 768px) {
+    .footer-widgets { grid-template-columns: repeat(3, 1fr); }
+}
+.footer-column-title {
+    font-family: var(--font-heading);
+    font-size: 0.875rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #ede8e0;
+    margin: 0 0 1rem;
+}
+.footer-column .widget,
+.footer-column > ul,
+.footer-column > div {
+    background: transparent;
+    border: 0;
+    padding: 0;
+}
+.footer-column .widget-title { display: none; }
+.footer-column .widget ul { gap: 0.375rem; }
+.footer-column .widget a { color: #b8b3ab; font-weight: 400; }
+.footer-column .widget a:hover { color: #fff; }
+.footer-column .tag-cloud a { background: rgba(255, 255, 255, 0.05); color: #b8b3ab; }
+.footer-column .tag-cloud a:hover { background: var(--color-accent); color: #fff; }
+
+.footer-bottom {
+    padding-top: 1.5rem;
+    display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;
+    font-size: 0.875rem;
+}
+.footer-site-title {
+    font-family: var(--font-heading); font-weight: 700; font-size: 1.125rem;
+    text-decoration: none; display: block;
+}
+.copyright { margin: 0.125rem 0 0; color: #8a8580; font-size: 0.8125rem; }
+
+.footer-nav .menu-list { gap: 1.25rem; }
+.footer-nav .menu-list a::after { display: none; }
+
+/* ------------------------------------------------------------- Error pages */
+.error-page { text-align: center; padding: 5rem 1rem; max-width: 520px; margin: 0 auto; }
+.error-kicker {
+    font-family: var(--font-heading);
+    font-size: clamp(4rem, 12vw, 7rem); font-weight: 700;
+    color: var(--color-border); margin: 0 0 0.5rem; line-height: 1;
+}
+.error-page h1 { font-size: 1.75rem; margin: 0 0 1rem; }
+.error-page p { color: var(--color-ink-soft); margin: 0 0 1.5rem; }
+
+/* ------------------------------------------------------------- Responsive */
+@media (max-width: 768px) {
+    .menu-toggle { display: flex; align-items: center; justify-content: center; }
+    .site-header-inner { grid-template-columns: 1fr auto auto; }
+    .site-nav {
+        order: 99;
+        grid-column: 1 / -1;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.25s ease;
+    }
+    .site-nav.is-open { max-height: 600px; padding-top: 0.75rem; }
+    .menu-list {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+    }
+    .menu-list .menu-item { border-top: 1px solid rgba(255, 255, 255, 0.08); }
+    .menu-list .menu-item a { padding: 0.75rem 0; display: block; }
+    .menu-list a::after { display: none; }
+    .menu-list .sub-menu {
+        display: block; position: static; border: 0; padding: 0 0 0.5rem 1rem;
+        box-shadow: none; background: transparent;
+    }
+    .menu-list .sub-menu .menu-item { border-top: 0; }
+    .menu-list .sub-menu .menu-item a { padding: 0.4rem 0; font-size: 0.875rem; color: #b8b3ab; }
+
+    .hero { padding: 2.5rem 0 3rem; }
+}
+
+/* ------------------------------------------------------------- Link list */
+.link-list { display: flex; gap: 1rem; flex-wrap: wrap; margin: 0.25rem 0; }
+.link-list--vertical { flex-direction: column; gap: 0.5rem; }
+.link-list__item {
+    color: inherit;
+    font-size: 0.875rem;
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    padding-bottom: 0.125rem;
+}
+.link-list__item:hover {
+    color: var(--color-accent);
+    border-bottom-color: currentColor;
+    text-decoration: none;
+}
+.site-footer .link-list__item { color: var(--color-footer-text); }
+.site-footer .link-list__item:hover { color: #fff; border-bottom-color: var(--color-accent); }
+
+/* ------------------------------------------------------------- Header slot
+   Components like search_form were designed primarily for the sidebar, so
+   the header slot has to neutralise any card/spacing the component template
+   carries and size the form compactly — otherwise its intrinsic width
+   blows out the header's auto grid column. */
+.site-header-actions {
+    flex: 0 0 auto;
+    /* Fixed width so the auto grid track can't grow to max-content. */
+    width: 220px;
+}
+@media (max-width: 640px) {
+    .site-header-actions { width: auto; }
+}
+.site-header-actions > * {
+    /* Reset any card styling components may bring in (widget wrapper,
+       sidebar-style padding inherited via descendant rules, etc.). */
+    background: transparent;
+    border: 0;
+    padding: 0;
+    margin: 0;
+}
+.site-header-actions .widget-title { display: none; }
+.site-header-actions .search-form {
+    width: 100%;
+    gap: 0.35rem;
+}
+.site-header-actions .search-form input[type="search"],
+.site-header-actions .search-form input[type="text"] {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.18);
+    color: inherit;
+    padding: 0.45rem 0.65rem;
+    min-width: 0; /* allow flex shrink below intrinsic size */
+}
+.site-header-actions .search-form input::placeholder { color: rgba(255, 255, 255, 0.5); }
+.site-header-actions .search-form button { padding: 0.45rem 0.75rem; }
+.site-header-actions .search-form button svg { display: block; }
+
+/* Breadcrumb: kinari tone — serif feel, hairline separator. */
+.breadcrumb { font-size: 0.8125rem; margin: 0 0 1.5rem; color: var(--color-muted, #6b6b6b); letter-spacing: 0.01em; }
+.breadcrumb-list { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 0.2rem 0.5rem; }
+.breadcrumb-item { display: inline-flex; align-items: center; }
+.breadcrumb-item + .breadcrumb-item::before { content: "›"; margin-right: 0.5rem; color: var(--color-muted, #9b9b9b); }
+.breadcrumb-item a { color: inherit; text-decoration: none; border-bottom: 1px solid transparent; transition: border-color 0.15s ease; }
+.breadcrumb-item a:hover { border-bottom-color: currentColor; }
+.breadcrumb-item [aria-current="page"] { color: var(--color-body-text, #1f1d1b); }

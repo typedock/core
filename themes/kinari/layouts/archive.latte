@@ -1,0 +1,62 @@
+{layout 'base.latte'}
+
+{block title}
+    {if isset($category)}Category: {$category['name']} - {$site->name}
+    {elseif isset($tag)}Tag: {$tag['name']} - {$site->name}
+    {else}Blog - {$site->name}
+    {/if}
+{/block}
+
+{block content}
+<div class="container post-layout">
+    <div class="archive">
+        {include '../partials/breadcrumb.latte'}
+        <header class="archive-header">
+            {if isset($category)}
+                <p class="archive-kicker">Category</p>
+                <h1 class="archive-title">{$category['name']}</h1>
+                {if $category['description'] ?? ''}<p class="archive-description">{$category['description']}</p>{/if}
+            {elseif isset($tag)}
+                <p class="archive-kicker">Tag</p>
+                <h1 class="archive-title">#{$tag['name']}</h1>
+            {else}
+                <p class="archive-kicker">Journal</p>
+                <h1 class="archive-title">Latest stories</h1>
+            {/if}
+        </header>
+
+        {if empty($posts)}
+            <p class="no-posts">No posts to display.</p>
+        {else}
+            <div class="post-grid">
+                {foreach $posts as $post}
+                <article class="post-card">
+                    <h2 class="post-card-title">
+                        <a href="{$site->postUrl($post['slug'])}">{$post['title']}</a>
+                    </h2>
+                    <div class="post-card-meta">
+                        {if $post['published_at']}
+                            <time datetime="{$post['published_at']}">{$post['published_at']|date:'M j, Y'}</time>
+                        {/if}
+                        {if $post['author_name'] ?? ''}
+                            <span class="entry-meta-sep" aria-hidden="true">·</span>
+                            <span>{$post['author_name']}</span>
+                        {/if}
+                    </div>
+                    {if $post['excerpt']}
+                        <p class="post-card-excerpt">{$post['excerpt']}</p>
+                    {/if}
+                    <a href="{$site->postUrl($post['slug'])}" class="post-card-more">Read →</a>
+                </article>
+                {/foreach}
+            </div>
+
+            {include '../partials/pagination.latte'}
+        {/if}
+    </div>
+
+    <aside class="sidebar" aria-label="Sidebar">
+        {=slot('sidebar')|noescape}
+    </aside>
+</div>
+{/block}

@@ -10,80 +10,241 @@
 <form method="post" action="{$form_action}" id="post-form">
     <input type="hidden" name="_csrf_token" value="{$csrf_token}">
     <input type="hidden" name="page_type" value="post">
-    <input type="hidden" name="body" id="body-field" value="{$post['body'] ?? ''}">
+    {* Hidden textarea: receives serialized Markdown on submit. Source of truth on POST. *}
+    <textarea name="body" id="body-field" hidden>{$post['body'] ?? ''}</textarea>
 
-    <div class="editor-layout">
-        <div class="editor-main">
-            <div class="form-group">
-                <input type="text" name="title" id="post-title"
-                       value="{$post['title'] ?? ''}"
-                       placeholder="Enter title..."
-                       class="title-input" required>
-            </div>
+    {*
+        Sticky publish bar — mirrors Ghost's top-of-editor control strip.
+        Holds the small-footprint controls that must always be reachable
+        (status, publish date, save). Metadata with more surface area
+        (Categories/Tags/Excerpt/SEO) lives in collapsible sections below
+        so the writing column stays centered and uncluttered.
+    *}
+    <div class="editor-publishbar">
+        <label class="pb-field">
+            <span>Status</span>
+            <select name="status">
+                <option value="draft"     {($post['status'] ?? 'draft')==='draft'     ? 'selected' : ''}>Draft</option>
+                <option value="review"    {($post['status'] ?? '')==='review'         ? 'selected' : ''}>In Review</option>
+                <option value="published" {($post['status'] ?? '')==='published'      ? 'selected' : ''}>Published</option>
+            </select>
+        </label>
 
-            <div class="form-group">
-                <label>Slug</label>
-                <input type="text" name="slug" id="post-slug"
-                       value="{$post['slug'] ?? ''}"
-                       placeholder="url-slug">
-            </div>
+        <label class="pb-field">
+            <span>Publish Date</span>
+            <input type="datetime-local" name="published_at"
+                   value="{$post['published_at'] ?? ''}">
+        </label>
 
-            <!-- Block Editor Island -->
-            <div id="block-editor" data-body="{$post['body'] ?? '[]'}"></div>
+        {if isset($public_url) && ($post['status'] ?? '') === 'published'}
+            <a class="pb-view" href="{$public_url}" target="_blank" rel="noopener"
+               title="Open public URL">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="m10 14 11-11"/></svg>
+                <code class="overflow-hidden text-ellipsis">{$public_url}</code>
+            </a>
+        {/if}
+
+        <div class="pb-actions">
+            <button type="submit" class="btn btn-primary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                <span>Save</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="editor-column">
+        <input type="text" name="title" id="post-title"
+               value="{$post['title'] ?? ''}"
+               placeholder="Enter title…"
+               class="title-input" required>
+
+        <div class="slug-row">
+            <label for="post-slug">Slug</label>
+            <input type="text" name="slug" id="post-slug"
+                   value="{$post['slug'] ?? ''}"
+                   placeholder="url-slug">
         </div>
 
-        <div class="editor-sidebar">
-            <div class="sidebar-panel">
-                <h3>Publish Settings</h3>
-                <div class="form-group">
-                    <label>Status</label>
-                    <select name="status">
-                        <option value="draft" {($post['status'] ?? 'draft')==='draft'?'selected':''}>Draft</option>
-                        <option value="review" {($post['status'] ?? '')==='review'?'selected':''}>In Review</option>
-                        <option value="published" {($post['status'] ?? '')==='published'?'selected':''}>Published</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Publish Date</label>
-                    <input type="datetime-local" name="published_at"
-                           value="{$post['published_at'] ?? ''}">
-                </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Save</button>
-                    {if isset($post['id'])}
-                    <a href="/blog/{$post['slug']}" target="_blank" class="btn btn-secondary">Preview</a>
-                    {/if}
-                </div>
-            </div>
+        {* Tiptap editor mount point. editor.js renders a toolbar +
+           contenteditable here. The toolbar is visually attached to the
+           top of the editor card via editor.css. *}
+        <div class="editor-shell">
+            <div id="editor-toolbar" class="editor-toolbar" role="toolbar" aria-label="Formatting"></div>
+            <div id="editor" class="editor-surface" data-initial="{$post['body'] ?? ''}"></div>
+            <textarea id="editor-raw" class="editor-raw" hidden placeholder="# Markdown source"></textarea>
+        </div>
 
-            <div class="sidebar-panel">
-                <h3>Categories</h3>
-                {foreach $categories as $cat}
-                <label class="checkbox-label">
-                    <input type="checkbox" name="category_ids[]" value="{$cat['id']}"
-                           {in_array($cat['id'], $selected_categories ?? []) ? 'checked' : ''}>
-                    {$cat['name']}
-                </label>
-                {/foreach}
+        {*
+            Metadata sections. All collapsible — they stack vertically
+            below the body, the natural reading order for "write first,
+            then tag". Categories & Tags use <details open> so editors
+            find them without hunting; Excerpt & SEO default closed.
+        *}
+        <details class="meta-section" open>
+            <summary>Categories</summary>
+            <div class="meta-body">
+                {if $categories}
+                    <div class="grid gap-1.5 sm:grid-cols-2">
+                    {foreach $categories as $cat}
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="category_ids[]" value="{$cat['id']}"
+                               {in_array($cat['id'], $selected_categories ?? []) ? 'checked' : ''}>
+                        <span>{$cat['name']}</span>
+                    </label>
+                    {/foreach}
+                    </div>
+                {else}
+                    <p class="meta-hint">No categories yet. <a href="/admin/categories" class="text-brand-600 hover:underline">Create one</a>.</p>
+                {/if}
             </div>
+        </details>
 
-            <div class="sidebar-panel">
-                <h3>Tags</h3>
+        <details class="meta-section" open>
+            <summary>Tags</summary>
+            <div class="meta-body">
                 <input type="text" name="tags_input" id="tags-input"
                        value="{implode(', ', $selected_tag_names ?? [])}"
-                       placeholder="Enter tags separated by commas...">
-                <small>Example: PHP, WordPress, CMS</small>
+                       placeholder="Enter tags separated by commas…">
+                <p class="meta-hint">Example: PHP, WordPress, CMS</p>
             </div>
+        </details>
 
-            <div class="sidebar-panel">
-                <h3>Excerpt</h3>
+        <details class="meta-section">
+            <summary>Excerpt</summary>
+            <div class="meta-body">
                 <textarea name="excerpt" rows="3">{$post['excerpt'] ?? ''}</textarea>
+                <p class="meta-hint">Shown in archives and used as default meta description.</p>
             </div>
-        </div>
+        </details>
+
+        {if !empty($theme_layouts)}
+        <details class="meta-section">
+            <summary>Layout</summary>
+            <div class="meta-body">
+                <select name="layout">
+                    <option value="">Theme default</option>
+                    {foreach $theme_layouts as $slug => $info}
+                        <option value="{$slug}" {($post['layout'] ?? '') === $slug ? 'selected' : ''}>{$info['label'] ?? $slug}</option>
+                    {/foreach}
+                </select>
+                <p class="meta-hint">Pick an alternative layout declared by the active theme.</p>
+            </div>
+        </details>
+        {/if}
+
+        {*
+            SEO / OGP section. Core-level replacement for Yoast / AIOSEO.
+            Contract with SeoService: empty fields inherit from the global
+            defaults set at /admin/settings/seo — we never pre-fill blanks
+            with the global values (that would freeze inheritance on first
+            save). $seo is the RAW per-target row from
+            SeoService::findByTarget(), or an empty array.
+        *}
+        <details class="meta-section seo-panel" {if !empty($seo)}open{/if}>
+            <summary>SEO &amp; Social</summary>
+            <div class="meta-body space-y-4">
+                <div class="form-group">
+                    <label>SEO Title <small>(blank = use post title)</small></label>
+                    <input type="text" name="seo[seo_title]" maxlength="500"
+                           value="{$seo['seo_title'] ?? ''}"
+                           placeholder="Appears in &lt;title&gt; and search results">
+                </div>
+
+                <div class="form-group">
+                    <label>Meta Description <small>(blank = use excerpt)</small></label>
+                    <textarea name="seo[meta_description]" rows="3"
+                              placeholder="Recommended: 120–160 characters">{$seo['meta_description'] ?? ''}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Canonical URL <small>(absolute; blank = auto)</small></label>
+                    <input type="url" name="seo[canonical_url]" maxlength="2000"
+                           value="{$seo['canonical_url'] ?? ''}"
+                           placeholder="https://example.com/original-source">
+                </div>
+
+                <div class="form-group">
+                    <label>Robots</label>
+                    <select name="seo[robots]">
+                        {var $robotsVal = $seo['robots'] ?? ''}
+                        <option value=""                   {$robotsVal === '' ? 'selected' : ''}>Default (inherit)</option>
+                        <option value="index,follow"       {$robotsVal === 'index,follow' ? 'selected' : ''}>index, follow</option>
+                        <option value="noindex,follow"     {$robotsVal === 'noindex,follow' ? 'selected' : ''}>noindex, follow</option>
+                        <option value="index,nofollow"     {$robotsVal === 'index,nofollow' ? 'selected' : ''}>index, nofollow</option>
+                        <option value="noindex,nofollow"   {$robotsVal === 'noindex,nofollow' ? 'selected' : ''}>noindex, nofollow</option>
+                    </select>
+                </div>
+
+                <fieldset class="space-y-3">
+                    <legend>Open Graph (Facebook, LinkedIn, etc.)</legend>
+
+                    <div class="form-group mb-0">
+                        <label>OG Title <small>(blank = SEO title)</small></label>
+                        <input type="text" name="seo[og_title]" maxlength="500"
+                               value="{$seo['og_title'] ?? ''}">
+                    </div>
+
+                    <div class="form-group mb-0">
+                        <label>OG Description <small>(blank = meta description)</small></label>
+                        <textarea name="seo[og_description]" rows="2">{$seo['og_description'] ?? ''}</textarea>
+                    </div>
+
+                    <div class="form-group mb-0" id="og-image-field">
+                        <label>OG Image</label>
+                        <div class="og-image-control">
+                            <input type="text" name="seo[og_image_id]" id="og-image-id" maxlength="36"
+                                   value="{$seo['og_image_id'] ?? ''}"
+                                   placeholder="Pick an image from the library"
+                                   class="font-mono text-xs" readonly>
+                            <button type="button" class="btn btn-secondary btn-sm" id="og-image-pick">Choose image</button>
+                            <button type="button" class="btn btn-ghost btn-sm" id="og-image-clear" {if empty($seo['og_image_id'])}hidden{/if}>Clear</button>
+                        </div>
+                        <div id="og-image-preview" class="og-image-preview" hidden></div>
+                        <small class="form-hint">Leave blank to fall back to the site-wide OG image set in <a href="/admin/settings/seo" class="text-brand-600 hover:underline">SEO settings</a>.</small>
+                    </div>
+                </fieldset>
+
+                <div class="form-group">
+                    <label>Twitter Card</label>
+                    <select name="seo[twitter_card]">
+                        {var $twCard = $seo['twitter_card'] ?? ''}
+                        <option value=""                     {$twCard === '' ? 'selected' : ''}>Default (summary_large_image)</option>
+                        <option value="summary"              {$twCard === 'summary' ? 'selected' : ''}>summary</option>
+                        <option value="summary_large_image"  {$twCard === 'summary_large_image' ? 'selected' : ''}>summary_large_image</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Schema.org Type <small>(JSON-LD)</small></label>
+                    <select name="seo[schema_type]">
+                        {var $schema = $seo['schema_type'] ?? ''}
+                        <option value=""              {$schema === '' ? 'selected' : ''}>Auto (post → BlogPosting, page → WebPage)</option>
+                        <option value="Article"       {$schema === 'Article' ? 'selected' : ''}>Article</option>
+                        <option value="BlogPosting"   {$schema === 'BlogPosting' ? 'selected' : ''}>BlogPosting</option>
+                        <option value="NewsArticle"   {$schema === 'NewsArticle' ? 'selected' : ''}>NewsArticle</option>
+                        <option value="WebPage"       {$schema === 'WebPage' ? 'selected' : ''}>WebPage</option>
+                        <option value="FAQPage"       {$schema === 'FAQPage' ? 'selected' : ''}>FAQPage</option>
+                        <option value="HowTo"         {$schema === 'HowTo' ? 'selected' : ''}>HowTo</option>
+                        <option value="Product"       {$schema === 'Product' ? 'selected' : ''}>Product</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Focus Keyword <small>(for your own reference)</small></label>
+                    <input type="text" name="seo[focus_keyword]" maxlength="255"
+                           value="{$seo['focus_keyword'] ?? ''}">
+                </div>
+            </div>
+        </details>
     </div>
 </form>
 {/block}
 
 {block scripts}
-<script src="/admin/assets/js/editor.js"></script>
+{* Classic script first so window.TypeDockMedia is ready before the ES-module
+   editor imports run. Both editor.js (Img button) and the SEO panel below
+   consume openPicker from that global. *}
+<script src="/admin/assets/js/media-picker.js"></script>
+<script type="module" src="/admin/assets/js/editor.js"></script>
+<script src="/admin/assets/js/seo-og-image.js"></script>
 {/block}

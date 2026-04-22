@@ -1,0 +1,85 @@
+<?php
+declare(strict_types=1);
+
+namespace TypeDock\Tests\Integration;
+
+use PHPUnit\Framework\TestCase;
+use TypeDock\Core\Migration\Migrator;
+
+/**
+ * Boots a fresh SQLite DB and runs every migration through the same PHP API
+ * used by Installer::runMigrations() to ensure the schema applies cleanly
+ * across all configured drivers (SQLite as the canary here).
+ */
+final class MigrationsTest extends TestCase
+{
+    private string $sqlitePath;
+
+    protected function setUp(): void
+    {
+        // Per-test fresh DB so schema state is isolated.
+        $this->sqlitePath = sys_get_temp_dir() . '/typedock-mig-' . bin2hex(random_bytes(6)) . '.sqlite';
+        putenv('DB_DRIVER=sqlite');
+        putenv('DB_SQLITE_PATH=' . $this->sqlitePath);
+        $_ENV['DB_DRIVER']      = 'sqlite';
+        $_ENV['DB_SQLITE_PATH'] = $this->sqlitePath;
+    }
+
+    protected function tearDown(): void
+    {
+        if (is_file($this->sqlitePath)) {
+            @unlink($this->sqlitePath);
+        }
+    }
+
+    public function testAllMigrationsRunOnSqliteAndCreateExpectedTables(): void
+    {
+        $pdo = new \PDO('sqlite:' . $this->sqlitePath);
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $pdo->exec('PRAGMA foreign_keys = ON');
+
+        $migrator = new Migrator($pdo, 'sqlite', TYPEDOCK_ROOT . '/migrations');
+        $result = $migrator->migrate();
+
+        $this->assertSame([], $result['errors'], 'Migration errors: ' . json_encode($result['errors']));
+
+        $rows   = $pdo->query("SELECT name FROM sqlite_master WHERE type='table'")->fetchAll(\PDO::FETCH_COLUMN);
+        $tables = array_map('strval', $rows);
+
+        $expected = [
+            'users',
+            'sessions',
+            'password_resets',
+            'api_keys',
+            'pages',
+            'page_revisions',
+            'categories',
+            'tags',
+            'page_categories',
+            'page_tags',
+            'media',
+            'menus',
+            'menu_items',
+            'site_options',
+            'seo_meta',
+            'slot_placements',
+            'redirects',
+            'change_log',
+            'snapshots',
+            'collections',
+            'collection_items',
+            'antispam_log',
+            'backups',
+            'locales',
+            'migrations',
+        ];
+
+        foreach ($expected as $name) {
+            $this->assertContains(
+                $name,
+                $tables,
+                "Expected table \"{$name}\" to exist after migrations. Got: " . implode(', ', $tables)
+            );
+        }
+    }
+}

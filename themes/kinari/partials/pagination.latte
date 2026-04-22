@@ -1,0 +1,19 @@
+{if isset($pagination) && $pagination->totalPages > 1}
+<nav class="pagination" aria-label="Pagination">
+    {if $pagination->hasPrev()}
+        <a href="{$pagination->url($pagination->current - 1)}" class="pagination-prev" rel="prev">← Prev</a>
+    {/if}
+
+    {foreach $pagination->range() as $n}
+        {if $n === $pagination->current}
+            <span class="pagination-current" aria-current="page">{$n}</span>
+        {else}
+            <a href="{$pagination->url($n)}" class="pagination-link">{$n}</a>
+        {/if}
+    {/foreach}
+
+    {if $pagination->hasNext()}
+        <a href="{$pagination->url($pagination->current + 1)}" class="pagination-next" rel="next">Next →</a>
+    {/if}
+</nav>
+{/if}

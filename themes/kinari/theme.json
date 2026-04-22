@@ -1,0 +1,163 @@
+{
+    "name": "Kinari",
+    "version": "1.1.0",
+    "description": "A warm, paper-toned magazine theme showcasing TypeDock's theme-settings system. Colours, fonts and layout adjust from the admin UI; the header/footer layouts are driven entirely by slots.",
+    "author": "TypeDock",
+    "settings": {
+        "colors": {
+            "label": "Colors",
+            "fields": {
+                "accent":       { "type": "color", "label": "Accent", "default": "#8c2a3a", "hint": "Used for links, buttons and active-menu underlines." },
+                "accent_dark":  { "type": "color", "label": "Accent (hover)", "default": "#6b1f2b" },
+                "header_bg":    { "type": "color", "label": "Header background", "default": "#1f1d1b" },
+                "header_text":  { "type": "color", "label": "Header text", "default": "#f5f3ef" },
+                "footer_bg":    { "type": "color", "label": "Footer background", "default": "#1f1d1b" },
+                "footer_text":  { "type": "color", "label": "Footer text", "default": "#b8b3ab" },
+                "body_bg":      { "type": "color", "label": "Page background", "default": "#fbfaf7" },
+                "body_text":    { "type": "color", "label": "Body text", "default": "#1f1d1b" }
+            }
+        },
+        "typography": {
+            "label": "Typography",
+            "fields": {
+                "font_family": {
+                    "type": "select",
+                    "label": "Font style",
+                    "hint": "Switches both body and headings. Pick a regional font via the Advanced → Custom CSS override.",
+                    "options": {
+                        "sans":  "Sans-serif (Inter)",
+                        "serif": "Serif (Fraunces + Inter)",
+                        "mono":  "Monospace (JetBrains Mono)"
+                    },
+                    "default": "serif"
+                },
+                "font_size_base": {
+                    "type": "select",
+                    "label": "Base font size",
+                    "options": { "14": "Small (14px)", "16": "Normal (16px)", "18": "Large (18px)" },
+                    "default": "16"
+                }
+            }
+        },
+        "layout": {
+            "label": "Layout",
+            "fields": {
+                "sidebar": {
+                    "type": "select",
+                    "label": "Sidebar",
+                    "options": { "none": "None (single column)", "right": "Right", "left": "Left" },
+                    "default": "right"
+                },
+                "content_width": {
+                    "type": "select",
+                    "label": "Content width",
+                    "options": { "narrow": "Narrow (680px)", "normal": "Normal (780px)", "wide": "Wide (960px)" },
+                    "default": "normal"
+                }
+            }
+        },
+        "header": {
+            "label": "Header",
+            "fields": {
+                "sticky": { "type": "boolean", "label": "Stick to top on scroll", "default": true },
+                "layout": {
+                    "type": "select",
+                    "label": "Logo alignment",
+                    "options": { "left": "Left", "center": "Center" },
+                    "default": "left"
+                }
+            }
+        },
+        "advanced": {
+            "label": "Advanced",
+            "fields": {
+                "custom_css": {
+                    "type": "textarea",
+                    "label": "Custom CSS",
+                    "hint": "Raw CSS appended to every page — use it to load a Google Fonts stack for your own language, override --td-* properties, or tweak anything the settings panel doesn't expose.",
+                    "default": ""
+                }
+            }
+        }
+    },
+    "menus": {
+        "header": {
+            "label": "Header Navigation",
+            "description": "Main navigation shown in the header on every page."
+        },
+        "footer": {
+            "label": "Footer Links",
+            "description": "Legal / contact links rendered in the footer."
+        }
+    },
+    "slots": {
+        "home_hero": {
+            "label": "Home — Hero",
+            "context": ["home"],
+            "defaults": []
+        },
+        "home_bottom": {
+            "label": "Home — Bottom",
+            "context": ["home"],
+            "defaults": []
+        },
+        "header_right": {
+            "label": "Header — Right",
+            "context": ["all"],
+            "defaults": [
+                {"component": "search_form"}
+            ]
+        },
+        "before_content": {
+            "label": "Before Content",
+            "context": ["post", "page"],
+            "defaults": []
+        },
+        "sidebar": {
+            "label": "Sidebar",
+            "context": ["post", "page", "archive"],
+            "defaults": [
+                {"component": "search_form"},
+                {"component": "latest_posts", "params": {"count": 5}},
+                {"component": "category_list"},
+                {"component": "tag_cloud", "params": {"limit": 18}}
+            ]
+        },
+        "after_content": {
+            "label": "After Content",
+            "context": ["post"],
+            "defaults": [
+                {"component": "author_profile"},
+                {"component": "related_posts", "params": {"count": 6}}
+            ]
+        },
+        "footer_primary": {
+            "label": "Footer — Left",
+            "context": ["all"],
+            "defaults": [
+                {"component": "latest_posts", "params": {"count": 4}}
+            ]
+        },
+        "footer_secondary": {
+            "label": "Footer — Center",
+            "context": ["all"],
+            "defaults": [
+                {"component": "link_list", "params": {
+                    "layout": "vertical",
+                    "links": [
+                        {"label": "Privacy policy", "url": "/privacy"},
+                        {"label": "Terms", "url": "/terms"},
+                        {"label": "Contact", "url": "/contact"}
+                    ]
+                }}
+            ]
+        },
+        "footer_tertiary": {
+            "label": "Footer — Right",
+            "context": ["all"],
+            "defaults": [
+                {"component": "tag_cloud", "params": {"limit": 12}}
+            ]
+        }
+    }
+}

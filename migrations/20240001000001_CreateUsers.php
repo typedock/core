@@ -2,72 +2,70 @@
 
 declare(strict_types=1);
 
-use Phinx\Migration\AbstractMigration;
+use TypeDock\Core\Migration\Blueprint;
+use TypeDock\Core\Migration\Migration;
+use TypeDock\Core\Migration\Schema;
 
-final class CreateUsers extends AbstractMigration
+final class CreateUsers extends Migration
 {
-    public function change(): void
+    public function up(Schema $schema): void
     {
-        // users table
-        $users = $this->table('users', ['id' => false, 'primary_key' => ['id']]);
-        $users
-            ->addColumn('id', 'string', ['limit' => 36])
-            ->addColumn('email', 'string', ['limit' => 254])
-            ->addColumn('password_hash', 'string', ['limit' => 255])
-            ->addColumn('name', 'string', ['limit' => 255])
-            ->addColumn('role', 'string', ['limit' => 20, 'default' => 'contributor'])
-            ->addColumn('avatar_path', 'string', ['limit' => 1000, 'null' => true, 'default' => null])
-            ->addColumn('two_factor_secret', 'string', ['limit' => 255, 'null' => true, 'default' => null])
-            ->addColumn('two_factor_enabled', 'boolean', ['default' => false])
-            ->addColumn('login_attempts', 'integer', ['default' => 0])
-            ->addColumn('locked_until', 'datetime', ['null' => true, 'default' => null])
-            ->addColumn('last_login_at', 'datetime', ['null' => true, 'default' => null])
-            ->addColumn('created_at', 'datetime', ['default' => 'CURRENT_TIMESTAMP'])
-            ->addColumn('updated_at', 'datetime', [])
-            ->addIndex(['email'], ['unique' => true])
-            ->create();
+        $schema->create('users', function (Blueprint $t) {
+            $t->string('id', 36);
+            $t->string('email', 254);
+            $t->string('password_hash', 255);
+            $t->string('name', 255);
+            $t->string('role', 20)->default('contributor');
+            $t->string('avatar_path', 1000)->null();
+            $t->string('two_factor_secret', 255)->null();
+            $t->boolean('two_factor_enabled')->default(false);
+            $t->integer('login_attempts')->default(0);
+            $t->datetime('locked_until')->null();
+            $t->datetime('last_login_at')->null();
+            $t->datetime('created_at')->useCurrent();
+            $t->datetime('updated_at');
+            $t->primary(['id']);
+            $t->unique(['email']);
+        });
 
-        // sessions table
-        $sessions = $this->table('sessions', ['id' => false, 'primary_key' => ['id']]);
-        $sessions
-            ->addColumn('id', 'string', ['limit' => 36])
-            ->addColumn('user_id', 'string', ['limit' => 36])
-            ->addColumn('token_hash', 'string', ['limit' => 255])
-            ->addColumn('ip_address', 'string', ['limit' => 45, 'null' => true, 'default' => null])
-            ->addColumn('user_agent', 'string', ['limit' => 500, 'null' => true, 'default' => null])
-            ->addColumn('two_factor_verified', 'boolean', ['default' => false])
-            ->addColumn('expires_at', 'datetime', [])
-            ->addColumn('created_at', 'datetime', ['default' => 'CURRENT_TIMESTAMP'])
-            ->addIndex(['token_hash'])
-            ->addForeignKey('user_id', 'users', 'id', ['delete' => 'CASCADE', 'update' => 'NO_ACTION'])
-            ->create();
+        $schema->create('sessions', function (Blueprint $t) {
+            $t->string('id', 36);
+            $t->string('user_id', 36);
+            $t->string('token_hash', 255);
+            $t->string('ip_address', 45)->null();
+            $t->string('user_agent', 500)->null();
+            $t->boolean('two_factor_verified')->default(false);
+            $t->datetime('expires_at');
+            $t->datetime('created_at')->useCurrent();
+            $t->primary(['id']);
+            $t->index(['token_hash']);
+            $t->foreign('user_id', 'users', 'id')->cascadeOnDelete();
+        });
 
-        // password_resets table
-        $passwordResets = $this->table('password_resets', ['id' => false, 'primary_key' => ['id']]);
-        $passwordResets
-            ->addColumn('id', 'string', ['limit' => 36])
-            ->addColumn('user_id', 'string', ['limit' => 36])
-            ->addColumn('token_hash', 'string', ['limit' => 255])
-            ->addColumn('expires_at', 'datetime', [])
-            ->addColumn('used_at', 'datetime', ['null' => true, 'default' => null])
-            ->addColumn('created_at', 'datetime', ['default' => 'CURRENT_TIMESTAMP'])
-            ->addForeignKey('user_id', 'users', 'id', ['delete' => 'CASCADE', 'update' => 'NO_ACTION'])
-            ->create();
+        $schema->create('password_resets', function (Blueprint $t) {
+            $t->string('id', 36);
+            $t->string('user_id', 36);
+            $t->string('token_hash', 255);
+            $t->datetime('expires_at');
+            $t->datetime('used_at')->null();
+            $t->datetime('created_at')->useCurrent();
+            $t->primary(['id']);
+            $t->foreign('user_id', 'users', 'id')->cascadeOnDelete();
+        });
 
-        // api_keys table
-        $apiKeys = $this->table('api_keys', ['id' => false, 'primary_key' => ['id']]);
-        $apiKeys
-            ->addColumn('id', 'string', ['limit' => 36])
-            ->addColumn('user_id', 'string', ['limit' => 36])
-            ->addColumn('name', 'string', ['limit' => 255])
-            ->addColumn('key_hash', 'string', ['limit' => 255])
-            ->addColumn('key_prefix', 'string', ['limit' => 8])
-            ->addColumn('permissions', 'text', ['null' => true, 'default' => null])
-            ->addColumn('expires_at', 'datetime', ['null' => true, 'default' => null])
-            ->addColumn('last_used_at', 'datetime', ['null' => true, 'default' => null])
-            ->addColumn('created_at', 'datetime', ['default' => 'CURRENT_TIMESTAMP'])
-            ->addIndex(['key_prefix'])
-            ->addForeignKey('user_id', 'users', 'id', ['delete' => 'CASCADE', 'update' => 'NO_ACTION'])
-            ->create();
+        $schema->create('api_keys', function (Blueprint $t) {
+            $t->string('id', 36);
+            $t->string('user_id', 36);
+            $t->string('name', 255);
+            $t->string('key_hash', 255);
+            $t->string('key_prefix', 8);
+            $t->text('permissions')->null();
+            $t->datetime('expires_at')->null();
+            $t->datetime('last_used_at')->null();
+            $t->datetime('created_at')->useCurrent();
+            $t->primary(['id']);
+            $t->index(['key_prefix']);
+            $t->foreign('user_id', 'users', 'id')->cascadeOnDelete();
+        });
     }
 }

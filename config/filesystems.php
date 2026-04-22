@@ -6,8 +6,8 @@ $root = defined('TYPEDOCK_ROOT') ? TYPEDOCK_ROOT : dirname(__DIR__);
 return [
     'default' => env('STORAGE_DRIVER', 'local'),
     'local'   => [
-        'root' => $root . '/storage/media',
-        'url'  => rtrim((string) env('APP_URL', 'http://localhost'), '/') . '/storage/media',
+        'root' => $root . '/public/uploads',
+        'url'  => rtrim((string) env('APP_URL', 'http://localhost'), '/') . '/uploads',
     ],
     's3' => [
         'key'      => env('AWS_ACCESS_KEY_ID', ''),

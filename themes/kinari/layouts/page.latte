@@ -1,0 +1,43 @@
+{layout 'base.latte'}
+
+{block title}{$page->title} - {$site->name}{/block}
+{block description}{$page->excerpt ?? ''}{/block}
+
+{block content}
+{* Home page gets a hero band so the `hero` slot can showcase a search or CTA
+   without requiring the theme to hard-code any content. *}
+{if $page->slug === ''}
+<section class="hero">
+    <div class="container hero-inner">
+        <p class="hero-kicker">Welcome</p>
+        <h1 class="hero-title">{$page->title}</h1>
+        {if $page->excerpt}<p class="hero-excerpt">{$page->excerpt}</p>{/if}
+        <div class="hero-slot">
+            {=slot('hero')|noescape}
+        </div>
+    </div>
+</section>
+{/if}
+
+<div class="container page-grid">
+    {if $page->slug !== ''}
+        {include '../partials/breadcrumb.latte'}
+    {/if}
+    <article class="page">
+        {if $page->slug !== ''}
+            <header class="entry-header">
+                <h1 class="entry-title">{$page->title}</h1>
+                {if $page->excerpt}<p class="entry-lede">{$page->excerpt}</p>{/if}
+            </header>
+        {/if}
+
+        <div class="slot-before-content">
+            {=slot('before_content')|noescape}
+        </div>
+
+        <div class="entry-content">
+            {$page->renderedBody|noescape}
+        </div>
+    </article>
+</div>
+{/block}

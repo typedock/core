@@ -1,84 +1,157 @@
 {layout '../../layouts/admin-base.latte'}
-{block page_title}Edit Menu: {$menu['name']}{/block}
+
+{block page_title}{$location_meta['label'] ?? $location}{/block}
+
+{define treeRows, $nodes, $depth}
+    {foreach $nodes as $item}
+    <tr>
+        <td class="font-medium">
+            {if $depth > 0}<span class="text-slate-400">{str_repeat('— ', $depth)}</span>{/if}
+            {$item['label']}
+        </td>
+        <td><code>{$item['url'] ?? ''}</code></td>
+        <td>
+            <span class="badge badge-muted">{$item['target_type'] ?? 'custom'}</span>
+            {if !empty($item['target_id'])}
+                <small class="text-slate-400">#{substr($item['target_id'], 0, 8)}</small>
+            {/if}
+        </td>
+        <td class="text-slate-500">{$item['sort_order']}</td>
+        <td class="actions">
+            <form method="post" action="/admin/menus/{$location}/items/{$item['id']}/delete" class="inline">
+                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this item?')">Delete</button>
+            </form>
+        </td>
+    </tr>
+        {if !empty($item['children'])}
+            {include treeRows, nodes: $item['children'], depth: $depth + 1}
+        {/if}
+    {/foreach}
+{/define}
+
 {block content}
 <div class="page-header">
-    <h1>Edit Menu: {$menu['name']}</h1>
-    <a href="/admin/menus" class="btn btn-secondary">← Back to list</a>
+    <div>
+        <h1>{$location_meta['label'] ?? $location}</h1>
+        <p class="subtitle">
+            {if !empty($location_meta['description'])}{$location_meta['description']}{/if}
+            <span class="text-slate-400">Location key: <code>{$location}</code></span>
+        </p>
+    </div>
+    <a href="/admin/menus" class="btn btn-secondary">← All locations</a>
 </div>
 
-<div class="editor-layout">
+<div class="columns-main-sidebar">
     <div>
-        <div class="sidebar-panel" style="margin-bottom: 1.5rem;">
-            <h3>Rename Menu</h3>
-            <form method="post" action="/admin/menus/{$menu['id']}/update">
-                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-                <div class="form-group">
-                    <input type="text" name="name" value="{$menu['name']}" required>
-                </div>
-                <button type="submit" class="btn btn-primary">Update</button>
-            </form>
-        </div>
-
-        <h3>Menu Items</h3>
+        <h3 class="mb-3">Menu Items</h3>
         {if empty($items)}
-            <p>No menu items yet. Add one using the form on the right.</p>
+            <div class="empty-state">
+                <p>No items yet. Add one using the form on the right.</p>
+            </div>
         {else}
         <table class="data-table">
             <thead>
-                <tr><th>Label</th><th>URL</th><th>Type</th><th>Order</th><th>Actions</th></tr>
+                <tr><th>Label</th><th>URL</th><th>Type</th><th>Order</th><th class="text-right">Actions</th></tr>
             </thead>
             <tbody>
-                {foreach $items as $item}
-                <tr>
-                    <td>{$item['label']}</td>
-                    <td><code>{$item['url']}</code></td>
-                    <td>{$item['type']}</td>
-                    <td>{$item['sort_order']}</td>
-                    <td>
-                        <form method="post" action="/admin/menus/{$menu['id']}/items/{$item['id']}/delete" style="display:inline">
-                            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this item?')">Delete</button>
-                        </form>
-                    </td>
-                </tr>
-                {/foreach}
+                {include treeRows, nodes: $item_tree, depth: 0}
             </tbody>
         </table>
         {/if}
     </div>
 
-    <div>
+    <aside>
         <div class="sidebar-panel">
             <h3>Add Item</h3>
-            <form method="post" action="/admin/menus/{$menu['id']}/items">
+            <form method="post" action="/admin/menus/{$location}/items" data-menu-item-form>
                 <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+
                 <div class="form-group">
                     <label>Label</label>
                     <input type="text" name="label" required placeholder="e.g. Home">
                 </div>
-                <div class="form-group">
-                    <label>URL</label>
-                    <input type="text" name="url" required placeholder="e.g. / or https://...">
-                </div>
+
                 <div class="form-group">
                     <label>Type</label>
-                    <select name="type">
+                    <select name="target_type" data-target-type>
                         <option value="custom">Custom Link</option>
                         <option value="page">Page</option>
                         <option value="post">Post</option>
                         <option value="category">Category</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label>target</label>
-                    <select name="target">
-                        <option value="_self">Same tab (_self)</option>
-                        <option value="_blank">New tab (_blank)</option>
+
+                <div class="form-group" data-target-field="custom">
+                    <label>URL</label>
+                    <input type="text" name="url" placeholder="/ or https://…">
+                </div>
+
+                <div class="form-group" data-target-field="page" hidden>
+                    <label>Page</label>
+                    <select name="target_id_page" disabled>
+                        <option value="">— Select a page —</option>
+                        {foreach $pages as $p}
+                            <option value="{$p['id']}">{$p['title']} ({$p['slug']})</option>
+                        {/foreach}
                     </select>
                 </div>
-                <button type="submit" class="btn btn-primary">Add</button>
+
+                <div class="form-group" data-target-field="post" hidden>
+                    <label>Post</label>
+                    <select name="target_id_post" disabled>
+                        <option value="">— Select a post —</option>
+                        {foreach $posts as $p}
+                            <option value="{$p['id']}">{$p['title']} ({$p['slug']})</option>
+                        {/foreach}
+                    </select>
+                </div>
+
+                <div class="form-group" data-target-field="category" hidden>
+                    <label>Category</label>
+                    <select name="target_id_category" disabled>
+                        <option value="">— Select a category —</option>
+                        {foreach $categories as $c}
+                            <option value="{$c['id']}">{$c['name']} ({$c['slug']})</option>
+                        {/foreach}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Parent (optional)</label>
+                    <select name="parent_id">
+                        <option value="">— Top level —</option>
+                        {foreach $parent_candidates as $pc}
+                            <option value="{$pc['id']}">{$pc['label']}</option>
+                        {/foreach}
+                    </select>
+                    <small>Nesting under a parent creates a dropdown on the frontend.</small>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">Add</button>
             </form>
         </div>
-    </div>
+    </aside>
 </div>
+
+<script>
+(function () {
+    const form = document.querySelector('[data-menu-item-form]');
+    if (!form) return;
+    const select = form.querySelector('[data-target-type]');
+    const fields = form.querySelectorAll('[data-target-field]');
+    function sync() {
+        const value = select.value;
+        fields.forEach(function (f) {
+            const match = f.dataset.targetField === value;
+            f.hidden = !match;
+            f.querySelectorAll('input, select').forEach(function (el) {
+                el.disabled = !match;
+            });
+        });
+    }
+    select.addEventListener('change', sync);
+    sync();
+})();
+</script>
 {/block}

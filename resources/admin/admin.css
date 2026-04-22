@@ -1,0 +1,723 @@
+/*
+ * TypeDock admin styles (Tailwind 4).
+ *
+ * Design goals:
+ *   - Familiar WordPress-style shell (dark sidebar + light content) but with
+ *     modern typography, consistent spacing, and accessible focus rings.
+ *   - Shadows and gradients are used sparingly: just enough to separate
+ *     panels from the page, never decorative.
+ *   - Everything is utility-first; the small @layer components block below
+ *     is only for pieces we reuse many times (buttons, badges, cards).
+ */
+
+@import "tailwindcss";
+
+@source "../../admin/**/*.latte";
+@source "../../src/**/*.php";
+
+@theme {
+    --font-sans: "Inter var", "Inter", ui-sans-serif, system-ui, -apple-system,
+        "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        "Liberation Mono", "Courier New", monospace;
+
+    /* Brand — a restrained indigo. Used for primary buttons and active nav. */
+    --color-brand-50:  #eef2ff;
+    --color-brand-100: #e0e7ff;
+    --color-brand-200: #c7d2fe;
+    --color-brand-300: #a5b4fc;
+    --color-brand-400: #818cf8;
+    --color-brand-500: #6366f1;
+    --color-brand-600: #4f46e5;
+    --color-brand-700: #4338ca;
+    --color-brand-800: #3730a3;
+    --color-brand-900: #312e81;
+
+    /* Sidebar gets its own near-black palette so tweaking it doesn't bleed
+       into the generic slate scale used in the content area. */
+    --color-sidebar-bg:      #0f172a;
+    --color-sidebar-bg-soft: #1e293b;
+    --color-sidebar-fg:      #cbd5e1;
+    --color-sidebar-muted:   #94a3b8;
+    --color-sidebar-hover:   #1e293b;
+    --color-sidebar-active:  #312e81;
+}
+
+@layer base {
+    html {
+        -webkit-text-size-adjust: 100%;
+        text-rendering: optimizeLegibility;
+    }
+    body {
+        @apply bg-slate-50 text-slate-800 antialiased;
+        font-family: var(--font-sans);
+    }
+    code, pre, kbd, samp {
+        font-family: var(--font-mono);
+    }
+    /* Consistent focus ring across inputs, buttons and links. */
+    :where(a, button, [role="button"], input, select, textarea, summary):focus-visible {
+        @apply outline-none ring-2 ring-brand-500/60 ring-offset-1 ring-offset-white;
+    }
+    /* Default form controls — give them a sensible baseline so individual
+       pages don't have to repeat border/radius/padding on every input. */
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="url"],
+    input[type="search"],
+    input[type="tel"],
+    input[type="date"],
+    input[type="datetime-local"],
+    select,
+    textarea {
+        @apply w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900
+               shadow-xs placeholder:text-slate-400
+               focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none;
+    }
+    textarea {
+        @apply min-h-24 leading-relaxed;
+    }
+    label {
+        @apply text-sm font-medium text-slate-700;
+    }
+    small {
+        @apply text-xs text-slate-500;
+    }
+    h1 { @apply text-2xl font-semibold text-slate-900; }
+    h2 { @apply text-lg font-semibold text-slate-900; }
+    h3 { @apply text-base font-semibold text-slate-900; }
+    code {
+        @apply rounded bg-slate-100 px-1.5 py-0.5 text-[0.85em] text-slate-700;
+    }
+}
+
+@layer components {
+    /* ---------- Buttons --------------------------------------------------- */
+    .btn {
+        @apply inline-flex cursor-pointer items-center justify-center gap-1.5
+               rounded-md border border-transparent px-3.5 py-2
+               text-sm font-medium whitespace-nowrap transition-colors
+               disabled:cursor-not-allowed disabled:opacity-60;
+    }
+    .btn-primary {
+        @apply bg-brand-600 text-white shadow-xs hover:bg-brand-700 active:bg-brand-800;
+    }
+    .btn-secondary {
+        @apply border-slate-300 bg-white text-slate-700 shadow-xs
+               hover:border-slate-400 hover:bg-slate-50;
+    }
+    .btn-ghost {
+        @apply text-slate-600 hover:bg-slate-100 hover:text-slate-900;
+    }
+    .btn-danger {
+        @apply bg-red-600 text-white shadow-xs hover:bg-red-700 active:bg-red-800;
+    }
+    .btn-sm  { @apply px-2.5 py-1 text-xs; }
+    .btn-xs  { @apply gap-1 px-2 py-0.5 text-xs; }
+    .btn-block { @apply w-full; }
+
+    .btn svg { @apply h-4 w-4; }
+    .btn-sm svg, .btn-xs svg { @apply h-3.5 w-3.5; }
+
+    /* ---------- Badges ---------------------------------------------------- */
+    .badge {
+        @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5
+               text-xs font-medium;
+    }
+    .badge-draft     { @apply bg-slate-100  text-slate-600; }
+    .badge-review    { @apply bg-amber-100  text-amber-800; }
+    .badge-published { @apply bg-emerald-100 text-emerald-800; }
+    .badge-trash     { @apply bg-red-100    text-red-700; }
+    .badge-success   { @apply bg-emerald-100 text-emerald-800; }
+    .badge-muted     { @apply bg-slate-100  text-slate-500; }
+    .badge-info      { @apply bg-brand-100  text-brand-800; }
+
+    /* ---------- Surfaces -------------------------------------------------- */
+    .card {
+        @apply rounded-lg border border-slate-200 bg-white shadow-xs;
+    }
+    .card-header {
+        @apply flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-3.5;
+    }
+    .card-header h2, .card-header h3 { @apply m-0; }
+    .card-body   { @apply px-5 py-4; }
+    .card-footer { @apply border-t border-slate-200 px-5 py-3.5; }
+
+    /* ---------- Data tables ----------------------------------------------- */
+    .data-table {
+        @apply w-full overflow-hidden rounded-lg border border-slate-200
+               bg-white text-sm shadow-xs;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    .data-table thead {
+        @apply bg-slate-50;
+    }
+    .data-table th {
+        @apply border-b border-slate-200 px-4 py-2.5 text-left text-xs
+               font-semibold tracking-wide text-slate-600 uppercase;
+    }
+    .data-table td {
+        @apply border-b border-slate-100 px-4 py-3 align-middle text-slate-700;
+    }
+    .data-table tbody tr:last-child td { border-bottom: 0; }
+    .data-table tbody tr:hover { @apply bg-slate-50/60; }
+    .data-table a { @apply text-brand-700 hover:text-brand-800 hover:underline; }
+    .data-table .actions {
+        @apply flex flex-wrap items-center justify-end gap-1.5 text-right;
+    }
+
+    /* ---------- Alerts ---------------------------------------------------- */
+    .alert {
+        @apply flex items-start gap-2.5 rounded-md border px-3.5 py-2.5 text-sm;
+    }
+    .alert-success { @apply border-emerald-200 bg-emerald-50 text-emerald-900; }
+    .alert-error   { @apply border-red-200      bg-red-50      text-red-900; }
+    .alert-info    { @apply border-brand-200    bg-brand-50    text-brand-900; }
+    .alert-warning { @apply border-amber-200    bg-amber-50    text-amber-900; }
+    .alert svg { @apply mt-0.5 h-4 w-4 flex-shrink-0; }
+
+    /* ---------- Forms ----------------------------------------------------- */
+    .form-group { @apply mb-4; }
+    .form-group label {
+        @apply mb-1.5 flex items-center gap-1 text-sm font-medium text-slate-700;
+    }
+    .form-group label small { @apply font-normal text-slate-500; }
+    .form-group > small,
+    .form-hint { @apply mt-1.5 block text-xs leading-snug text-slate-500; }
+    fieldset {
+        @apply rounded-md border border-slate-200 p-4;
+    }
+    fieldset legend {
+        @apply px-1.5 text-xs font-semibold tracking-wide text-slate-600 uppercase;
+    }
+
+    .checkbox-label {
+        @apply inline-flex items-center gap-2 text-sm text-slate-700 cursor-pointer;
+    }
+    .checkbox-label input[type="checkbox"],
+    .checkbox-label input[type="radio"] {
+        @apply h-4 w-4 rounded border-slate-300 text-brand-600
+               focus:ring-brand-500 focus:ring-offset-0;
+    }
+
+    /* Horizontal label+input layout — useful on settings-style forms where
+       the label and the control live on the same row. */
+    .form-row {
+        @apply grid items-start gap-3 py-3 border-b border-slate-100 last:border-0
+               sm:grid-cols-[200px_minmax(0,1fr)];
+    }
+    .form-row > label {
+        @apply m-0 pt-2 text-sm font-medium text-slate-700;
+    }
+    .form-row .form-hint { @apply mt-1.5; }
+
+    /* Footer for forms — the Save/Cancel button row. */
+    .form-actions {
+        @apply mt-6 flex flex-wrap items-center gap-2;
+    }
+    .form-actions.right { @apply justify-end; }
+    .form-actions .spacer { @apply flex-1; }
+
+    /* Toggle switch. Wrap a hidden <input type="checkbox"> inside:
+         <label class="switch">
+             <input type="checkbox" name="enabled">
+             <span class="switch-track"><span class="switch-thumb"></span></span>
+             <span class="switch-label">Enable feature</span>
+         </label> */
+    .switch {
+        @apply inline-flex items-center gap-2.5 cursor-pointer select-none;
+    }
+    .switch input { @apply sr-only; }
+    .switch-track {
+        @apply relative inline-flex h-5 w-9 flex-shrink-0 rounded-full
+               bg-slate-300 transition-colors;
+    }
+    .switch-thumb {
+        @apply absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow-xs
+               transition-transform;
+    }
+    .switch input:checked + .switch-track              { @apply bg-brand-600; }
+    .switch input:checked + .switch-track .switch-thumb { transform: translateX(1rem); }
+    .switch input:focus-visible + .switch-track        { @apply ring-2 ring-brand-500/60 ring-offset-1; }
+    .switch input:disabled + .switch-track             { @apply opacity-50 cursor-not-allowed; }
+    .switch-label { @apply text-sm text-slate-700; }
+
+    /* ---------- Page layout primitives ------------------------------------ */
+    .page-header {
+        @apply mb-6 flex flex-wrap items-center justify-between gap-3;
+    }
+    .page-header > div:first-child,
+    .page-header .page-title { @apply flex flex-col gap-1; }
+    .page-header h1 { @apply m-0; }
+    .page-header .subtitle { @apply text-sm text-slate-500; }
+
+    .filter-form {
+        @apply mb-4 flex flex-wrap items-center gap-2 rounded-lg border
+               border-slate-200 bg-white p-2.5 shadow-xs;
+    }
+    .filter-form input,
+    .filter-form select { @apply w-auto min-w-40; }
+
+    /* ---------- Tabs ------------------------------------------------------
+       Public class. Pair with [data-tabs] + [data-tab-target] + [data-tab-panel]
+       for JS-driven panel switching (see admin.js). Purely-visual usage (no
+       JS, distinct URLs per tab) also supported — just add `.is-active` to
+       the current <a>. *.settings-nav is kept as a deprecated alias. */
+    .tabs,
+    .settings-nav {
+        @apply mb-6 flex flex-wrap gap-1 border-b border-slate-200;
+    }
+    .tabs .tab,
+    .tabs > a,
+    .tabs > button,
+    .settings-nav a {
+        @apply -mb-px inline-flex cursor-pointer items-center gap-2
+               border-b-2 border-transparent bg-transparent px-3 py-2
+               text-sm font-medium text-slate-500
+               hover:border-slate-300 hover:text-slate-700;
+    }
+    .tabs .tab.is-active,
+    .tabs > a.is-active,
+    .tabs > a.active,
+    .tabs > button.is-active,
+    .settings-nav a.active {
+        @apply border-brand-600 text-brand-700;
+    }
+    .tab-panel { @apply hidden; }
+    .tab-panel.is-active { @apply block; }
+
+    /* ---------- Sidebar panels (used next to list tables) ----------------- */
+    .sidebar-panel {
+        @apply rounded-lg border border-slate-200 bg-white p-5 shadow-xs;
+    }
+    .sidebar-panel h3 { @apply mb-3 text-sm font-semibold text-slate-900; }
+
+    /* ---------- Empty state ---------------------------------------------- */
+    .empty-state {
+        @apply flex flex-col items-center justify-center gap-3 rounded-lg border
+               border-dashed border-slate-300 bg-white px-6 py-12 text-center;
+    }
+    .empty-state svg { @apply h-10 w-10 text-slate-300; }
+    .empty-state h3 { @apply text-base font-semibold text-slate-700; }
+    .empty-state p  { @apply m-0 max-w-sm text-sm text-slate-500; }
+
+    /* ---------- Pagination ------------------------------------------------ */
+    .pagination-wrapper {
+        @apply mt-4 flex flex-wrap items-center gap-1;
+    }
+    .pagination-wrapper a,
+    .pagination-current {
+        @apply inline-flex h-8 min-w-8 items-center justify-center rounded-md
+               border border-slate-200 bg-white px-2 text-sm text-slate-700
+               shadow-xs;
+    }
+    .pagination-wrapper a:hover { @apply border-slate-300 bg-slate-50; }
+    .pagination-current {
+        @apply border-brand-600 bg-brand-600 text-white;
+    }
+
+    /* ---------- Stats grid (dashboard) ----------------------------------- */
+    .stats-grid {
+        @apply mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4;
+    }
+    .stat-card {
+        @apply flex items-center gap-3 rounded-lg border border-slate-200
+               bg-white p-4 shadow-xs;
+    }
+    .stat-card .stat-icon {
+        @apply flex h-10 w-10 flex-shrink-0 items-center justify-center
+               rounded-md bg-brand-50 text-brand-600;
+    }
+    .stat-card .stat-icon svg { @apply h-5 w-5; }
+    .stat-card h3 {
+        @apply m-0 text-xs font-medium tracking-wide text-slate-500 uppercase;
+    }
+    .stat-card .stat-number {
+        @apply text-2xl font-semibold text-slate-900;
+    }
+
+    /* ---------- Media library grid --------------------------------------- */
+    .media-grid {
+        @apply mt-4 grid gap-3;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    }
+    .media-item {
+        @apply overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xs;
+    }
+    .media-item img {
+        @apply block aspect-square w-full object-cover;
+    }
+    .media-icon {
+        @apply flex aspect-square w-full items-center justify-center
+               bg-slate-100 text-xs font-medium text-slate-500;
+    }
+    .media-info { @apply px-2.5 py-2 text-xs; }
+    .media-name {
+        @apply block overflow-hidden text-ellipsis whitespace-nowrap font-medium text-slate-800;
+    }
+    .media-actions {
+        @apply flex flex-wrap gap-1 border-t border-slate-200 p-2;
+    }
+    .upload-drop-zone {
+        @apply mb-4 cursor-pointer rounded-lg border-2 border-dashed
+               border-slate-300 bg-white px-6 py-10 text-center text-slate-600
+               transition-colors hover:border-brand-400 hover:bg-brand-50/40;
+    }
+    .upload-drop-zone p { @apply m-0; }
+    .upload-drop-zone.is-dragover {
+        @apply border-brand-500 bg-brand-50/80;
+    }
+    #media-upload-area.is-uploading .upload-drop-zone {
+        @apply animate-pulse;
+    }
+    .media-storage-badge {
+        @apply m-0 mt-1 flex flex-wrap items-center gap-2;
+    }
+
+    /* ---------- OG image picker (SEO panel) ------------------------------ */
+    .og-image-control {
+        @apply flex flex-wrap items-center gap-2;
+    }
+    .og-image-control input[type="text"] {
+        @apply flex-1 min-w-0 bg-slate-50;
+    }
+    .og-image-preview {
+        @apply mt-2;
+    }
+    .og-image-preview img {
+        @apply max-h-32 w-auto rounded-md border border-slate-200;
+    }
+    .og-image-pill {
+        @apply inline-flex items-center gap-1 rounded-full bg-emerald-50
+               px-2 py-0.5 text-xs font-medium text-emerald-700;
+    }
+
+    /* ---------- Shared modal (media picker, etc.) ------------------------
+       Used by window.TypeDockMedia.openPicker. Plugins can reuse the same
+       .td-modal-* classes if they need a lightweight dialog. */
+    body.td-modal-open { overflow: hidden; }
+
+    .td-modal-root {
+        @apply fixed inset-0 z-50 flex items-center justify-center p-4;
+    }
+    .td-modal-backdrop {
+        @apply absolute inset-0 bg-slate-900/50 backdrop-blur-sm;
+    }
+    .td-modal {
+        @apply relative z-10 flex max-h-[90vh] w-full max-w-4xl flex-col
+               overflow-hidden rounded-xl border border-slate-200
+               bg-white shadow-xl;
+    }
+    .td-modal-header {
+        @apply flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-3;
+    }
+    .td-modal-header h2 {
+        @apply m-0 text-base font-semibold text-slate-900;
+    }
+    .td-modal-close {
+        @apply flex h-8 w-8 cursor-pointer items-center justify-center
+               rounded-md border border-transparent bg-transparent
+               text-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800;
+    }
+    .td-modal-toolbar {
+        @apply flex flex-wrap items-center gap-2 border-b border-slate-200
+               bg-slate-50 px-4 py-2.5;
+    }
+    .td-modal-toolbar .td-picker-search {
+        @apply flex-1 min-w-48;
+    }
+    .td-modal-toolbar .td-picker-status {
+        @apply ml-auto text-xs text-slate-500;
+    }
+    .td-modal-body {
+        @apply min-h-0 flex-1 overflow-y-auto p-4;
+    }
+    .td-modal-footer {
+        @apply flex justify-end gap-2 border-t border-slate-200 px-5 py-3;
+    }
+
+    /* The "Upload new" label behaves like a button but wraps a hidden input.
+       Fight default button svg rule by scoping to the hidden file input. */
+    .td-picker-upload { cursor: pointer; }
+    .td-picker-upload input[type="file"] { display: none; }
+
+    .td-picker-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        @apply gap-3;
+    }
+    .td-picker-item {
+        @apply cursor-pointer overflow-hidden rounded-lg border-2 border-slate-200
+               bg-white p-0 text-left transition-colors
+               hover:border-brand-300;
+    }
+    .td-picker-item.is-selected {
+        @apply border-brand-600 ring-2 ring-brand-500/40;
+    }
+    .td-picker-item img {
+        @apply block aspect-square w-full object-cover;
+    }
+    .td-picker-file {
+        @apply flex aspect-square w-full items-center justify-center
+               bg-slate-100 text-xs font-medium text-slate-500;
+    }
+    .td-picker-name {
+        @apply block overflow-hidden truncate px-2 py-1.5 text-xs
+               font-medium text-slate-700;
+    }
+    .td-picker-empty {
+        @apply col-span-full flex min-h-48 items-center justify-center
+               text-sm text-slate-500;
+    }
+
+    /* ---------- Slot / placement --------------------------------------- */
+    .slot-section {
+        @apply mb-4 rounded-lg border border-slate-200 bg-white p-5 shadow-xs;
+    }
+    .slot-section h2 { @apply mb-3 text-base; }
+    .placement-item {
+        @apply mb-1.5 flex items-center gap-2 rounded-md border border-slate-200
+               bg-slate-50/50 px-3 py-2;
+    }
+    .drag-handle { @apply cursor-grab text-slate-400 select-none; }
+    .add-component-form {
+        @apply mt-3 flex flex-wrap items-center gap-2;
+    }
+
+    /* ---------- Inline forms --------------------------------------------- */
+    .inline-form {
+        @apply mb-4 flex flex-wrap items-end gap-2 rounded-lg border border-slate-200
+               bg-white p-3 shadow-xs;
+    }
+    .inline-form input:not([type="hidden"]),
+    .inline-form select,
+    .inline-form textarea { @apply w-auto min-w-40; }
+
+    /* ---------- Flash / help text ---------------------------------------- */
+    .help-text { @apply mb-4 text-sm text-slate-600; }
+    .preview-link {
+        @apply ml-1 text-xs text-slate-400 hover:text-brand-600;
+    }
+
+    /* ===================================================================
+       Editor (post/page edit)
+       =================================================================== */
+    .editor-publishbar {
+        @apply sticky top-0 z-20 mb-5 flex flex-wrap items-end gap-3
+               rounded-lg border border-slate-200 bg-white/90 px-4 py-3
+               shadow-xs backdrop-blur;
+    }
+    .editor-publishbar .pb-field {
+        @apply flex flex-col gap-1 text-[0.65rem] font-semibold tracking-wide
+               text-slate-500 uppercase;
+    }
+    .editor-publishbar .pb-field select,
+    .editor-publishbar .pb-field input {
+        @apply w-auto rounded-md border border-slate-300 px-2 py-1.5 text-sm
+               font-normal tracking-normal text-slate-800 normal-case;
+    }
+    .editor-publishbar .pb-view {
+        @apply ml-auto inline-flex max-w-sm items-center gap-1 overflow-hidden
+               rounded-md px-2 py-1 text-xs whitespace-nowrap text-slate-500
+               text-ellipsis hover:bg-slate-100;
+    }
+    .editor-publishbar .pb-view code { @apply bg-transparent p-0 text-slate-400; }
+    .editor-publishbar .pb-actions { @apply ml-auto; }
+    .editor-publishbar .pb-view + .pb-actions { @apply ml-0; }
+
+    .editor-column { @apply mx-auto max-w-3xl; }
+    .title-input {
+        @apply w-full border-0 bg-transparent px-0 py-1 text-3xl font-bold
+               text-slate-900 shadow-none outline-none placeholder:text-slate-300
+               focus:ring-0;
+    }
+    .slug-row {
+        @apply mb-4 flex items-center gap-2 border-b border-slate-200 pb-3;
+    }
+    .slug-row label {
+        @apply text-[0.65rem] font-semibold tracking-wide text-slate-500 uppercase;
+    }
+    .slug-row input {
+        @apply flex-1 rounded border border-transparent bg-transparent px-2 py-1
+               font-mono text-sm text-slate-500 shadow-none
+               focus:border-slate-300 focus:bg-white;
+    }
+
+    .meta-section {
+        @apply mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white;
+    }
+    .meta-section > summary {
+        @apply flex cursor-pointer items-center gap-2 px-4 py-3 text-xs
+               font-semibold tracking-wide text-slate-600 uppercase select-none;
+        list-style: none;
+    }
+    .meta-section > summary::-webkit-details-marker { display: none; }
+    .meta-section > summary::before {
+        content: "▸";
+        @apply inline-block w-4 text-slate-400;
+    }
+    .meta-section[open] > summary::before { content: "▾"; }
+    .meta-section > .meta-body {
+        @apply border-t border-slate-200 px-4 py-4;
+    }
+    .meta-hint { @apply m-0 mt-2 text-xs text-slate-500; }
+
+    /* ===================================================================
+       Login pages
+       =================================================================== */
+    body.login-page {
+        /* Very subtle diagonal gradient — enough to give depth without
+           competing with the form card itself. */
+        @apply min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-brand-50;
+    }
+    .login-container {
+        @apply flex min-h-screen items-center justify-center px-4 py-12;
+    }
+    .login-box {
+        @apply w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8 shadow-sm;
+    }
+    .login-logo { @apply mb-6 text-center; }
+    .login-logo h1 {
+        @apply m-0 mb-1 text-2xl font-bold tracking-tight text-slate-900;
+    }
+    .login-logo p { @apply m-0 text-sm text-slate-500; }
+    .back-link {
+        @apply mt-4 text-center text-sm text-slate-500;
+    }
+    .back-link a { @apply text-brand-600 hover:text-brand-700 hover:underline; }
+
+    /* ===================================================================
+       Layout primitives — public API for plugin admin pages.
+       =================================================================== */
+
+    /* Generic evenly-spaced multi-column grid. Use --cols to override. */
+    .columns {
+        display: grid;
+        grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr));
+        gap: 1.5rem;
+    }
+    .columns-2 { --cols: 2; }
+    .columns-3 { --cols: 3; }
+    .columns-4 { --cols: 4; }
+    @media (max-width: 768px) {
+        .columns:not(.keep) { grid-template-columns: minmax(0, 1fr); }
+    }
+
+    /* Main content + right sidebar (settings-style). Collapses to a single
+       column below `lg`. `.editor-layout` kept as a legacy alias. */
+    .columns-main-sidebar,
+    .editor-layout {
+        @apply grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px];
+    }
+
+    /* Vertical stack with consistent gap. */
+    .stack   { @apply flex flex-col gap-4; }
+    .stack-sm { @apply flex flex-col gap-2; }
+    .stack-lg { @apply flex flex-col gap-6; }
+
+    /* Horizontal cluster that wraps — useful for button groups, tag lists. */
+    .cluster    { @apply flex flex-wrap items-center gap-2; }
+    .cluster-sm { @apply flex flex-wrap items-center gap-1; }
+
+    /* Toolbar — a row that pushes actions to the right. */
+    .toolbar {
+        @apply mb-4 flex flex-wrap items-center gap-2 rounded-lg border
+               border-slate-200 bg-white p-2 shadow-xs;
+    }
+    .toolbar .spacer { @apply flex-1; }
+}
+
+/* ---------------------------------------------------------------------------
+ * Shell layout (sidebar + topbar + content)
+ *
+ * Kept outside @layer components so these class names are stable even if a
+ * Tailwind refactor tweaks specificity order later.
+ * ------------------------------------------------------------------------- */
+.admin-wrapper {
+    @apply flex min-h-screen;
+}
+.admin-wrapper-guest {
+    @apply block;
+}
+
+.admin-sidebar {
+    width: 15rem;
+    background: var(--color-sidebar-bg);
+    color: var(--color-sidebar-fg);
+    @apply fixed inset-y-0 left-0 z-30 flex flex-col overflow-y-auto;
+}
+.admin-sidebar a { @apply no-underline; }
+.admin-logo {
+    @apply flex items-center gap-2 border-b px-4 py-4;
+    border-color: var(--color-sidebar-bg-soft);
+}
+.admin-logo-mark {
+    @apply flex h-8 w-8 items-center justify-center rounded-md
+           bg-gradient-to-br from-brand-500 to-brand-700 text-white;
+}
+.admin-logo-mark svg { @apply h-5 w-5; }
+.admin-logo-text {
+    @apply text-base font-semibold tracking-tight text-white;
+}
+
+.admin-menu {
+    @apply flex-1 space-y-0.5 overflow-y-auto px-2 py-3;
+}
+.admin-menu-section {
+    @apply px-2 pt-4 pb-1 text-[0.65rem] font-semibold tracking-wider uppercase;
+    color: var(--color-sidebar-muted);
+}
+.admin-menu-section:first-child { @apply pt-0; }
+.admin-menu .menu-item {
+    @apply flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm;
+    color: var(--color-sidebar-fg);
+}
+.admin-menu .menu-item:hover {
+    background: var(--color-sidebar-hover);
+    @apply text-white;
+}
+.admin-menu .menu-item.is-active {
+    background: var(--color-sidebar-active);
+    @apply text-white shadow-xs;
+}
+.admin-menu .menu-item svg {
+    @apply h-4 w-4 flex-shrink-0 opacity-90;
+}
+
+.admin-user-info {
+    @apply flex items-center gap-3 border-t px-3 py-3 text-sm;
+    border-color: var(--color-sidebar-bg-soft);
+}
+.admin-user-avatar {
+    @apply flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full
+           bg-gradient-to-br from-brand-400 to-brand-600 text-xs font-semibold text-white;
+}
+.admin-user-info .username {
+    @apply block truncate text-sm font-medium text-white;
+}
+.admin-user-info .logout-link {
+    @apply block truncate text-xs;
+    color: var(--color-sidebar-muted);
+}
+.admin-user-info .logout-link:hover { @apply text-white; }
+
+.admin-content {
+    margin-left: 15rem;
+    @apply flex min-h-screen flex-1 flex-col;
+}
+.admin-header {
+    @apply sticky top-0 z-20 flex h-14 items-center gap-4 border-b border-slate-200
+           bg-white/80 px-6 backdrop-blur;
+}
+.admin-header-title {
+    @apply text-sm font-medium text-slate-500;
+}
+.admin-header-title strong {
+    @apply font-semibold text-slate-900;
+}
+.admin-main {
+    @apply flex-1 px-6 py-6;
+}

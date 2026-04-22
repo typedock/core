@@ -1,30 +1,48 @@
 {layout '../../layouts/admin-base.latte'}
+
 {block page_title}Pages{/block}
+
 {block content}
 <div class="page-header">
-    <h1>Pages</h1>
-    <a href="/admin/pages/create" class="btn btn-primary">New Page</a>
+    <div>
+        <h1>Pages</h1>
+        <p class="subtitle">Static pages such as About, Contact, or landing pages.</p>
+    </div>
+    <a href="/admin/pages/create" class="btn btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        <span>New Page</span>
+    </a>
 </div>
+
+{if empty($pages)}
+    <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+        <h3>No pages yet</h3>
+        <p>Create static pages like "About" or "Contact" to add navigation destinations.</p>
+        <a href="/admin/pages/create" class="btn btn-primary">New Page</a>
+    </div>
+{else}
 <table class="data-table">
     <thead>
-        <tr><th>Title</th><th>Slug</th><th>Status</th><th>Updated</th><th>Actions</th></tr>
+        <tr><th>Title</th><th>Slug</th><th>Status</th><th>Updated</th><th class="text-right">Actions</th></tr>
     </thead>
     <tbody>
         {foreach $pages as $page}
         <tr>
-            <td><a href="/admin/pages/{$page['id']}/edit">{$page['title']}</a></td>
+            <td><a href="/admin/pages/{$page['id']}/edit" class="font-medium">{$page['title']}</a></td>
             <td><code>{$page['slug']}</code></td>
             <td><span class="badge badge-{$page['status']}">{$page['status']}</span></td>
-            <td>{$page['updated_at']|date:'Y/m/d'}</td>
-            <td>
-                <a href="/admin/pages/{$page['id']}/edit" class="btn btn-sm">Edit</a>
-                <form method="post" action="/admin/pages/{$page['id']}/delete" style="display:inline">
+            <td class="text-slate-500">{$page['updated_at']|date:'Y/m/d'}</td>
+            <td class="actions">
+                <a href="/admin/pages/{$page['id']}/edit" class="btn btn-secondary btn-sm">Edit</a>
+                <form method="post" action="/admin/pages/{$page['id']}/delete" class="inline">
                     <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this item?')">Delete</button>
+                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this item?')">Delete</button>
                 </form>
             </td>
         </tr>
         {/foreach}
     </tbody>
 </table>
+{/if}
 {/block}

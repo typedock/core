@@ -4,7 +4,7 @@ declare(strict_types=1);
 /**
  * TypeDock browser installation wizard.
  *
- * Entered automatically when .env or storage/.installed are missing.
+ * Entered automatically when config.php or storage/.installed are missing.
  * Deletes or locks itself after successful installation.
  */
 
@@ -15,7 +15,7 @@ require $root . '/vendor/autoload.php';
 
 use TypeDock\Install\Installer;
 
-// --- Load existing config.php / .env (if partial install) ---
+// --- Load existing config.php (if partial install) ---
 typedock_load_config($root);
 
 $installer = new Installer($root);
@@ -64,6 +64,14 @@ if ($method === 'POST') {
 
     switch ($step) {
         case 'database':
+            // The welcome screen's "Next: database" button also posts
+            // step=database without any db_* fields. Treat that as "show the
+            // form", not "test the connection" — otherwise we run testDatabase
+            // against unset defaults (mysql/127.0.0.1) and the user is bounced
+            // back with an error before they've had a chance to enter anything.
+            if (!isset($_POST['db_driver'])) {
+                break;
+            }
             $db = [
                 'driver'      => $_POST['db_driver'] ?? 'mysql',
                 'host'        => trim((string) ($_POST['db_host'] ?? '127.0.0.1')),
@@ -153,10 +161,22 @@ if ($method === 'POST') {
                 $admin = $data['admin'] ?? [];
                 $installer->createAdmin($db, $admin['email'] ?? '', $admin['name'] ?? '', $admin['password'] ?? '');
 
-                // 4. Lock.
+                // 3b. Seed site_options so admin Settings → General is populated.
+                $installer->seedSiteOptions($db, $site);
+
+                // 4. Activate the default theme (seeds slot_placements). Non-fatal —
+                // a missing default theme should not block install; the operator
+                // can pick a theme from /admin/themes afterward.
+                try {
+                    $installer->activateTheme($db, 'default');
+                } catch (\Throwable) {
+                    // Silently continue.
+                }
+
+                // 5. Lock.
                 $installer->lock(defined('TYPEDOCK_VERSION') ? TYPEDOCK_VERSION : '0.1.0');
 
-                // 5. Optional self-delete.
+                // 6. Optional self-delete.
                 if (!empty($_POST['delete_installer'])) {
                     @unlink(__FILE__);
                 }
@@ -228,15 +248,29 @@ code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; }
       <tr><th>ext-<?= $e($x) ?></th><td class="<?= $ok ? 'ok' : 'warn' ?>"><?= $ok ? 'OK' : 'not loaded' ?></td></tr>
     <?php endforeach; ?>
     <?php foreach ($env['writable'] as $path => $ok): ?>
-      <tr><th><?= $e($path) ?> writable</th><td class="<?= $ok ? 'ok' : 'bad' ?>"><?= $ok ? 'OK' : 'NOT WRITABLE' ?></td></tr>
+      <?php
+        // config.php is redundant when configuration is already provided via
+        // environment variables (docker-compose, Kubernetes, etc.), so
+        // downgrade the check from blocker (bad) to advisory (warn).
+        $isConfigCheck = ($path === 'root (for config.php)');
+        $class = $ok ? 'ok' : ($isConfigCheck && $env['env_configured'] ? 'warn' : 'bad');
+        $label = $ok ? 'OK' : ($isConfigCheck && $env['env_configured'] ? 'NOT WRITABLE (optional — configured via environment)' : 'NOT WRITABLE');
+      ?>
+      <tr><th><?= $e($path) ?> writable</th><td class="<?= $class ?>"><?= $label ?></td></tr>
     <?php endforeach; ?>
     <tr><th>mod_rewrite</th><td class="<?= $env['mod_rewrite'] === false ? 'warn' : 'ok' ?>"><?= $env['mod_rewrite'] === null ? 'unknown' : ($env['mod_rewrite'] ? 'loaded' : 'not detected') ?></td></tr>
   </table>
 
   <?php
+    $writableBlocked = $env['writable'];
+    // When config is provided via environment variables, config.php is
+    // optional — don't block the installer on it.
+    if ($env['env_configured']) {
+        unset($writableBlocked['root (for config.php)']);
+    }
     $blocked = !$env['php']
       || in_array(false, $env['extensions'], true)
-      || in_array(false, $env['writable'], true);
+      || in_array(false, $writableBlocked, true);
   ?>
   <?php if ($blocked): ?>
     <p class="bad">Please resolve the items above before continuing.</p>
@@ -249,7 +283,13 @@ code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; }
   </form>
 
 <?php elseif ($step === 'database'): ?>
-  <?php $db = $data['db'] ?? []; ?>
+  <?php
+    // Prefer values the operator already submitted this session, then real
+    // env vars (docker-compose / Kubernetes), then built-in defaults. This
+    // keeps the driver pulldown on SQLite when DB_DRIVER=sqlite is in env,
+    // instead of snapping back to MySQL after a form reload.
+    $db = $data['db'] ?? $installer->dbFromEnv() ?? [];
+  ?>
   <form method="post">
     <input type="hidden" name="_csrf" value="<?= $e($csrf) ?>">
     <input type="hidden" name="step" value="database">

@@ -9,6 +9,13 @@ class MailModule implements ModuleInterface
 {
     public function register(): void
     {
-        // TODO: Replace MailerInterface with SMTP implementation
+        \Flight::map('mailer', function (): MailService {
+            static $service = null;
+            if ($service !== null) {
+                return $service;
+            }
+            $service = new MailService();
+            return $service;
+        });
     }
 }

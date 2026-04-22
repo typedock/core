@@ -48,7 +48,7 @@ class RssGenerator
 
         foreach ($posts as $post) {
             $title   = htmlspecialchars((string) $post['title'], ENT_XML1 | ENT_COMPAT, 'UTF-8');
-            $link    = htmlspecialchars($this->siteUrl . '/blog/' . $post['slug'], ENT_XML1 | ENT_COMPAT, 'UTF-8');
+            $link    = htmlspecialchars($this->siteUrl . post_path((string) $post['slug']), ENT_XML1 | ENT_COMPAT, 'UTF-8');
             $desc    = htmlspecialchars((string) ($post['excerpt'] ?? ''), ENT_XML1 | ENT_COMPAT, 'UTF-8');
             $pubDate = date(DATE_RSS, strtotime((string) $post['published_at']));
             $guid    = $link;

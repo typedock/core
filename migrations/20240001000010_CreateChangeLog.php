@@ -2,26 +2,27 @@
 
 declare(strict_types=1);
 
-use Phinx\Migration\AbstractMigration;
+use TypeDock\Core\Migration\Blueprint;
+use TypeDock\Core\Migration\Migration;
+use TypeDock\Core\Migration\Schema;
 
-final class CreateChangeLog extends AbstractMigration
+final class CreateChangeLog extends Migration
 {
-    public function change(): void
+    public function up(Schema $schema): void
     {
-        // change_log table — immutable audit log, no FK constraints (user may be deleted)
-        $changeLog = $this->table('change_log', ['id' => false, 'primary_key' => ['id']]);
-        $changeLog
-            ->addColumn('id', 'string', ['limit' => 36])
-            ->addColumn('target_type', 'string', ['limit' => 100])
-            ->addColumn('target_id', 'string', ['limit' => 36])
-            ->addColumn('action', 'string', ['limit' => 50])
-            ->addColumn('changes', 'text', ['null' => true, 'default' => null])
-            ->addColumn('user_id', 'string', ['limit' => 36, 'null' => true, 'default' => null])
-            ->addColumn('user_name', 'string', ['limit' => 255, 'null' => true, 'default' => null])
-            ->addColumn('created_at', 'datetime', ['default' => 'CURRENT_TIMESTAMP'])
-            ->addIndex(['target_type', 'target_id'])
-            ->addIndex(['user_id'])
-            ->addIndex(['created_at'])
-            ->create();
+        $schema->create('change_log', function (Blueprint $t) {
+            $t->string('id', 36);
+            $t->string('target_type', 100);
+            $t->string('target_id', 36);
+            $t->string('action', 50);
+            $t->text('changes')->null();
+            $t->string('user_id', 36)->null();
+            $t->string('user_name', 255)->null();
+            $t->datetime('created_at')->useCurrent();
+            $t->primary(['id']);
+            $t->index(['target_type', 'target_id']);
+            $t->index(['user_id']);
+            $t->index(['created_at']);
+        });
     }
 }

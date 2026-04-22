@@ -7,8 +7,15 @@ class SettingsController extends BaseAdminController
 {
     public function general(): void
     {
+        $pdo  = \Flight::db();
+        $stmt = $pdo->query(
+            "SELECT id, title FROM pages WHERE page_type = 'page' AND status = 'published' ORDER BY title ASC"
+        );
+        $pages = $stmt !== false ? $stmt->fetchAll() : [];
+
         $this->render('pages/settings/general.latte', [
             'options'       => $this->getOptions('general'),
+            'pages'         => $pages,
             'flash_success' => $this->getFlash('success'),
             'flash_error'   => $this->getFlash('error'),
         ]);
@@ -20,6 +27,39 @@ class SettingsController extends BaseAdminController
         $this->setOption('site.description', $_POST['site_description'] ?? '', 'general');
         $this->setOption('scripts.head', $_POST['scripts_head'] ?? '', 'general');
         $this->setOption('scripts.body', $_POST['scripts_body'] ?? '', 'general');
+
+        // Home page + posts archive settings.
+        $homeMode   = $_POST['home_mode'] ?? 'archive';
+        $homeMode   = in_array($homeMode, ['archive', 'page'], true) ? $homeMode : 'archive';
+        $homePageId = trim((string) ($_POST['home_page_id'] ?? ''));
+        if ($homeMode !== 'page') {
+            $homePageId = '';
+        }
+
+        // Sanitise the posts archive slug: strip slashes, whitespace and any
+        // character that would break a URL path segment. Fall back to 'blog'
+        // if the operator clears it entirely.
+        $postsSlug = trim((string) ($_POST['posts_archive_slug'] ?? 'blog'), "/ \t\n\r\0\x0B");
+        $postsSlug = preg_replace('/[^A-Za-z0-9\-_]/', '', $postsSlug) ?? '';
+
+        // Reserved slugs that would collide with hard-coded routes. Falling
+        // back to 'blog' instead of bouncing the submission keeps the save
+        // lenient — the UI hint warns about this separately.
+        $reserved = ['admin', 'api', 'search', 'category', 'tag', 'sitemap.xml', 'feed', 'robots.txt', 'page', 'install.php'];
+        if ($postsSlug === '' || in_array(strtolower($postsSlug), $reserved, true)) {
+            $postsSlug = 'blog';
+        }
+
+        $postsLabel = trim((string) ($_POST['posts_archive_label'] ?? 'Blog'));
+        if ($postsLabel === '') {
+            $postsLabel = 'Blog';
+        }
+
+        $this->setOption('site.home_mode', $homeMode, 'general');
+        $this->setOption('site.home_page_id', $homePageId !== '' ? $homePageId : null, 'general');
+        $this->setOption('site.posts_archive_slug', $postsSlug, 'general');
+        $this->setOption('site.posts_archive_label', $postsLabel, 'general');
+
         $this->redirect('/admin/settings/general', 'Settings saved successfully.');
     }
 

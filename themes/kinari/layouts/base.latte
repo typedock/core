@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="{$site->option('site.locale') ?? 'en'}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    {if isset($seo)}
+        <title>{$seo->title} - {$site->name}</title>
+        {if $seo->description}<meta name="description" content="{$seo->description}">{/if}
+        {if $seo->robots}<meta name="robots" content="{$seo->robots}">{/if}
+        {if $seo->canonical}<link rel="canonical" href="{$seo->canonical}">{/if}
+
+        <meta property="og:type" content="{$seo->ogType}">
+        <meta property="og:site_name" content="{$site->name}">
+        <meta property="og:title" content="{$seo->ogTitle}">
+        {if $seo->ogDescription}<meta property="og:description" content="{$seo->ogDescription}">{/if}
+        {if $seo->canonical}<meta property="og:url" content="{$seo->canonical}">{/if}
+        {if $seo->ogImageUrl}<meta property="og:image" content="{$seo->ogImageUrl}">{/if}
+
+        <meta name="twitter:card" content="{$seo->twitterCard}">
+        {if $seo->ogTitle}<meta name="twitter:title" content="{$seo->ogTitle}">{/if}
+        {if $seo->ogDescription}<meta name="twitter:description" content="{$seo->ogDescription}">{/if}
+        {if $seo->ogImageUrl}<meta name="twitter:image" content="{$seo->ogImageUrl}">{/if}
+
+        {$seo->jsonLd|noescape}
+    {else}
+        <title>{block title}{$site->name}{/block}</title>
+        <meta name="description" content="{block description}{/block}">
+    {/if}
+
+    {block head}{/block}
+
+    {var $fontStyle = $theme->setting('typography.font_family', 'serif')}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    {* Load only the stack the current setting actually uses — every extra
+       family is bytes on the critical path and a licence surface. *}
+    {if $fontStyle === 'sans'}
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    {elseif $fontStyle === 'serif'}
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap">
+    {elseif $fontStyle === 'mono'}
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap">
+    {/if}
+
+    {* Theme-settings custom properties — must come before the theme stylesheet
+       so --td-* overrides resolve for var() references inside style.css. *}
+    {var $cssVars = $themeStyle->renderCssVariables()}
+    {if $cssVars}<style>{$cssVars|noescape}</style>{/if}
+
+    <link rel="stylesheet" href="{$theme->url}/assets/css/style.css">
+
+    {* User-supplied CSS override. Loaded *after* the theme stylesheet so it
+       always wins, and it's the intended escape hatch for per-locale fonts —
+       a Japanese operator, for example, can load Noto Sans JP here and map
+       it onto `body { font-family: ... }`. Admin-only input, so raw by design. *}
+    {var $customCss = $theme->setting('advanced.custom_css', '')}
+    {if $customCss}<style>{$customCss|noescape}</style>{/if}
+
+    <link rel="alternate" type="application/rss+xml" title="{$site->name} RSS" href="/feed">
+</head>
+{var $sidebarPref = $theme->setting('layout.sidebar', 'right')}
+{var $widthPref = $theme->setting('layout.content_width', 'normal')}
+<body class="{$body_class ?? ''} sidebar--{$sidebarPref} width--{$widthPref} font-style--{$fontStyle}">
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+{var $headerLayout = $theme->setting('header.layout', 'left')}
+{var $headerSticky = $theme->setting('header.sticky', true)}
+<header class="site-header header--{$headerLayout} {if $headerSticky}is-sticky{/if}">
+    {include '../partials/header.latte'}
+</header>
+
+<main id="main" class="site-main">
+    {block content}{/block}
+</main>
+
+<footer class="site-footer">
+    {include '../partials/footer.latte'}
+</footer>
+
+<script src="{$theme->url}/assets/js/main.js" defer></script>
+</body>
+</html>

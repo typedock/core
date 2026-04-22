@@ -1,0 +1,12 @@
+{var $links = isset($params['links']) && is_array($params['links']) ? $params['links'] : []}
+{var $layout = $params['layout'] ?? 'horizontal'}
+
+{if $links}
+<nav class="link-list link-list--{$layout}" aria-label="Link list">
+    {foreach $links as $link}
+        {if !empty($link['url'])}
+            <a href="{$link['url']}" class="link-list__item">{$link['label'] ?? $link['url']}</a>
+        {/if}
+    {/foreach}
+</nav>
+{/if}

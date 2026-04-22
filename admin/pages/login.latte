@@ -1,40 +1,45 @@
 {layout '../layouts/admin-base.latte'}
 
-{block title}Log in - {$site->name}{/block}
-
+{block title}Log in{/block}
 {block body_class}login-page{/block}
 
 {block content}
 <div class="login-container">
     <div class="login-box">
         <div class="login-logo">
+            <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-white">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
+                    <path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z"/>
+                </svg>
+            </div>
             <h1>{$site->name}</h1>
             <p>TypeDock CMS</p>
         </div>
 
         {if isset($error)}
-            <div class="alert alert-error">{$error}</div>
+            <div class="alert alert-error mb-4">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>
+                <span>{$error}</span>
+            </div>
         {/if}
 
-        <form method="post" action="/admin/login" class="login-form">
+        <form method="post" action="/admin/login" class="space-y-4">
             <input type="hidden" name="_csrf_token" value="{$csrf_token}">
 
-            <div class="form-group">
+            <div class="form-group mb-0">
                 <label for="email">Email</label>
                 <input type="email" id="email" name="email" required
                        value="{$old_email ?? ''}"
                        autocomplete="email" autofocus>
             </div>
 
-            <div class="form-group">
+            <div class="form-group mb-0">
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" required
                        autocomplete="current-password">
             </div>
 
-            <div class="form-group">
-                <button type="submit" class="btn btn-primary btn-block">Log in</button>
-            </div>
+            <button type="submit" class="btn btn-primary btn-block">Log in</button>
         </form>
     </div>
 </div>

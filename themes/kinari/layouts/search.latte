@@ -1,0 +1,46 @@
+{layout 'base.latte'}
+
+{block title}Search results for "{$query}" - {$site->name}{/block}
+
+{block content}
+<div class="container post-layout">
+    <div class="archive">
+        {include '../partials/breadcrumb.latte'}
+        <header class="archive-header">
+            <p class="archive-kicker">Search</p>
+            <h1 class="archive-title">
+                {if $query !== ''}
+                    "{$query}" · {$pagination->totalItems} result{$pagination->totalItems === 1 ? '' : 's'}
+                {else}
+                    Search
+                {/if}
+            </h1>
+        </header>
+
+        <form class="search-form search-form-hero" action="/search" method="get" role="search">
+            <input type="search" name="q" value="{$query}" placeholder="Search articles, tags, authors…" aria-label="Search query">
+            <button type="submit">Search</button>
+        </form>
+
+        {if !empty($results)}
+            <div class="post-grid">
+                {foreach $results as $post}
+                <article class="post-card">
+                    <h2 class="post-card-title">
+                        <a href="{$site->postUrl($post['slug'])}">{$post['title']}</a>
+                    </h2>
+                    {if $post['excerpt']}<p class="post-card-excerpt">{$post['excerpt']}</p>{/if}
+                </article>
+                {/foreach}
+            </div>
+            {include '../partials/pagination.latte'}
+        {elseif $query !== ''}
+            <p class="no-posts">No posts matching "{$query}" were found.</p>
+        {/if}
+    </div>
+
+    <aside class="sidebar" aria-label="Sidebar">
+        {=slot('sidebar')|noescape}
+    </aside>
+</div>
+{/block}

@@ -1,46 +1,60 @@
 {layout '../../layouts/admin-base.latte'}
+
 {block page_title}{isset($user['id']) ? 'Edit User' : 'New User'}{/block}
+
 {block content}
 <div class="page-header">
-    <h1>{isset($user['id']) ? 'Edit User' : 'New User'}</h1>
+    <div>
+        <h1>{isset($user['id']) ? 'Edit User' : 'New User'}</h1>
+        <p class="subtitle">
+            {if isset($user['id'])}Update name, password, or role.{else}Create a new user account.{/if}
+        </p>
+    </div>
     <a href="/admin/users" class="btn btn-secondary">← Back to list</a>
 </div>
 
-<div style="max-width: 520px;">
-    <form method="post" action="{$form_action}">
-        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+<div class="card max-w-xl">
+    <div class="card-body">
+        <form method="post" action="{$form_action}">
+            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
 
-        <div class="form-group">
-            <label for="name">Display Name</label>
-            <input type="text" id="name" name="name"
-                   value="{$user['name'] ?? ''}" required>
-        </div>
+            <div class="form-group">
+                <label for="name">Display Name</label>
+                <input type="text" id="name" name="name"
+                       value="{$user['name'] ?? ''}" required>
+            </div>
 
-        <div class="form-group">
-            <label for="email">Email</label>
-            <input type="email" id="email" name="email"
-                   value="{$user['email'] ?? ''}" {isset($user['id']) ? 'readonly' : 'required'}>
-            {if isset($user['id'])}
-            <small>Email address cannot be changed.</small>
-            {/if}
-        </div>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email"
+                       value="{$user['email'] ?? ''}" {isset($user['id']) ? 'readonly' : 'required'}>
+                {if isset($user['id'])}
+                <small class="form-hint">Email address cannot be changed.</small>
+                {/if}
+            </div>
 
-        <div class="form-group">
-            <label for="password">Password{isset($user['id']) ? ' (leave blank to keep current)' : ''}</label>
-            <input type="password" id="password" name="password"
-                   {isset($user['id']) ? '' : 'required'} autocomplete="new-password">
-        </div>
+            <div class="form-group">
+                <label for="password">
+                    Password
+                    {if isset($user['id'])}<small>(leave blank to keep current)</small>{/if}
+                </label>
+                <input type="password" id="password" name="password"
+                       {isset($user['id']) ? '' : 'required'} autocomplete="new-password">
+            </div>
 
-        <div class="form-group">
-            <label for="role">Role</label>
-            <select id="role" name="role">
-                <option value="contributor" {($user['role'] ?? 'contributor')==='contributor'?'selected':''}>Contributor</option>
-                <option value="editor" {($user['role'] ?? '')==='editor'?'selected':''}>Editor</option>
-                <option value="admin" {($user['role'] ?? '')==='admin'?'selected':''}>Administrator</option>
-            </select>
-        </div>
+            <div class="form-group">
+                <label for="role">Role</label>
+                <select id="role" name="role">
+                    <option value="contributor" {($user['role'] ?? 'contributor')==='contributor' ? 'selected' : ''}>Contributor</option>
+                    <option value="editor"      {($user['role'] ?? '')==='editor' ? 'selected' : ''}>Editor</option>
+                    <option value="admin"       {($user['role'] ?? '')==='admin' ? 'selected' : ''}>Administrator</option>
+                </select>
+            </div>
 
-        <button type="submit" class="btn btn-primary">{isset($user['id']) ? 'Update' : 'Create'}</button>
-    </form>
+            <div class="mt-6">
+                <button type="submit" class="btn btn-primary">{isset($user['id']) ? 'Save Changes' : 'Create User'}</button>
+            </div>
+        </form>
+    </div>
 </div>
 {/block}

@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace TypeDock\Admin;
 
 use TypeDock\Content\PageService;
+use TypeDock\Seo\SeoService;
 
 class PageController extends BaseAdminController
 {
@@ -30,6 +31,7 @@ class PageController extends BaseAdminController
             'selected_categories' => [],
             'selected_tag_names'  => [],
             'form_action'         => '/admin/pages/create',
+            'theme_layouts'       => $this->themeLayouts(),
         ]);
     }
 
@@ -44,10 +46,15 @@ class PageController extends BaseAdminController
             'status'    => $_POST['status'] ?? 'draft',
             'page_type' => 'page',
             'author_id' => $user['id'] ?? null,
+            'layout'    => trim((string) ($_POST['layout'] ?? '')) ?: null,
         ];
 
         $page = $this->service()->create($data);
-        $this->redirect('/admin/pages/' . $page['id'] . '/edit', 'Page created successfully.');
+        (new SeoService(\Flight::db()))->upsert('page', $page['id'], $this->collectSeoInput());
+        $this->redirect(
+            '/admin/pages/' . $page['id'] . '/edit',
+            $this->saveMessage('Page', $page)
+        );
     }
 
     public function edit(string $id): void
@@ -56,13 +63,18 @@ class PageController extends BaseAdminController
         if ($page === null) {
             throw new \TypeDock\Exception\NotFoundException("Page not found: {$id}");
         }
+        $seo = (new SeoService(\Flight::db()))->findByTarget('page', $id) ?? [];
+
         $this->render('pages/posts/edit.latte', [
             'post'                => $page,
             'categories'          => [],
             'selected_categories' => [],
             'selected_tag_names'  => [],
             'form_action'         => '/admin/pages/' . $id . '/edit',
+            'public_url'          => $this->publicUrlFor($page),
+            'seo'                 => $seo,
             'flash_success'       => $this->getFlash('success'),
+            'theme_layouts'       => $this->themeLayouts(),
         ]);
     }
 
@@ -74,9 +86,15 @@ class PageController extends BaseAdminController
             'body'    => $_POST['body'] ?? null,
             'excerpt' => trim($_POST['excerpt'] ?? '') ?: null,
             'status'  => $_POST['status'] ?? 'draft',
+            'layout'  => trim((string) ($_POST['layout'] ?? '')) ?: null,
         ];
         $this->service()->update($id, $data);
-        $this->redirect('/admin/pages/' . $id . '/edit', 'Page updated successfully.');
+        (new SeoService(\Flight::db()))->upsert('page', $id, $this->collectSeoInput());
+        $page = $this->service()->find($id);
+        $this->redirect(
+            '/admin/pages/' . $id . '/edit',
+            $this->saveMessage('Page', $page)
+        );
     }
 
     public function destroy(string $id): void

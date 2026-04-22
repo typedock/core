@@ -3,6 +3,12 @@
     "version": "1.0.0",
     "description": "TypeDock Default Theme",
     "author": "TypeDock",
+    "menus": {
+        "header": {
+            "label": "Header Navigation",
+            "description": "Main navigation shown in the header on every page."
+        }
+    },
     "slots": {
         "sidebar": {
             "label": "Sidebar",

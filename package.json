@@ -1,0 +1,16 @@
+{
+  "name": "typedock-admin-assets",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Build pipeline for TypeDock admin CSS (Tailwind 4) and icon assets. End users receive the compiled files; only core developers run this.",
+  "scripts": {
+    "build:css": "tailwindcss -i resources/admin/admin.css -o public/admin/assets/css/admin.css --minify",
+    "watch:css": "tailwindcss -i resources/admin/admin.css -o public/admin/assets/css/admin.css --watch",
+    "build": "npm run build:css",
+    "watch": "npm run watch:css"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.0.0",
+    "tailwindcss": "^4.0.0"
+  }
+}

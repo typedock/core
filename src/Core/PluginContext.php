@@ -19,7 +19,7 @@ class PluginContext
 
     public function registerRoute(string $method, string $path, callable $handler): void
     {
-        $prefixed = '/plugin/' . $this->pluginSlug . '/' . ltrim($path, '/');
+        $prefixed = '/plugins/' . $this->pluginSlug . '/' . ltrim($path, '/');
         \Flight::route(strtoupper($method) . ' ' . $prefixed, $handler);
     }
 

@@ -1,18 +1,41 @@
 {layout '../../layouts/admin-base.latte'}
+
 {block page_title}Media Library{/block}
+
 {block content}
 <div class="page-header">
-    <h1>Media</h1>
-    <label for="media-upload" class="btn btn-primary">Upload</label>
+    <div>
+        <h1>Media</h1>
+        <p class="subtitle">Images, documents, and assets uploaded to your site.</p>
+        {if isset($storage)}
+            <p class="media-storage-badge" title="Configure in config/filesystems.php">
+                <span class="badge badge-muted">{$storage['label']}</span>
+                <span class="font-mono text-xs text-slate-500">{$storage['details']}</span>
+            </p>
+        {/if}
+    </div>
+    <label for="media-upload" class="btn btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span>Upload</span>
+    </label>
 </div>
 
 <div id="media-upload-area" data-upload-url="/admin/api/media/upload" data-csrf="{$csrf_token}">
-    <input type="file" id="media-upload" multiple accept="image/*,video/*,audio/*,.pdf,.zip" style="display:none">
-    <div class="upload-drop-zone">
-        <p>Drag and drop files, or click to upload</p>
-    </div>
+    <input type="file" id="media-upload" multiple accept="image/*,video/*,audio/*,.pdf,.zip" class="hidden">
+    <label for="media-upload" class="upload-drop-zone block">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-2 h-8 w-8 text-slate-400"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <p class="font-medium text-slate-700">Drag and drop files, or click to upload</p>
+        <p class="mt-1 text-xs text-slate-500">Images, video, audio, PDF, ZIP</p>
+    </label>
 </div>
 
+{if empty($media)}
+    <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.6"/><path d="m21 16-5-5-10 10"/></svg>
+        <h3>Media library is empty</h3>
+        <p>Upload your first image to use it in posts, pages, or SEO metadata.</p>
+    </div>
+{else}
 <div class="media-grid" id="media-grid">
     {foreach $media as $item}
     <div class="media-item" data-id="{$item['id']}">
@@ -22,19 +45,37 @@
             <div class="media-icon">{$item['mime_type']}</div>
         {/if}
         <div class="media-info">
-            <span class="media-name">{$item['original_filename']}</span>
+            <span class="media-name" title="{$item['original_filename']}">{$item['original_filename']}</span>
         </div>
         <div class="media-actions">
-            <button class="btn btn-sm copy-url-btn" data-url="{$item['url']}">Copy URL</button>
-            <form method="post" action="/admin/media/delete/{$item['id']}" style="display:inline">
+            <button class="btn btn-ghost btn-xs copy-url-btn" data-url="{$item['url']}">Copy URL</button>
+            <button class="btn btn-ghost btn-xs copy-url-btn" data-url="{$item['id']}" title="Copy this item's ID (used by the SEO panel's OG image field)">Copy ID</button>
+            <form method="post" action="/admin/media/delete/{$item['id']}" class="inline ml-auto">
                 <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this item?')">Delete</button>
+                <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Delete this item?')" aria-label="Delete">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
             </form>
         </div>
     </div>
     {/foreach}
 </div>
+{/if}
+
+{if isset($total_pages) && $total_pages > 1}
+<nav class="pagination-wrapper" aria-label="Media pagination">
+    {if $page > 1}
+        <a class="btn btn-ghost btn-sm" href="?page={$page - 1}">&larr; Previous</a>
+    {/if}
+    <span class="text-sm text-slate-500">Page {$page} of {$total_pages} &middot; {$total} items</span>
+    {if $page < $total_pages}
+        <a class="btn btn-ghost btn-sm" href="?page={$page + 1}">Next &rarr;</a>
+    {/if}
+</nav>
+{/if}
 {/block}
+
 {block scripts}
+<script src="/admin/assets/js/media-picker.js"></script>
 <script src="/admin/assets/js/media-upload.js"></script>
 {/block}

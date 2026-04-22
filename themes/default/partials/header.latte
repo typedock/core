@@ -2,8 +2,21 @@
     <div class="site-branding">
         <a href="/" class="site-title">{$site->name}</a>
     </div>
-    <nav class="site-nav">
-        {=component('menu', ['location' => 'primary'])|noescape}
+    <nav class="site-nav" aria-label="Primary">
+        <ul class="menu-list">
+            {foreach $site->menu('header') as $item}
+                <li class="menu-item {!empty($item->children) ? 'has-children' : ''}">
+                    <a href="{$item->url}">{$item->label}</a>
+                    {if $item->children}
+                        <ul class="sub-menu">
+                            {foreach $item->children as $child}
+                                <li class="menu-item"><a href="{$child->url}">{$child->label}</a></li>
+                            {/foreach}
+                        </ul>
+                    {/if}
+                </li>
+            {/foreach}
+        </ul>
     </nav>
     <div class="header-search">
         {=component('search_form')|noescape}

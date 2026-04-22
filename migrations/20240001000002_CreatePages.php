@@ -2,58 +2,50 @@
 
 declare(strict_types=1);
 
-use Phinx\Migration\AbstractMigration;
+use TypeDock\Core\Migration\Blueprint;
+use TypeDock\Core\Migration\Migration;
+use TypeDock\Core\Migration\Schema;
 
-final class CreatePages extends AbstractMigration
+final class CreatePages extends Migration
 {
-    public function change(): void
+    public function up(Schema $schema): void
     {
-        // pages table
-        $pages = $this->table('pages', ['id' => false, 'primary_key' => ['id']]);
-        $pages
-            ->addColumn('id', 'string', ['limit' => 36])
-            ->addColumn('slug', 'string', ['limit' => 1000])
-            ->addColumn('title', 'string', ['limit' => 500])
-            ->addColumn('body', 'text', ['null' => true, 'default' => null])
-            ->addColumn('excerpt', 'text', ['null' => true, 'default' => null])
-            ->addColumn('page_type', 'string', ['limit' => 20, 'default' => 'post'])
-            ->addColumn('status', 'string', ['limit' => 20, 'default' => 'draft'])
-            ->addColumn('author_id', 'string', ['limit' => 36, 'null' => true, 'default' => null])
-            ->addColumn('parent_id', 'string', ['limit' => 36, 'null' => true, 'default' => null])
-            ->addColumn('template', 'string', ['limit' => 255, 'null' => true, 'default' => null])
-            ->addColumn('locale', 'string', ['limit' => 10, 'default' => 'en'])
-            ->addColumn('translation_group_id', 'string', ['limit' => 36, 'null' => true, 'default' => null])
-            ->addColumn('published_at', 'datetime', ['null' => true, 'default' => null])
-            ->addColumn('scheduled_at', 'datetime', ['null' => true, 'default' => null])
-            ->addColumn('created_at', 'datetime', ['default' => 'CURRENT_TIMESTAMP'])
-            ->addColumn('updated_at', 'datetime', []);
+        $schema->create('pages', function (Blueprint $t) {
+            $t->string('id', 36);
+            $t->string('slug', 1000);
+            $t->string('title', 500);
+            $t->text('body')->null();
+            $t->text('excerpt')->null();
+            $t->string('page_type', 20)->default('post');
+            $t->string('status', 20)->default('draft');
+            $t->string('author_id', 36)->null();
+            $t->string('parent_id', 36)->null();
+            $t->string('template', 255)->null();
+            $t->string('layout', 100)->null();
+            $t->string('locale', 10)->default('en');
+            $t->string('translation_group_id', 36)->null();
+            $t->datetime('published_at')->null();
+            $t->datetime('scheduled_at')->null();
+            $t->datetime('created_at')->useCurrent();
+            $t->datetime('updated_at');
+            $t->primary(['id']);
+            $t->index(['slug'], ['slug' => 255]);
+            $t->index(['translation_group_id']);
+            $t->index(['page_type', 'status', 'published_at']);
+            $t->foreign('author_id', 'users', 'id')->nullOnDelete();
+            $t->foreign('parent_id', 'pages', 'id')->nullOnDelete();
+        });
 
-        // slug index: MySQL needs prefix length for long VARCHAR columns
-        $adapterType = $this->getAdapter()->getAdapterType();
-        if ($adapterType === 'mysql') {
-            $pages->addIndex(['slug'], ['limit' => ['slug' => 255]]);
-        } else {
-            $pages->addIndex(['slug']);
-        }
-
-        $pages
-            ->addIndex(['translation_group_id'])
-            ->addIndex(['page_type', 'status', 'published_at'])
-            ->addForeignKey('author_id', 'users', 'id', ['delete' => 'SET_NULL', 'update' => 'NO_ACTION'])
-            ->addForeignKey('parent_id', 'pages', 'id', ['delete' => 'SET_NULL', 'update' => 'NO_ACTION'])
-            ->create();
-
-        // page_revisions table
-        $pageRevisions = $this->table('page_revisions', ['id' => false, 'primary_key' => ['id']]);
-        $pageRevisions
-            ->addColumn('id', 'string', ['limit' => 36])
-            ->addColumn('page_id', 'string', ['limit' => 36])
-            ->addColumn('title', 'string', ['limit' => 500])
-            ->addColumn('body', 'text', ['null' => true, 'default' => null])
-            ->addColumn('author_id', 'string', ['limit' => 36, 'null' => true, 'default' => null])
-            ->addColumn('created_at', 'datetime', ['default' => 'CURRENT_TIMESTAMP'])
-            ->addForeignKey('page_id', 'pages', 'id', ['delete' => 'CASCADE', 'update' => 'NO_ACTION'])
-            ->addForeignKey('author_id', 'users', 'id', ['delete' => 'SET_NULL', 'update' => 'NO_ACTION'])
-            ->create();
+        $schema->create('page_revisions', function (Blueprint $t) {
+            $t->string('id', 36);
+            $t->string('page_id', 36);
+            $t->string('title', 500);
+            $t->text('body')->null();
+            $t->string('author_id', 36)->null();
+            $t->datetime('created_at')->useCurrent();
+            $t->primary(['id']);
+            $t->foreign('page_id', 'pages', 'id')->cascadeOnDelete();
+            $t->foreign('author_id', 'users', 'id')->nullOnDelete();
+        });
     }
 }

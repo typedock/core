@@ -14,11 +14,61 @@ class App
     {
         $this->configure();
         $this->registerServices();
+        $this->bootTheme();
         $this->loadModulesAndPlugins();
         $this->registerMiddleware();
         $this->registerRoutes();
 
         \Flight::start();
+    }
+
+    /**
+     * Resolve the active theme from site_options and apply any admin preview override.
+     *
+     * Preview is intentionally narrow: the `preview_theme` query parameter is
+     * honoured only when the requester is an authenticated admin (checked via
+     * the same session cookie used by /admin). Unauthenticated visitors always
+     * see the persisted theme. Failures here fall silently back to 'default'
+     * — e.g. before install has run, `site_options` doesn't exist yet.
+     */
+    private function bootTheme(): void
+    {
+        try {
+            $loader = new \TypeDock\Theme\ThemeLoader();
+            $active = $loader->resolveActiveTheme(\Flight::db());
+
+            $preview = isset($_GET['preview_theme']) ? (string) $_GET['preview_theme'] : '';
+            if ($preview !== '' && $loader->themeExists($preview) && $this->previewAllowed()) {
+                $active = $preview;
+            }
+
+            \Flight::latte()->setActiveTheme($active);
+            \Flight::theme_settings()->setActiveTheme($active);
+
+            // Register the active theme's custom components. Done here so it
+            // runs after core components are registered (via ServiceProvider)
+            // and before routes dispatch, ensuring admin slot pickers and
+            // frontend renders both see the full set.
+            (new \TypeDock\Component\ThemeComponentRegistrar(TYPEDOCK_ROOT . '/themes'))
+                ->registerForTheme($active, \Flight::components());
+        } catch (\Throwable) {
+            // Keep the factory's baked-in 'default' fallback on any failure.
+        }
+    }
+
+    private function previewAllowed(): bool
+    {
+        try {
+            $cookieName = (string) config('auth.cookie_name', 'cms_session');
+            $token      = $_COOKIE[$cookieName] ?? '';
+            if ($token === '') {
+                return false;
+            }
+            $user = \Flight::session()->check($token);
+            return $user !== null && ($user['role'] ?? '') === 'admin';
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     private function configure(): void

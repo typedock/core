@@ -5,7 +5,7 @@
 Options -Indexes -ExecCGI
 
 # Deny direct access to sensitive files at the root.
-<FilesMatch "^(\.env.*|config\.php|composer\.(json|lock)|phinx\.php|CLAUDE\.md|README\.md|.*\.sql|.*\.sh|.*\.log)$">
+<FilesMatch "^(\.env.*|config\.php|composer\.(json|lock)|CLAUDE\.md|README\.md|.*\.sql|.*\.sh|.*\.log)$">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>

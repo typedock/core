@@ -34,7 +34,26 @@ $password = (string) readline('Password (min 12 chars): ');
 try {
     $db = require TYPEDOCK_ROOT . '/config/database.php';
     $installer->createAdmin($db, $email, $name, $password);
+
+    // Seed site_options from APP_NAME / defaults so the admin Settings
+    // → General page has sensible initial values (otherwise the form
+    // renders with blank inputs on a fresh install).
+    $installer->seedSiteOptions($db, [
+        'name' => (string) ($_ENV['APP_NAME'] ?? 'TypeDock'),
+    ]);
+
+    // Seed the active theme + default slot placements so a fresh install has
+    // something to render. Admins can switch later from /admin/themes.
+    $installer->activateTheme($db, 'default');
+
     $installer->lock('0.1.0');
+
+    // Publish theme/plugin static assets into public/.
+    echo "\nPublishing assets...\n";
+    $published = (new TypeDock\Core\AssetPublisher(TYPEDOCK_ROOT))->publishAll();
+    foreach ($published as $src => $dst) {
+        echo '  ' . str_replace(TYPEDOCK_ROOT . '/', '', $src) . " -> " . str_replace(TYPEDOCK_ROOT . '/', '', $dst) . "\n";
+    }
 
     $appUrl = $_ENV['APP_URL'] ?? 'http://localhost';
     echo "\nAdmin user created.\n";

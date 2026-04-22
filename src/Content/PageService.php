@@ -158,9 +158,9 @@ class PageService
 
         $stmt = $this->pdo->prepare(
             'INSERT INTO pages (id, slug, title, body, excerpt, page_type, status, author_id, parent_id,
-                                template, locale, translation_group_id, published_at, scheduled_at,
+                                template, layout, locale, translation_group_id, published_at, scheduled_at,
                                 created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $id,
@@ -173,6 +173,7 @@ class PageService
             $data['author_id'] ?? null,
             $data['parent_id'] ?? null,
             $data['template'] ?? null,
+            $data['layout'] ?? null,
             $data['locale'] ?? 'en',
             $data['translation_group_id'] ?? null,
             $publishedAt,
@@ -225,7 +226,7 @@ class PageService
 
         $stmt = $this->pdo->prepare(
             'UPDATE pages SET slug = ?, title = ?, body = ?, excerpt = ?, page_type = ?,
-                              status = ?, author_id = ?, parent_id = ?, template = ?,
+                              status = ?, author_id = ?, parent_id = ?, template = ?, layout = ?,
                               locale = ?, published_at = ?, scheduled_at = ?, updated_at = ?
              WHERE id = ?'
         );
@@ -239,6 +240,7 @@ class PageService
             $data['author_id'] ?? $page['author_id'],
             $data['parent_id'] ?? $page['parent_id'],
             $data['template'] ?? $page['template'],
+            array_key_exists('layout', $data) ? $data['layout'] : ($page['layout'] ?? null),
             $data['locale'] ?? $page['locale'],
             $publishedAt,
             $data['scheduled_at'] ?? $page['scheduled_at'],

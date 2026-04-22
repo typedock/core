@@ -1,56 +1,36 @@
 {layout '../../layouts/admin-base.latte'}
+
 {block page_title}Menus{/block}
+
 {block content}
 <div class="page-header">
-    <h1>Menus</h1>
+    <div>
+        <h1>Menus</h1>
+        <p class="subtitle">Navigation locations declared by the active theme. Pick one to edit its items.</p>
+    </div>
 </div>
 
-<div class="editor-layout" style="grid-template-columns: 1fr 320px;">
-    <div>
-        <table class="data-table">
-            <thead>
-                <tr><th>Name</th><th>Location</th><th>Language</th><th>Actions</th></tr>
-            </thead>
-            <tbody>
-                {foreach $menus as $menu}
-                <tr>
-                    <td><a href="/admin/menus/{$menu['id']}/edit">{$menu['name']}</a></td>
-                    <td><code>{$menu['location']}</code></td>
-                    <td>{$menu['locale']}</td>
-                    <td>
-                        <a href="/admin/menus/{$menu['id']}/edit" class="btn btn-sm">Edit</a>
-                        <form method="post" action="/admin/menus/{$menu['id']}/delete" style="display:inline">
-                            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this item?')">Delete</button>
-                        </form>
-                    </td>
-                </tr>
-                {/foreach}
-            </tbody>
-        </table>
+{if empty($locations)}
+    <div class="empty-state">
+        <h3>No menu locations</h3>
+        <p>The active theme does not declare any <code>menus</code> block in its <code>theme.json</code>.</p>
     </div>
-
-    <div>
-        <div class="sidebar-panel">
-            <h3>Create New Menu</h3>
-            <form method="post" action="/admin/menus">
-                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-                <div class="form-group">
-                    <label>Menu Name</label>
-                    <input type="text" name="name" required placeholder="e.g. Main Menu">
-                </div>
-                <div class="form-group">
-                    <label>Location</label>
-                    <input type="text" name="location" required placeholder="e.g. primary">
-                    <small>Specify the menu location defined in your theme.</small>
-                </div>
-                <div class="form-group">
-                    <label>Language</label>
-                    <input type="text" name="locale" value="en" placeholder="en">
-                </div>
-                <button type="submit" class="btn btn-primary">Create</button>
-            </form>
+{else}
+<div class="columns columns-3">
+    {foreach $locations as $key => $meta}
+    <a href="/admin/menus/{$key}" class="card block hover:shadow-md transition">
+        <div class="card-body">
+            <h2 class="text-lg font-semibold">{$meta['label'] ?? $key}</h2>
+            <p class="text-xs text-slate-500 mt-1"><code>{$key}</code></p>
+            {if !empty($meta['description'])}
+                <p class="text-sm text-slate-600 mt-3">{$meta['description']}</p>
+            {/if}
+            <p class="text-xs text-slate-500 mt-3">
+                {$counts[$key] ?? 0} item{($counts[$key] ?? 0) === 1 ? '' : 's'}
+            </p>
         </div>
-    </div>
+    </a>
+    {/foreach}
 </div>
+{/if}
 {/block}

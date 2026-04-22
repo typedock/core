@@ -2,33 +2,34 @@
 
 declare(strict_types=1);
 
-use Phinx\Migration\AbstractMigration;
+use TypeDock\Core\Migration\Blueprint;
+use TypeDock\Core\Migration\Migration;
+use TypeDock\Core\Migration\Schema;
 
-final class CreateMedia extends AbstractMigration
+final class CreateMedia extends Migration
 {
-    public function change(): void
+    public function up(Schema $schema): void
     {
-        // media table
-        $media = $this->table('media', ['id' => false, 'primary_key' => ['id']]);
-        $media
-            ->addColumn('id', 'string', ['limit' => 36])
-            ->addColumn('path', 'string', ['limit' => 1000])
-            ->addColumn('original_filename', 'string', ['limit' => 500])
-            ->addColumn('mime_type', 'string', ['limit' => 127])
-            ->addColumn('file_size', 'biginteger', [])
-            ->addColumn('width', 'integer', ['null' => true, 'default' => null])
-            ->addColumn('height', 'integer', ['null' => true, 'default' => null])
-            ->addColumn('alt_text', 'string', ['limit' => 500, 'null' => true, 'default' => null])
-            ->addColumn('caption', 'text', ['null' => true, 'default' => null])
-            ->addColumn('focal_point_x', 'float', ['null' => true, 'default' => null])
-            ->addColumn('focal_point_y', 'float', ['null' => true, 'default' => null])
-            ->addColumn('folder', 'string', ['limit' => 500, 'default' => '/'])
-            ->addColumn('thumbnails', 'text', ['null' => true, 'default' => null])
-            ->addColumn('uploaded_by', 'string', ['limit' => 36, 'null' => true, 'default' => null])
-            ->addColumn('created_at', 'datetime', ['default' => 'CURRENT_TIMESTAMP'])
-            ->addIndex(['folder'])
-            ->addIndex(['mime_type'])
-            ->addForeignKey('uploaded_by', 'users', 'id', ['delete' => 'SET_NULL', 'update' => 'NO_ACTION'])
-            ->create();
+        $schema->create('media', function (Blueprint $t) {
+            $t->string('id', 36);
+            $t->string('path', 1000);
+            $t->string('original_filename', 500);
+            $t->string('mime_type', 127);
+            $t->bigInteger('file_size');
+            $t->integer('width')->null();
+            $t->integer('height')->null();
+            $t->string('alt_text', 500)->null();
+            $t->text('caption')->null();
+            $t->float('focal_point_x')->null();
+            $t->float('focal_point_y')->null();
+            $t->string('folder', 500)->default('/');
+            $t->text('thumbnails')->null();
+            $t->string('uploaded_by', 36)->null();
+            $t->datetime('created_at')->useCurrent();
+            $t->primary(['id']);
+            $t->index(['folder'], ['folder' => 255]);
+            $t->index(['mime_type']);
+            $t->foreign('uploaded_by', 'users', 'id')->nullOnDelete();
+        });
     }
 }

@@ -4,7 +4,7 @@
     <div class="related-posts-grid">
         {foreach $posts as $post}
         <article class="related-post-card">
-            <h4><a href="{config('app.url')}/blog/{$post['slug']}">{$post['title']}</a></h4>
+            <h4><a href="{post_path($post['slug'])}">{$post['title']}</a></h4>
             {if $post['excerpt']}<p>{$post['excerpt']}</p>{/if}
         </article>
         {/foreach}
