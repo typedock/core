@@ -9,7 +9,7 @@ class MediaController extends BaseAdminController
 {
     private function service(): MediaService
     {
-        return new MediaService(\Flight::db(), \Flight::storage());
+        return \Flight::media_service();
     }
 
     public function index(): void
@@ -80,8 +80,113 @@ class MediaController extends BaseAdminController
         }
     }
 
+    public function edit(string $id): void
+    {
+        $media = $this->service()->find($id);
+        if ($media === null) {
+            throw new \TypeDock\Exception\NotFoundException("Media not found: {$id}");
+        }
+
+        $this->render('pages/media/edit.latte', [
+            'media'         => $media,
+            'variants'      => $this->describeVariants($media),
+            'flash_success' => $this->getFlash('success'),
+            'flash_error'   => $this->getFlash('error'),
+        ]);
+    }
+
+    public function update(string $id): void
+    {
+        $media = $this->service()->find($id);
+        if ($media === null) {
+            throw new \TypeDock\Exception\NotFoundException("Media not found: {$id}");
+        }
+        $this->authorizeOwnerOrAny($media, 'media:delete_own', 'media:manage_any', 'uploaded_by');
+
+        $this->service()->update($id, [
+            'alt_text'      => trim((string) ($_POST['alt_text'] ?? '')) ?: null,
+            'caption'       => trim((string) ($_POST['caption'] ?? '')) ?: null,
+            'focal_point_x' => $_POST['focal_point_x'] ?? null,
+            'focal_point_y' => $_POST['focal_point_y'] ?? null,
+        ]);
+
+        $this->redirect('/admin/media/' . $id, 'Media updated.');
+    }
+
+    /**
+     * Decode the thumbnails JSON blob into a render-ready list:
+     * original + each thumbnail + each WebP sibling, with intended
+     * max-width and public URL. Used by the Variants panel.
+     *
+     * @param  array<string, mixed> $media
+     * @return list<array{key:string, label:string, max_width:?int, url:string, is_webp:bool}>
+     */
+    private function describeVariants(array $media): array
+    {
+        $storage  = \Flight::storage();
+        $thumbs   = [];
+        if (!empty($media['thumbnails'])) {
+            $decoded = json_decode((string) $media['thumbnails'], true);
+            if (is_array($decoded)) {
+                $thumbs = $decoded;
+            }
+        }
+
+        $sizeWidths = ['sm' => 300, 'md' => 768, 'lg' => 1200];
+        $origWidth  = isset($media['width']) ? (int) $media['width'] : null;
+
+        $out = [[
+            'key'       => 'original',
+            'label'     => 'Original',
+            'max_width' => $origWidth,
+            'url'       => (string) ($media['url'] ?? $storage->url((string) $media['path'])),
+            'is_webp'   => ($media['mime_type'] ?? '') === 'image/webp',
+        ]];
+
+        foreach ($sizeWidths as $key => $w) {
+            if (!empty($thumbs[$key])) {
+                $out[] = [
+                    'key'       => $key,
+                    'label'     => strtoupper($key),
+                    'max_width' => $w,
+                    'url'       => $storage->url((string) $thumbs[$key]),
+                    'is_webp'   => false,
+                ];
+            }
+        }
+        if (!empty($thumbs['original_webp'])) {
+            $out[] = [
+                'key'       => 'original_webp',
+                'label'     => 'Original (WebP)',
+                'max_width' => $origWidth,
+                'url'       => $storage->url((string) $thumbs['original_webp']),
+                'is_webp'   => true,
+            ];
+        }
+        foreach ($sizeWidths as $key => $w) {
+            $webpKey = $key . '_webp';
+            if (!empty($thumbs[$webpKey])) {
+                $out[] = [
+                    'key'       => $webpKey,
+                    'label'     => strtoupper($key) . ' (WebP)',
+                    'max_width' => $w,
+                    'url'       => $storage->url((string) $thumbs[$webpKey]),
+                    'is_webp'   => true,
+                ];
+            }
+        }
+
+        return $out;
+    }
+
     public function destroy(string $id): void
     {
+        $media = $this->service()->find($id);
+        if ($media === null) {
+            throw new \TypeDock\Exception\NotFoundException("Media not found: {$id}");
+        }
+        $this->authorizeOwnerOrAny($media, 'media:delete_own', 'media:manage_any', 'uploaded_by');
+
         $this->service()->delete($id);
         $this->redirect('/admin/media', 'Media deleted successfully.');
     }

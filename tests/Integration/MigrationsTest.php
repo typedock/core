@@ -63,7 +63,6 @@ final class MigrationsTest extends TestCase
             'site_options',
             'seo_meta',
             'slot_placements',
-            'redirects',
             'change_log',
             'snapshots',
             'collections',
@@ -81,5 +80,21 @@ final class MigrationsTest extends TestCase
                 "Expected table \"{$name}\" to exist after migrations. Got: " . implode(', ', $tables)
             );
         }
+    }
+
+    public function testRedirectPluginMigrationCreatesRedirectsTable(): void
+    {
+        $pdo = new \PDO('sqlite::memory:');
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+
+        $runner = new \TypeDock\Plugin\Util\PluginMigrationRunner($pdo, 'redirect');
+        $runner->runFromDirectory(TYPEDOCK_ROOT . '/plugins/redirect/migrations');
+
+        $tables = $pdo
+            ->query("SELECT name FROM sqlite_master WHERE type='table'")
+            ->fetchAll(\PDO::FETCH_COLUMN);
+
+        $this->assertContains('redirects', $tables);
+        $this->assertContains('plugin_migrations', $tables);
     }
 }

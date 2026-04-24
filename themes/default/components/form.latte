@@ -1,0 +1,82 @@
+{*
+    Form component — renders a form definition stored by the Form plugin.
+    Overridable per-theme at themes/<slug>/components/form.latte.
+*}
+
+{if !isset($form) || $form === null}
+    <!-- form component: form_id missing or not found -->
+{else}
+{var $values = $flash['values'] ?? []}
+{var $errors = $flash['errors'] ?? []}
+{var $returnTo = $_SERVER['REQUEST_URI'] ?? '/'}
+
+<form class="td-form" method="post" action="/plugins/form/submit" novalidate>
+    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+    <input type="hidden" name="form_id" value="{$form['id']}">
+    <input type="hidden" name="return_to" value="{$returnTo}">
+
+    {* Honeypot — bots fill this, humans don't see it. Paired with Antispam. *}
+    <div aria-hidden="true" style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden">
+        <label>Website<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+    </div>
+
+    {if ($flash['type'] ?? '') === 'success'}
+        <p class="td-form-success" role="status">{$flash['message']}</p>
+    {elseif ($flash['type'] ?? '') === 'error'}
+        <p class="td-form-error" role="alert">{$flash['message']}</p>
+    {/if}
+
+    {foreach $fields as $field}
+        <div class="td-form-field td-form-field--{$field['type']}">
+            <label for="td-f-{$form['id']}-{$field['name']}">
+                {$field['label']}
+                {if $field['required']}<span class="td-form-required" aria-hidden="true">*</span>{/if}
+            </label>
+
+            {var $value = $values[$field['name']] ?? ''}
+            {var $id = 'td-f-' . $form['id'] . '-' . $field['name']}
+
+            {if $field['type'] === 'textarea'}
+                <textarea id="{$id}" name="{$field['name']}" rows="5"
+                          placeholder="{$field['placeholder']}"
+                          {if $field['required']}required{/if}>{$value}</textarea>
+            {elseif $field['type'] === 'select'}
+                <select id="{$id}" name="{$field['name']}" {if $field['required']}required{/if}>
+                    <option value="">—</option>
+                    {foreach $field['options'] as $v => $l}
+                        <option value="{$v}" {if (string)$value === (string)$v}selected{/if}>{$l}</option>
+                    {/foreach}
+                </select>
+            {elseif $field['type'] === 'radio'}
+                <div class="td-form-options">
+                    {foreach $field['options'] as $v => $l}
+                        <label><input type="radio" name="{$field['name']}" value="{$v}"
+                               {if (string)$value === (string)$v}checked{/if}> {$l}</label>
+                    {/foreach}
+                </div>
+            {elseif $field['type'] === 'checkbox'}
+                <label><input type="checkbox" id="{$id}" name="{$field['name']}" value="1"
+                       {if $value}checked{/if}> {$field['placeholder'] ?: $field['label']}</label>
+            {else}
+                <input type="{$field['type']}" id="{$id}" name="{$field['name']}"
+                       value="{$value}" placeholder="{$field['placeholder']}"
+                       {if $field['required']}required{/if}>
+            {/if}
+
+            {if isset($errors[$field['name']])}
+                <p class="td-form-field-error" role="alert">{$errors[$field['name']]}</p>
+            {/if}
+        </div>
+    {/foreach}
+
+    {if ($captcha_html ?? '') !== ''}
+        <div class="td-form-field td-form-field--captcha">
+            {$captcha_html|noescape}
+        </div>
+    {/if}
+
+    <div class="td-form-submit">
+        <button type="submit">Send</button>
+    </div>
+</form>
+{/if}

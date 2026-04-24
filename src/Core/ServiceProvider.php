@@ -10,12 +10,20 @@ use TypeDock\Theme\ThemeStyleRenderer;
 use TypeDock\Auth\SessionService;
 use TypeDock\Auth\ApiKeyService;
 use TypeDock\Auth\PermissionChecker;
+use TypeDock\Contract\CaptchaProvider;
 use TypeDock\Search\LikeSearchEngine;
+use TypeDock\Security\NullCaptchaProvider;
 use TypeDock\Storage\LocalStorage;
 use TypeDock\Storage\S3Storage;
 use TypeDock\Component\ComponentRegistry;
 use TypeDock\Component\ComponentRenderer;
 use TypeDock\Component\CoreComponentRegistrar;
+use TypeDock\Admin\PluginAdminMenu;
+use TypeDock\Core\PluginDiagnostics;
+use TypeDock\Core\ProviderRegistry;
+use TypeDock\Locale\LocaleService;
+use TypeDock\Mail\MailService;
+use TypeDock\Media\MediaService;
 
 class ServiceProvider
 {
@@ -28,6 +36,68 @@ class ServiceProvider
         $this->registerSearch();
         $this->registerComponents();
         $this->registerThemeSettings();
+        $this->registerMedia();
+        $this->registerMail();
+    }
+
+    private function registerMail(): void
+    {
+        \Flight::map('mailer', function (): MailService {
+            static $service = null;
+            if ($service !== null) {
+                return $service;
+            }
+            $service = new MailService();
+            return $service;
+        });
+
+        \Flight::map('locales', function (): LocaleService {
+            static $service = null;
+            if ($service !== null) {
+                return $service;
+            }
+            $service = new LocaleService(\Flight::db());
+            return $service;
+        });
+    }
+
+    private function registerMedia(): void
+    {
+        \Flight::map('media_service', function (): MediaService {
+            static $service = null;
+            if ($service !== null) {
+                return $service;
+            }
+            $service = new MediaService(\Flight::db(), \Flight::storage());
+            return $service;
+        });
+
+        \Flight::map('plugin_admin_menu', function (): PluginAdminMenu {
+            static $menu = null;
+            if ($menu !== null) {
+                return $menu;
+            }
+            $menu = new PluginAdminMenu();
+            return $menu;
+        });
+
+        \Flight::map('provider_registry', function (): ProviderRegistry {
+            static $registry = null;
+            if ($registry !== null) {
+                return $registry;
+            }
+            $registry = new ProviderRegistry();
+            return $registry;
+        });
+
+        \Flight::map('plugin_diagnostics', function (): PluginDiagnostics {
+            static $diag = null;
+            if ($diag !== null) {
+                return $diag;
+            }
+            $diag = new PluginDiagnostics();
+            return $diag;
+        });
     }
 
     private function registerDatabase(): void
@@ -120,6 +190,19 @@ class ServiceProvider
             }
             $checker = new PermissionChecker();
             return $checker;
+        });
+
+        \Flight::map('captcha', function (): CaptchaProvider {
+            $override = \Flight::provider_registry()->get('captcha');
+            if ($override instanceof CaptchaProvider) {
+                return $override;
+            }
+
+            static $provider = null;
+            if ($provider !== null) {
+                return $provider;
+            }
+            return $provider = new NullCaptchaProvider();
         });
     }
 

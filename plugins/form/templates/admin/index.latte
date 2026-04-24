@@ -1,0 +1,47 @@
+{layout $plugin_ui_layout}
+
+{block page_title}Forms{/block}
+
+{block content}
+<div class="page-header">
+    <h1>Forms</h1>
+    <a href="{$admin_url('new')}" class="btn btn-primary">New form</a>
+</div>
+
+{if empty($forms)}
+    <div class="card">
+        <p class="text-slate-500">No forms yet. Create one to embed via <code>{syntax off}{component 'form' form_id="…"}{/syntax}</code>.</p>
+    </div>
+{else}
+<div class="card">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Form ID</th>
+                <th>Notify email</th>
+                <th class="text-right">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {foreach $forms as $f}
+                <tr>
+                    <td><a href="{$admin_url($f['id'] . '/edit')}" class="font-medium">{$f['name']}</a></td>
+                    <td><code class="text-xs">{$f['id']}</code></td>
+                    <td>{$f['notify_email'] ?: '—'}</td>
+                    <td class="text-right">
+                        <a href="{$admin_url($f['id'] . '/submissions')}" class="btn btn-secondary btn-sm">Submissions</a>
+                        <a href="{$admin_url($f['id'] . '/edit')}" class="btn btn-secondary btn-sm">Edit</a>
+                        <form method="post" action="{$admin_url($f['id'] . '/delete')}" class="inline"
+                              onsubmit="return confirm('Delete this form and all its submissions?')">
+                            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            {/foreach}
+        </tbody>
+    </table>
+</div>
+{/if}
+{/block}

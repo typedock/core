@@ -1,0 +1,14 @@
+{
+    "slug": "turnstile-captcha",
+    "name": "Turnstile Captcha",
+    "version": "1.0.0",
+    "description": "Cloudflare Turnstile captcha provider for admin login and form submissions.",
+    "main_class": "TypeDock\\Plugin\\TurnstileCaptcha\\TurnstileCaptchaPlugin",
+    "min_core_version": "0.1",
+    "provides": ["captcha"],
+    "autoload": {
+        "psr-4": {
+            "TypeDock\\Plugin\\TurnstileCaptcha\\": "src/"
+        }
+    }
+}

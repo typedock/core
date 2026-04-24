@@ -58,6 +58,8 @@ class PostController extends BaseAdminController
             'selected_tag_names'  => [],
             'form_action'         => '/admin/posts/create',
             'theme_layouts'       => $this->themeLayouts(),
+            'component_defs'      => $this->editorComponentDefs(),
+            'page_type'           => 'post',
         ]);
     }
 
@@ -67,6 +69,11 @@ class PostController extends BaseAdminController
         $data = $this->getPostData();
         $data['author_id'] = $user['id'] ?? null;
         $data['page_type'] = 'post';
+        $data = $this->downgradeIfCannotPublish($data, 'posts:publish');
+
+        $tagService = new TagService(\Flight::db());
+        $tagNames   = array_filter(array_map('trim', explode(',', $_POST['tags_input'] ?? '')));
+        $data['tag_ids'] = $tagService->findOrCreateByNames($tagNames);
 
         try {
             $page = $this->service()->create($data);
@@ -86,6 +93,7 @@ class PostController extends BaseAdminController
         if ($page === null) {
             throw new \TypeDock\Exception\NotFoundException("Post not found: {$id}");
         }
+        $this->authorizeOwnerOrAny($page, 'posts:edit_own', 'posts:edit_any');
 
         $catService  = new CategoryService(\Flight::db());
         $tagService  = new TagService(\Flight::db());
@@ -106,12 +114,21 @@ class PostController extends BaseAdminController
             'seo'                 => $seo,
             'flash_success'       => $this->getFlash('success'),
             'theme_layouts'       => $this->themeLayouts(),
+            'component_defs'      => $this->editorComponentDefs(),
+            'page_type'           => 'post',
         ]);
     }
 
     public function update(string $id): void
     {
+        $existing = $this->service()->find($id);
+        if ($existing === null) {
+            throw new \TypeDock\Exception\NotFoundException("Post not found: {$id}");
+        }
+        $this->authorizeOwnerOrAny($existing, 'posts:edit_own', 'posts:edit_any');
+
         $data = $this->getPostData();
+        $data = $this->downgradeIfCannotPublish($data, 'posts:publish');
 
         // Handle tags
         $tagService = new TagService(\Flight::db());
@@ -134,12 +151,37 @@ class PostController extends BaseAdminController
 
     public function destroy(string $id): void
     {
+        $existing = $this->service()->find($id);
+        if ($existing === null) {
+            throw new \TypeDock\Exception\NotFoundException("Post not found: {$id}");
+        }
+        $this->authorizeOwnerOrAny($existing, 'posts:delete_own', 'posts:delete_any');
+
         $this->service()->trash($id);
         $this->redirect('/admin/posts', 'Post moved to trash.');
     }
 
     public function autosave(string $id): void
     {
+        $existing = $this->service()->find($id);
+        if ($existing === null) {
+            http_response_code(404);
+            header('Content-Type: application/json');
+            echo json_encode(['ok' => false, 'error' => 'Not found']);
+            return;
+        }
+        // The autosave endpoint is shared between post and page editors; use
+        // the row's own page_type to pick the correct permission namespace.
+        $prefix = ($existing['page_type'] ?? 'post') === 'page' ? 'pages' : 'posts';
+        try {
+            $this->authorizeOwnerOrAny($existing, "{$prefix}:edit_own", "{$prefix}:edit_any");
+        } catch (\TypeDock\Exception\ForbiddenException $e) {
+            http_response_code(403);
+            header('Content-Type: application/json');
+            echo json_encode(['ok' => false, 'error' => 'Forbidden']);
+            return;
+        }
+
         $data = json_decode(file_get_contents('php://input') ?: '{}', true) ?? [];
 
         try {
@@ -191,6 +233,8 @@ class PostController extends BaseAdminController
             'seo'                 => $this->collectSeoInput(),
             'errors'              => $errors,
             'theme_layouts'       => $this->themeLayouts(),
+            'component_defs'      => $this->editorComponentDefs(),
+            'page_type'           => 'post',
         ]);
     }
 }

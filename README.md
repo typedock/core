@@ -14,7 +14,7 @@
 
 TypeDock is an open-source CMS that offers a different set of trade-offs from WordPress — the CMS that built the open web and still powers a large share of it. Where WordPress chose maximum extensibility, TypeDock chooses a smaller, type-safe, server-rendered core with stricter boundaries between themes, modules, and plugins. It is intended as an **alternative**, not a replacement: pick whichever fits the project in front of you.
 
-> **Status:** Alpha. The core framework, auth, content, media, theme engine, and admin UI are working. The block editor UI (Tiptap integration) and module business logic are next.
+> **Status:** Alpha. The core framework, auth, content, media, theme engine, admin UI, and Tiptap-based block editor are working. Module business logic and a hardened plugin sandbox are next.
 
 ## Where TypeDock differs
 
@@ -32,7 +32,7 @@ WordPress solves a huge range of problems brilliantly. TypeDock makes different 
 ## Features
 
 - **Content** — Pages, Posts, Categories, Tags, Revisions, scheduled publishing, trash/restore, translation groups
-- **Block editor** — Markdown-first body with extensions (`==mark==`, `[card:/path]` link cards) plus per-type blocks (image, gallery, embed, bookmark, HTML, separator, component)
+- **Block editor** — Tiptap 3 (ProseMirror) with a slash menu, floating toolbar, image upload + resize, OGP-powered bookmark cards, oEmbed (YouTube/Vimeo/X/Spotify/SoundCloud), highlight marks, and embeddable `{component}` blocks. Body is stored as Tiptap JSON and server-rendered by `TiptapRenderer`
 - **Media** — Uploads with automatic thumbnail generation (sm/md/lg), focal points, alt text, folder organization
 - **SEO** — Per-page meta, Open Graph, Twitter cards, JSON-LD schema, `sitemap.xml`, RSS feed, `robots.txt`
 - **Search** — Built-in LIKE-based search; pluggable `SearchEngine` contract for Meilisearch/Algolia/Elasticsearch
@@ -67,7 +67,7 @@ WordPress solves a huge range of problems brilliantly. TypeDock makes different 
 ┌───────────────▼─────────────────────▼───────────────────────┐
 │                      Core services                          │
 │   PageService · MediaService · SeoService · Auth · ...      │
-│   ComponentRenderer · BlockRenderer · ThemeLoader           │
+│   ComponentRenderer · TiptapRenderer · ThemeLoader          │
 └───────────────┬─────────────────────────────────────────────┘
                 │
 ┌───────────────▼─────────────────────────────────────────────┐
@@ -92,7 +92,7 @@ WordPress solves a huge range of problems brilliantly. TypeDock makes different 
 - **[FlightPHP](https://flightphp.com/)** 3.17+ — micro framework
 - **[Latte](https://latte.nette.org/)** 3.1+ — template engine with context-aware escaping
 - **[Ramsey UUID](https://uuid.ramsey.dev/)** — UUID v7 primary keys
-- **[league/commonmark](https://commonmark.thephpleague.com/)** — Markdown
+- **[Tiptap](https://tiptap.dev/)** 3 (ProseMirror) — block editor, bundled with **[esbuild](https://esbuild.github.io/)**
 - **[PHPMailer](https://github.com/PHPMailer/PHPMailer)** — email
 - **MySQL 8+** / **PostgreSQL 14+** / **SQLite 3.35+**
 
@@ -137,8 +137,9 @@ composer install
 # 2. Prepare storage directories
 mkdir -p storage/{cache,logs,sessions,tmp,uploads,backups}
 
-# 3. Build admin CSS (core-developer only — distributions ship prebuilt)
-make assets            # or: npm install && npm run build:css
+# 3. Build admin assets (core-developer only — distributions ship prebuilt)
+make assets            # or: npm install && npm run build
+                       # build = Tailwind admin CSS + esbuild editor bundle
 
 # 4. Start a dev server
 php -S localhost:8000 -t public
@@ -148,9 +149,11 @@ php -S localhost:8000 -t public
 ```
 
 > **Note** — The zero-build promise applies to end users: the shared-hosting
-> zip ships with `public/admin/assets/css/admin.css` already compiled, so
-> Tailwind is never required on the host. Only core developers working on
-> the admin UI need Node.js and `make assets` (or `make assets-watch`).
+> zip ships with `public/admin/assets/css/admin.css` *and*
+> `public/admin/dist/editor.bundle.{js,css}` already compiled, so neither
+> Tailwind nor Node.js is required on the host. Only core developers
+> editing the admin UI or the Tiptap editor source (`admin/src/editor/`)
+> need Node.js and `make assets`.
 
 Then visit:
 
@@ -288,8 +291,8 @@ Contributions are very welcome. Before you start:
 
 ## Roadmap
 
-- [ ] Block editor UI (Tiptap-based)
 - [ ] Module implementations (Collection / Redirect / Mail / Antispam / Backup / i18n)
+- [ ] Block editor extras (Tiptap Markdown round-trip, drag handle, AdvancedBlocks: callout / balloon / columns)
 - [ ] Full test suite (PHPUnit + integration tests across MySQL/PostgreSQL/SQLite)
 - [ ] Pluggable search drivers (Meilisearch, Algolia)
 - [ ] First-class Docker image

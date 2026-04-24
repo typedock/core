@@ -5,18 +5,46 @@ namespace TypeDock\Core;
 
 class PluginDatabase
 {
+    /** Identifier safe for direct interpolation into SQL. */
+    private const IDENT_REGEX = '/^[A-Za-z_][A-Za-z0-9_]{0,63}$/';
+
     private string $prefix;
 
     public function __construct(
         private readonly \PDO $pdo,
         string $pluginSlug
     ) {
-        $this->prefix = 'plugin_' . str_replace('-', '_', $pluginSlug) . '_';
+        // Slug is already validated by PluginLoader, but normalise again so
+        // the table prefix can never contain non-identifier characters.
+        $normalised   = preg_replace('/[^A-Za-z0-9]/', '_', strtolower($pluginSlug));
+        $this->prefix = 'plugin_' . trim((string) $normalised, '_') . '_';
+    }
+
+    /**
+     * Escape hatch: raw PDO connection. Plugin owns SQL safety from here on
+     * — prepared statements strongly recommended. Use when the scoped CRUD
+     * methods are insufficient (joins across plugin tables and Core tables,
+     * introspection, transactions, etc.).
+     */
+    public function pdo(): \PDO
+    {
+        return $this->pdo;
+    }
+
+    /**
+     * Prefix calculator for raw queries: `SELECT * FROM {$db->table('items')}`
+     * lets plugin authors write joins without re-hardcoding the prefix.
+     */
+    public function table(string $name): string
+    {
+        return $this->tableName($name);
     }
 
     private function tableName(string $table): string
     {
-        return $this->prefix . ltrim($table, '_');
+        $table = ltrim($table, '_');
+        $this->assertIdent($table, 'table');
+        return $this->prefix . $table;
     }
 
     public function find(string $table, string $id): ?array
@@ -42,21 +70,22 @@ class PluginDatabase
         if (!empty($conditions)) {
             $clauses = [];
             foreach ($conditions as $col => $val) {
+                $this->assertIdent((string) $col, 'column');
                 $clauses[] = $col . ' = ?';
                 $params[]  = $val;
             }
             $sql .= ' WHERE ' . implode(' AND ', $clauses);
         }
 
-        if (isset($options['order_by'])) {
-            $sql .= ' ORDER BY ' . $options['order_by'];
+        if (!empty($options['order_by'])) {
+            $sql .= ' ORDER BY ' . $this->compileOrderBy((string) $options['order_by']);
         }
 
         $limit = min((int) ($options['limit'] ?? 50), 200);
         $sql .= ' LIMIT ' . $limit;
 
         if (isset($options['offset'])) {
-            $sql .= ' OFFSET ' . (int) $options['offset'];
+            $sql .= ' OFFSET ' . max(0, (int) $options['offset']);
         }
 
         $stmt = $this->pdo->prepare($sql);
@@ -73,9 +102,13 @@ class PluginDatabase
             $data['id'] = \Ramsey\Uuid\Uuid::uuid7()->toString();
         }
 
-        $cols     = array_keys($data);
-        $colList  = implode(', ', $cols);
-        $valList  = implode(', ', array_fill(0, count($cols), '?'));
+        foreach (array_keys($data) as $col) {
+            $this->assertIdent((string) $col, 'column');
+        }
+
+        $cols    = array_keys($data);
+        $colList = implode(', ', $cols);
+        $valList = implode(', ', array_fill(0, count($cols), '?'));
 
         $stmt = $this->pdo->prepare(
             'INSERT INTO ' . $this->tableName($table) . " ({$colList}) VALUES ({$valList})"
@@ -90,9 +123,13 @@ class PluginDatabase
      */
     public function update(string $table, string $id, array $data): bool
     {
+        if ($data === []) {
+            return false;
+        }
         $setClauses = [];
         $params     = [];
         foreach ($data as $col => $val) {
+            $this->assertIdent((string) $col, 'column');
             $setClauses[] = $col . ' = ?';
             $params[]     = $val;
         }
@@ -112,5 +149,62 @@ class PluginDatabase
         );
         $stmt->execute([$id]);
         return $stmt->rowCount() > 0;
+    }
+
+    /**
+     * @param array<string, mixed> $conditions
+     */
+    public function count(string $table, array $conditions = []): int
+    {
+        $sql    = 'SELECT COUNT(*) FROM ' . $this->tableName($table);
+        $params = [];
+        if (!empty($conditions)) {
+            $clauses = [];
+            foreach ($conditions as $col => $val) {
+                $this->assertIdent((string) $col, 'column');
+                $clauses[] = $col . ' = ?';
+                $params[]  = $val;
+            }
+            $sql .= ' WHERE ' . implode(' AND ', $clauses);
+        }
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Accept "col", "col DESC", or "col1 ASC, col2 DESC". Anything else throws.
+     */
+    private function compileOrderBy(string $orderBy): string
+    {
+        $parts = array_map('trim', explode(',', $orderBy));
+        $out   = [];
+        foreach ($parts as $part) {
+            if ($part === '') {
+                continue;
+            }
+            $tokens = preg_split('/\s+/', $part) ?: [];
+            $col    = $tokens[0] ?? '';
+            $dir    = strtoupper($tokens[1] ?? 'ASC');
+            $this->assertIdent($col, 'column');
+            if (!in_array($dir, ['ASC', 'DESC'], true)) {
+                throw new \InvalidArgumentException("Invalid order direction: {$dir}");
+            }
+            if (count($tokens) > 2) {
+                throw new \InvalidArgumentException("Invalid order_by segment: {$part}");
+            }
+            $out[] = $col . ' ' . $dir;
+        }
+        if ($out === []) {
+            throw new \InvalidArgumentException('Empty order_by');
+        }
+        return implode(', ', $out);
+    }
+
+    private function assertIdent(string $name, string $kind): void
+    {
+        if (preg_match(self::IDENT_REGEX, $name) !== 1) {
+            throw new \InvalidArgumentException("Invalid {$kind} identifier: {$name}");
+        }
     }
 }

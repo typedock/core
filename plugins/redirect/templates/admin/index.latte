@@ -1,0 +1,73 @@
+{layout $plugin_ui_layout}
+
+{block page_title}Redirects{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <h1>Redirects</h1>
+        <p class="text-slate-500">Send old URLs to new destinations with a 301, 302, 307, or 308 status.</p>
+    </div>
+</div>
+
+<form method="post" action="{$admin_url()}" class="card">
+    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+
+    <div class="form-group">
+        <label for="source_path">Source path</label>
+        <input id="source_path" type="text" name="source_path" placeholder="/old-path or ~^/old/(.*)$" required>
+    </div>
+
+    <div class="form-group">
+        <label for="target_url">Target URL</label>
+        <input id="target_url" type="text" name="target_url" placeholder="/new-path or https://example.com/$1" required>
+    </div>
+
+    <div class="form-group">
+        <label for="status_code">Status code</label>
+        <select id="status_code" name="status_code">
+            <option value="301">301 Permanent</option>
+            <option value="302">302 Temporary</option>
+            <option value="307">307 Temporary</option>
+            <option value="308">308 Permanent</option>
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Add</button>
+</form>
+
+{if empty($redirects)}
+    <div class="card">
+        <h2>No redirects configured</h2>
+        <p class="text-slate-500">Add a rule above to redirect an old URL to a new destination.</p>
+    </div>
+{else}
+<div class="card">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Source URL</th>
+                <th>Target URL</th>
+                <th>Code</th>
+                <th class="text-right">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {foreach $redirects as $redirect}
+            <tr>
+                <td><code>{$redirect['source_path']}</code></td>
+                <td><code>{$redirect['target_url']}</code></td>
+                <td>{$redirect['status_code']}</td>
+                <td class="text-right">
+                    <form method="post" action="{$admin_url($redirect['id'] . '/delete')}" class="inline">
+                        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this redirect?')">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {/foreach}
+        </tbody>
+    </table>
+</div>
+{/if}
+{/block}

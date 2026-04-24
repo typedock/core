@@ -3,12 +3,26 @@ declare(strict_types=1);
 
 namespace TypeDock\Media;
 
+use Intervention\Image\Encoders\JpegEncoder;
+use Intervention\Image\Encoders\PngEncoder;
+use Intervention\Image\Encoders\WebpEncoder;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Interfaces\EncodedImageInterface;
+use Intervention\Image\Interfaces\ImageInterface;
+use TypeDock\Contract\MediaProcessor;
 use TypeDock\Contract\StorageDriver;
 
 class MediaService
 {
+    /** @var MediaProcessor[] */
+    private array $processors = [];
+
+    // SVG is intentionally excluded: uploads live under /uploads (same origin),
+    // and SVG can embed <script>/CSS that runs in that origin. Re-enabling it
+    // requires either a sanitiser (e.g. enshrined/svg-sanitize) or serving
+    // uploads from a separate cookieless/static origin.
     private const ALLOWED_MIME_TYPES = [
-        'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
         'video/mp4', 'video/webm',
         'audio/mpeg', 'audio/ogg',
         'application/pdf',
@@ -22,12 +36,50 @@ class MediaService
 
     private const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
+    /** MIME types that get a WebP sibling alongside the original. */
+    private const WEBP_SIBLING_MIME_TYPES = ['image/jpeg', 'image/png'];
+
     private const THUMBNAIL_SIZES = ['sm' => 300, 'md' => 768, 'lg' => 1200];
+
+    /** Cap the stored original's longest side. WordPress uses 2560. */
+    private int $maxImageWidth  = 2560;
+    private int $maxImageHeight = 2560;
+
+    private int $jpegQuality = 85;
+    private int $webpQuality = 82;
 
     public function __construct(
         private readonly \PDO $pdo,
         private readonly StorageDriver $storage
     ) {}
+
+    /**
+     * Override JPEG / WebP encode quality. Plugins like ImageOptimizer call
+     * this during register() to tighten compression without having to hook
+     * the low-level Intervention pipeline.
+     */
+    public function setImageQualities(int $jpegQuality, int $webpQuality): void
+    {
+        $this->jpegQuality = max(40, min(95, $jpegQuality));
+        $this->webpQuality = max(40, min(95, $webpQuality));
+    }
+
+    /** Override the longest-edge cap applied to uploaded originals. */
+    public function setMaxImageSize(int $maxWidth, int $maxHeight): void
+    {
+        $this->maxImageWidth  = max(400, $maxWidth);
+        $this->maxImageHeight = max(400, $maxHeight);
+    }
+
+    /**
+     * Register a post-upload processor. Processors run against the source
+     * temp file before any image processing or storage write. They may
+     * re-encode / optimise and return a replacement path.
+     */
+    public function addProcessor(MediaProcessor $processor): void
+    {
+        $this->processors[] = $processor;
+    }
 
     /**
      * Upload a file from $_FILES array or a local path.
@@ -50,6 +102,20 @@ class MediaService
             );
         }
 
+        // Plugin-contributed processors get first crack at the tmp file. They
+        // may re-encode/compress and return a replacement path; any failure
+        // is logged but does not block the upload.
+        foreach ($this->processors as $processor) {
+            try {
+                $replacement = $processor->process($file['tmp_name'], $mimeType);
+                if ($replacement !== '' && is_file($replacement)) {
+                    $file['tmp_name'] = $replacement;
+                }
+            } catch (\Throwable $e) {
+                error_log('[TypeDock] Media processor failed: ' . $e->getMessage());
+            }
+        }
+
         $originalName = (string) $file['name'];
         $ext          = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
         $safeName     = \Ramsey\Uuid\Uuid::uuid7()->toString() . '.' . $ext;
@@ -58,22 +124,29 @@ class MediaService
         $month        = date('m');
         $storagePath  = ltrim($folder . '/' . $year . '/' . $month . '/' . $safeName, '/');
 
-        $this->storage->putFile($storagePath, $file['tmp_name']);
-
-        // Get image dimensions
-        $width  = null;
-        $height = null;
-        if (in_array($mimeType, self::IMAGE_MIME_TYPES, true)) {
-            [$width, $height] = $this->getImageDimensions($file['tmp_name']);
-        }
-
-        // Generate thumbnails
+        $width      = null;
+        $height     = null;
         $thumbnails = null;
-        if (in_array($mimeType, self::IMAGE_MIME_TYPES, true) && $mimeType !== 'image/svg+xml') {
-            $thumbnails = $this->generateThumbnails($file['tmp_name'], $storagePath, $ext);
+        $fileSize   = (int) $file['size'];
+
+        if (in_array($mimeType, self::IMAGE_MIME_TYPES, true)) {
+            // Process with Intervention: orient from EXIF, downscale if huge,
+            // strip metadata via re-encode, then generate thumbnails and WebP siblings.
+            $processed = $this->processImage($file['tmp_name'], $storagePath, $mimeType, $ext);
+            if ($processed !== null) {
+                $width      = $processed['width'];
+                $height     = $processed['height'];
+                $thumbnails = $processed['thumbnails'];
+                $fileSize   = $processed['file_size'];
+            } else {
+                // Intervention failed — fall back to storing the original as-is.
+                $this->storage->putFile($storagePath, $file['tmp_name']);
+                [$width, $height] = $this->getImageDimensions($file['tmp_name']);
+            }
+        } else {
+            $this->storage->putFile($storagePath, $file['tmp_name']);
         }
 
-        // Save to DB
         $id  = \Ramsey\Uuid\Uuid::uuid7()->toString();
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
@@ -88,13 +161,13 @@ class MediaService
             $storagePath,
             $originalName,
             $mimeType,
-            (int) $file['size'],
+            $fileSize,
             $width,
             $height,
-            null, // alt_text
-            null, // caption
-            null, // focal_point_x
-            null, // focal_point_y
+            null,
+            null,
+            null,
+            null,
             $folder . '/' . $year . '/' . $month,
             $thumbnails !== null ? json_encode($thumbnails) : null,
             $uploadedBy,
@@ -191,15 +264,15 @@ class MediaService
             return;
         }
 
-        // Delete main file
         $this->storage->delete((string) $media['path']);
 
-        // Delete thumbnails
         if (!empty($media['thumbnails'])) {
             $thumbnails = json_decode((string) $media['thumbnails'], true);
             if (is_array($thumbnails)) {
                 foreach ($thumbnails as $path) {
-                    $this->storage->delete((string) $path);
+                    if (is_string($path) && $path !== '') {
+                        $this->storage->delete($path);
+                    }
                 }
             }
         }
@@ -224,105 +297,114 @@ class MediaService
     }
 
     /**
-     * Generate thumbnails using Intervention Image or GD fallback.
+     * Load the upload with Intervention, apply EXIF orientation, downscale
+     * if larger than MAX_IMAGE_WIDTH/HEIGHT, strip metadata via re-encode,
+     * then generate size variants and WebP siblings.
+     *
+     * @return array{width:int, height:int, file_size:int, thumbnails:array<string,string>|null}|null
+     */
+    private function processImage(string $tmpPath, string $storagePath, string $mimeType, string $ext): ?array
+    {
+        try {
+            $manager = $this->imageManager();
+            $image   = $manager->read($tmpPath);
+            $image->orient();
+
+            if ($image->width() > $this->maxImageWidth || $image->height() > $this->maxImageHeight) {
+                $image->scaleDown(width: $this->maxImageWidth, height: $this->maxImageHeight);
+            }
+
+            $encoded = $this->encodeForMime($image, $mimeType);
+            $this->putEncoded($storagePath, $encoded);
+
+            $width  = $image->width();
+            $height = $image->height();
+
+            $thumbnails = $this->generateVariants($image, $storagePath, $mimeType, $ext);
+
+            return [
+                'width'      => $width,
+                'height'     => $height,
+                'file_size'  => strlen((string) $encoded),
+                'thumbnails' => $thumbnails,
+            ];
+        } catch (\Throwable $e) {
+            error_log('[TypeDock] Image processing failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Generate size thumbnails (sm/md/lg) and, for JPEG/PNG sources, WebP
+     * siblings of the original and every thumbnail. Returns a flat map
+     * {sm, md, lg, original_webp, sm_webp, md_webp, lg_webp} with only the
+     * keys that were actually produced.
      *
      * @return array<string, string>|null
      */
-    private function generateThumbnails(string $tmpPath, string $storagePath, string $ext): ?array
+    private function generateVariants(
+        ImageInterface $source,
+        string $storagePath,
+        string $mimeType,
+        string $ext
+    ): ?array {
+        $dir      = dirname($storagePath);
+        $baseName = pathinfo($storagePath, PATHINFO_FILENAME);
+        $dir      = $dir === '.' ? '' : $dir;
+        $prefix   = $dir === '' ? $baseName : $dir . '/' . $baseName;
+
+        $emitWebp = in_array($mimeType, self::WEBP_SIBLING_MIME_TYPES, true);
+        $variants = [];
+
+        if ($emitWebp) {
+            $webpPath = $prefix . '.webp';
+            $this->putEncoded($webpPath, $source->encode(new WebpEncoder(quality: $this->webpQuality)));
+            $variants['original_webp'] = $webpPath;
+        }
+
+        foreach (self::THUMBNAIL_SIZES as $sizeName => $maxWidth) {
+            if ($source->width() <= $maxWidth) {
+                continue;
+            }
+
+            $thumb = clone $source;
+            $thumb->scaleDown(width: $maxWidth);
+
+            $thumbPath = $prefix . '-' . $sizeName . '.' . $ext;
+            $this->putEncoded($thumbPath, $this->encodeForMime($thumb, $mimeType));
+            $variants[$sizeName] = $thumbPath;
+
+            if ($emitWebp) {
+                $thumbWebpPath = $prefix . '-' . $sizeName . '.webp';
+                $this->putEncoded(
+                    $thumbWebpPath,
+                    $thumb->encode(new WebpEncoder(quality: $this->webpQuality))
+                );
+                $variants[$sizeName . '_webp'] = $thumbWebpPath;
+            }
+        }
+
+        return $variants === [] ? null : $variants;
+    }
+
+    private function encodeForMime(ImageInterface $image, string $mimeType): EncodedImageInterface
     {
-        $dir        = dirname($storagePath);
-        $baseName   = pathinfo($storagePath, PATHINFO_FILENAME);
-        $thumbnails = [];
+        return match ($mimeType) {
+            'image/jpeg' => $image->encode(new JpegEncoder(quality: $this->jpegQuality)),
+            'image/png'  => $image->encode(new PngEncoder()),
+            'image/webp' => $image->encode(new WebpEncoder(quality: $this->webpQuality)),
+            // GIF: encode via extension-based shortcut (handles animated frames).
+            default      => $image->encodeByExtension('gif'),
+        };
+    }
 
-        // Try Intervention Image first
-        if (class_exists(\Intervention\Image\ImageManager::class)) {
-            try {
-                $driver  = extension_loaded('imagick') ? 'imagick' : 'gd';
-                $manager = new \Intervention\Image\ImageManager(['driver' => $driver]);
+    private function putEncoded(string $path, EncodedImageInterface $encoded): void
+    {
+        $this->storage->put($path, (string) $encoded);
+    }
 
-                foreach (self::THUMBNAIL_SIZES as $sizeName => $maxWidth) {
-                    $image = $manager->make($tmpPath);
-                    if ($image->width() > $maxWidth) {
-                        $image->resize($maxWidth, null, function ($constraint): void {
-                            $constraint->aspectRatio();
-                            $constraint->upsize();
-                        });
-                    }
-                    $thumbPath = $dir . '/' . $baseName . '-' . $sizeName . '.' . $ext;
-                    $tempFile  = sys_get_temp_dir() . '/' . uniqid('thumb_') . '.' . $ext;
-                    $image->save($tempFile, 85);
-                    $this->storage->putFile($thumbPath, $tempFile);
-                    @unlink($tempFile);
-                    $thumbnails[$sizeName] = $thumbPath;
-                }
-                return $thumbnails;
-            } catch (\Throwable) {
-                // Fall through to GD
-            }
-        }
-
-        // GD fallback
-        if (!extension_loaded('gd')) {
-            return null;
-        }
-
-        try {
-            $sourceImage = match (true) {
-                in_array($ext, ['jpg', 'jpeg']) => imagecreatefromjpeg($tmpPath),
-                $ext === 'png'                  => imagecreatefrompng($tmpPath),
-                $ext === 'gif'                  => imagecreatefromgif($tmpPath),
-                $ext === 'webp'                 => imagecreatefromwebp($tmpPath),
-                default                         => false,
-            };
-
-            if ($sourceImage === false) {
-                return null;
-            }
-
-            $srcW = imagesx($sourceImage);
-            $srcH = imagesy($sourceImage);
-
-            foreach (self::THUMBNAIL_SIZES as $sizeName => $maxWidth) {
-                if ($srcW <= $maxWidth) {
-                    continue;
-                }
-                $ratio = $maxWidth / $srcW;
-                $newW  = $maxWidth;
-                $newH  = (int) ($srcH * $ratio);
-                $thumb = imagecreatetruecolor($newW, $newH);
-
-                if ($thumb === false) {
-                    continue;
-                }
-
-                // Preserve transparency for PNG
-                if ($ext === 'png') {
-                    imagealphablending($thumb, false);
-                    imagesavealpha($thumb, true);
-                }
-
-                imagecopyresampled($thumb, $sourceImage, 0, 0, 0, 0, $newW, $newH, $srcW, $srcH);
-
-                $tempFile  = sys_get_temp_dir() . '/' . uniqid('thumb_') . '.' . $ext;
-                match ($ext) {
-                    'jpg', 'jpeg' => imagejpeg($thumb, $tempFile, 85),
-                    'png'         => imagepng($thumb, $tempFile, 8),
-                    'gif'         => imagegif($thumb, $tempFile),
-                    'webp'        => imagewebp($thumb, $tempFile, 85),
-                    default       => null,
-                };
-
-                $thumbPath = $dir . '/' . $baseName . '-' . $sizeName . '.' . $ext;
-                $this->storage->putFile($thumbPath, $tempFile);
-                @unlink($tempFile);
-                imagedestroy($thumb);
-                $thumbnails[$sizeName] = $thumbPath;
-            }
-
-            imagedestroy($sourceImage);
-            return !empty($thumbnails) ? $thumbnails : null;
-        } catch (\Throwable) {
-            return null;
-        }
+    private function imageManager(): ImageManager
+    {
+        return extension_loaded('imagick') ? ImageManager::imagick() : ImageManager::gd();
     }
 }

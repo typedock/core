@@ -6,7 +6,7 @@
 <div class="page-header">
     <div>
         <h1>Modules and Plugins</h1>
-        <p class="subtitle">Enable or disable modules and plugins in your <code>.env</code> file.</p>
+        <p class="subtitle">Modules ship with Core; plugins live under <code>plugins/</code> and toggle here.</p>
     </div>
 </div>
 
@@ -16,11 +16,32 @@
     <a href="/admin/settings/modules" class="is-active">Modules</a>
 </nav>
 
+{if isset($flash_success) && $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if isset($flash_error) && $flash_error}<div class="alert alert-danger">{$flash_error}</div>{/if}
+
+{if !empty($plugin_issues)}
+<div class="card">
+    <div class="card-header"><h2>Plugin load diagnostics</h2></div>
+    <table class="data-table border-0 rounded-none shadow-none">
+        <thead><tr><th>Plugin</th><th>Level</th><th>Message</th></tr></thead>
+        <tbody>
+            {foreach $plugin_issues as $issue}
+                <tr>
+                    <td class="font-medium">{$issue['slug']}</td>
+                    <td><span class="badge {$issue['level'] === 'error' ? 'badge-danger' : 'badge-warning'}">{$issue['level']}</span></td>
+                    <td>{$issue['message']}</td>
+                </tr>
+            {/foreach}
+        </tbody>
+    </table>
+</div>
+{/if}
+
 <div class="grid gap-6 lg:grid-cols-2">
     <div class="card">
         <div class="card-header">
             <h2>Modules</h2>
-            <span class="text-xs text-slate-500">Official, bundled with core</span>
+            <span class="text-xs text-slate-500">Core features; status mirrors <code>.env</code>.</span>
         </div>
         <table class="data-table border-0 rounded-none shadow-none">
             <thead><tr><th>Module</th><th>Status</th></tr></thead>
@@ -38,15 +59,40 @@
     <div class="card">
         <div class="card-header">
             <h2>Plugins</h2>
-            <span class="text-xs text-slate-500">Third-party, sandboxed</span>
+            <span class="text-xs text-slate-500">Toggle to enable; takes effect on next request.</span>
         </div>
         <table class="data-table border-0 rounded-none shadow-none">
-            <thead><tr><th>Plugin</th><th>Status</th></tr></thead>
-            <tbody>
-                {foreach $plugins as $name => $enabled}
+            <thead>
                 <tr>
-                    <td class="font-medium">{$name}</td>
-                    <td><span class="badge {$enabled ? 'badge-success' : 'badge-muted'}">{$enabled ? 'Enabled' : 'Disabled'}</span></td>
+                    <th>Plugin</th>
+                    <th>Source</th>
+                    <th>Version</th>
+                    <th>State</th>
+                    <th class="text-right">Toggle</th>
+                </tr>
+            </thead>
+            <tbody>
+                {foreach $plugins as $p}
+                <tr>
+                    <td class="font-medium">{$p['name']} <span class="text-xs text-slate-500">({$p['slug']})</span></td>
+                    <td><span class="badge badge-muted">{$p['source']}</span></td>
+                    <td class="text-xs text-slate-500">{$p['version']}</td>
+                    <td>
+                        <span class="badge {$p['enabled'] ? 'badge-success' : 'badge-muted'}">
+                            {$p['enabled'] ? 'Enabled' : 'Disabled'}
+                        </span>
+                        <div class="text-xs text-slate-500 mt-1">via {$p['state_source']}</div>
+                    </td>
+                    <td class="text-right">
+                        <form method="post" action="/admin/settings/modules/plugins/toggle" class="inline">
+                            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                            <input type="hidden" name="slug" value="{$p['slug']}">
+                            <input type="hidden" name="enabled" value="{$p['enabled'] ? '' : '1'}">
+                            <button type="submit" class="btn btn-secondary btn-sm">
+                                {$p['enabled'] ? 'Disable' : 'Enable'}
+                            </button>
+                        </form>
+                    </td>
                 </tr>
                 {/foreach}
             </tbody>

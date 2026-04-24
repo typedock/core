@@ -1,0 +1,41 @@
+{*
+    Plugin shell — renders the Core admin chrome (sidebar / header) and
+    embeds the actual plugin page in an <iframe> so plugin CSS / JS can't
+    collide with admin-base.latte. Used automatically by PluginIframeShell
+    for every top-level GET on /admin/plugins/<slug>/*.
+
+    This layout extends admin-base so the header and sidebar are identical
+    to the rest of the admin. The page {block content} is replaced with an
+    iframe pointed at the same URL with ?_iframed=1 appended — that version
+    of the route renders through plugin-ui.latte instead.
+*}
+{layout 'admin-base.latte'}
+
+{block page_title}{$plugin_title}{/block}
+
+{block content}
+<div class="plugin-iframe-wrapper">
+    <iframe
+        src="{$iframe_src}"
+        title="{$plugin_title}"
+        name="plugin-{$plugin_slug}"
+        class="plugin-iframe"
+        loading="lazy"
+        allow="clipboard-write"></iframe>
+</div>
+
+<style>
+.plugin-iframe-wrapper {
+    width: 100%;
+    height: calc(100vh - 4.5rem);
+    margin: -1rem -1.5rem -1rem -1.5rem;
+    background: #fff;
+}
+.plugin-iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+}
+</style>
+{/block}

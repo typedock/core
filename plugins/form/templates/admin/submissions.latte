@@ -1,0 +1,46 @@
+{layout $plugin_ui_layout}
+
+{block page_title}{$form['name']} · Submissions{/block}
+
+{block content}
+<div class="page-header">
+    <h1>{$form['name']} — Submissions</h1>
+    <div>
+        <a href="{$admin_url($form['id'] . '/edit')}" class="btn btn-secondary">Edit form</a>
+        <a href="{$admin_url()}" class="btn btn-secondary">← All forms</a>
+    </div>
+</div>
+
+{if empty($submissions)}
+    <div class="card">
+        <p class="text-slate-500">No submissions yet.</p>
+    </div>
+{else}
+<div class="card">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Received</th>
+                {foreach $fields as $f}
+                    <th>{$f['label']}</th>
+                {/foreach}
+                <th>IP</th>
+            </tr>
+        </thead>
+        <tbody>
+            {foreach $submissions as $s}
+                {var $data = json_decode((string) ($s['data'] ?? '{}'), true) ?: []}
+                <tr>
+                    <td class="whitespace-nowrap text-xs">{$s['created_at']}</td>
+                    {foreach $fields as $f}
+                        {var $v = $data[$f['name']] ?? ''}
+                        <td>{if is_array($v)}{implode(', ', $v)}{else}{$v}{/if}</td>
+                    {/foreach}
+                    <td class="text-xs text-slate-500">{$s['ip_address']}</td>
+                </tr>
+            {/foreach}
+        </tbody>
+    </table>
+</div>
+{/if}
+{/block}

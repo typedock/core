@@ -1,0 +1,21 @@
+{*
+    Social follow links. Reads accounts from site_options (group='social'),
+    with per-instance param overrides. Theme authors override at
+    themes/<slug>/components/social-follow.latte.
+*}
+{if empty($links)}
+    <!-- social_follow: no account links configured -->
+{else}
+<nav class="td-social-follow" aria-label="Follow us">
+    <ul class="td-social-follow-list">
+        {foreach $links as $l}
+            <li class="td-social-follow-item td-social-follow-item--{$l['name']}">
+                <a href="{$l['url']}" target="_blank" rel="noopener noreferrer me"
+                   data-network="{$l['name']}">
+                    {$l['label']}
+                </a>
+            </li>
+        {/foreach}
+    </ul>
+</nav>
+{/if}

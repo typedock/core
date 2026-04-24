@@ -16,13 +16,65 @@ abstract class BaseAdminController
         $siteObj = $this->buildSiteObject();
 
         $defaults = [
-            'current_user' => $user,
-            'site'         => $siteObj,
-            'csrf_token'   => CsrfMiddleware::generate(),
-            'current_path' => (string) ($_SERVER['REQUEST_URI'] ?? ''),
+            'current_user'      => $user,
+            'site'              => $siteObj,
+            'csrf_token'        => CsrfMiddleware::generate(),
+            'current_path'      => (string) ($_SERVER['REQUEST_URI'] ?? ''),
+            'plugin_admin_menu' => \Flight::plugin_admin_menu()->all(),
         ];
 
         \Flight::latte()->render($template, array_merge($defaults, $params), TYPEDOCK_ROOT . '/admin');
+    }
+
+    protected function can(string $permission): bool
+    {
+        $user = \Flight::get('current_user');
+        if (!is_array($user)) {
+            return false;
+        }
+        return \Flight::permissions()->can($user, $permission);
+    }
+
+    /**
+     * Authorize access to an owned row. Grants when the caller is the owner
+     * and has $ownPermission, or has $anyPermission regardless of ownership.
+     * Throws ForbiddenException otherwise.
+     *
+     * @param array<string, mixed> $row
+     */
+    protected function authorizeOwnerOrAny(array $row, string $ownPermission, string $anyPermission, string $ownerColumn = 'author_id'): void
+    {
+        $user = \Flight::get('current_user');
+        if (!is_array($user)) {
+            throw new \TypeDock\Exception\ForbiddenException('Not authenticated');
+        }
+        $perms   = \Flight::permissions();
+        $isOwner = ($row[$ownerColumn] ?? null) !== null
+            && (string) $row[$ownerColumn] === (string) ($user['id'] ?? '');
+
+        if ($isOwner && $perms->can($user, $ownPermission)) {
+            return;
+        }
+        if ($perms->can($user, $anyPermission)) {
+            return;
+        }
+        throw new \TypeDock\Exception\ForbiddenException('Insufficient permissions');
+    }
+
+    /**
+     * If the caller lacks $publishPermission, downgrade any publish intent to
+     * draft. Keeps contributor/author submissions usable without surfacing a
+     * 403 for a common UI mistake.
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    protected function downgradeIfCannotPublish(array $data, string $publishPermission): array
+    {
+        if (($data['status'] ?? null) === 'published' && !$this->can($publishPermission)) {
+            $data['status'] = 'draft';
+        }
+        return $data;
     }
 
     protected function redirect(string $path, string $message = '', string $type = 'success'): void
@@ -120,6 +172,44 @@ abstract class BaseAdminController
             $out[$k] = $v === '' ? null : $v;
         }
         return $out;
+    }
+
+    /**
+     * Build the block-editor's component catalog (used for the slash menu
+     * and the component-block parameter modal). Shipped as a JSON literal
+     * via `window.typedockComponentDefs`. Only components with `block` in
+     * their `placeable` list are included — slot-only components don't
+     * belong inside page body content.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    protected function editorComponentDefs(): array
+    {
+        try {
+            $registry = \Flight::components();
+            $defs     = [];
+            foreach ($registry->list() as $type => $def) {
+                if (!empty($def->placeable) && !in_array('block', $def->placeable, true)) {
+                    continue;
+                }
+                $defaults = [];
+                foreach ($def->params as $p) {
+                    if (isset($p['name'])) {
+                        $defaults[$p['name']] = $p['default'] ?? null;
+                    }
+                }
+                $defs[$type] = [
+                    'name'          => $def->name,
+                    'icon'          => $def->icon,
+                    'placeable'     => $def->placeable,
+                    'params'        => $def->params,
+                    'defaultParams' => $defaults,
+                ];
+            }
+            return $defs;
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     /**

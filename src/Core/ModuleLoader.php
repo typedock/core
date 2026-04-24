@@ -13,13 +13,12 @@ class ModuleLoader
     public function load(): void
     {
         $config  = config('modules.modules', []);
+        // Mail, Multilang → Core; Redirect → Plugin; Antispam → Form Plugin.
+        // Collection and Backup remain modules until their own migrations
+        // to Core / Plugin land.
         $modules = [
             'Collection' => \TypeDock\Module\Collection\CollectionModule::class,
-            'Redirect'   => \TypeDock\Module\Redirect\RedirectModule::class,
-            'Mail'       => \TypeDock\Module\Mail\MailModule::class,
-            'Antispam'   => \TypeDock\Module\Antispam\AntispamModule::class,
             'Backup'     => \TypeDock\Module\Backup\BackupModule::class,
-            'Multilang'  => \TypeDock\Module\Multilang\MultilangModule::class,
         ];
 
         foreach ($modules as $name => $class) {

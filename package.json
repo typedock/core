@@ -2,15 +2,29 @@
   "name": "typedock-admin-assets",
   "version": "0.1.0",
   "private": true,
-  "description": "Build pipeline for TypeDock admin CSS (Tailwind 4) and icon assets. End users receive the compiled files; only core developers run this.",
+  "description": "Build pipeline for TypeDock admin CSS (Tailwind 4) and the Tiptap editor bundle. End users receive the compiled files; only core developers run this.",
   "scripts": {
     "build:css": "tailwindcss -i resources/admin/admin.css -o public/admin/assets/css/admin.css --minify",
     "watch:css": "tailwindcss -i resources/admin/admin.css -o public/admin/assets/css/admin.css --watch",
-    "build": "npm run build:css",
+    "build:editor": "node esbuild.config.mjs",
+    "watch:editor": "node esbuild.config.mjs --watch",
+    "build": "npm run build:css && npm run build:editor",
     "watch": "npm run watch:css"
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.0.0",
+    "esbuild": "^0.24.0",
     "tailwindcss": "^4.0.0"
+  },
+  "dependencies": {
+    "@tiptap/core": "^3.6.6",
+    "@tiptap/extension-character-count": "^3.6.6",
+    "@tiptap/extension-drag-handle": "^3.6.6",
+    "@tiptap/extension-image": "^3.6.6",
+    "@tiptap/extension-link": "^3.6.6",
+    "@tiptap/extension-placeholder": "^3.6.6",
+    "@tiptap/extension-typography": "^3.6.6",
+    "@tiptap/pm": "^3.6.6",
+    "@tiptap/starter-kit": "^3.6.6"
   }
 }

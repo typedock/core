@@ -13,8 +13,14 @@
 <section class="hero hero--home">
     <div class="container hero-inner">
         <p class="hero-kicker">Welcome</p>
-        <h1 class="hero-title">{$site->name}</h1>
-        {if $site->option('site.description')}
+        {if isset($page)}
+            <h1 class="hero-title">{$page->title}</h1>
+        {else}
+            <h1 class="hero-title">{$site->name}</h1>
+        {/if}
+        {if isset($page) && $page->excerpt}
+            <p class="hero-excerpt">{$page->excerpt}</p>
+        {elseif !isset($page) && $site->option('site.description')}
             <p class="hero-excerpt">{$site->option('site.description')}</p>
         {/if}
         <div class="hero-slot">
@@ -23,6 +29,23 @@
     </div>
 </section>
 
+{if isset($page)}
+<div class="container page-grid">
+    <article class="page">
+        <div class="slot-before-content">
+            {=slot('before_content')|noescape}
+        </div>
+
+        <div class="entry-content">
+            {$page->renderedBody|noescape}
+        </div>
+
+        <div class="home-bottom">
+            {=slot('home_bottom')|noescape}
+        </div>
+    </article>
+</div>
+{else}
 <div class="container post-layout">
     <div class="archive">
         <header class="archive-header">
@@ -68,4 +91,5 @@
         {=slot('sidebar')|noescape}
     </aside>
 </div>
+{/if}
 {/block}

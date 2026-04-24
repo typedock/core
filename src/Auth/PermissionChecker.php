@@ -42,8 +42,7 @@ class PermissionChecker
         'categories:manage' => ['admin', 'editor'],
         'tags:manage'       => ['admin', 'editor', 'author'],
 
-        // Redirects, Slots
-        'redirects:manage'  => ['admin', 'editor'],
+        // Slots
         'slots:manage'      => ['admin', 'editor'],
 
         // Role check shortcut

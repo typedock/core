@@ -1,0 +1,37 @@
+{*
+    Social share buttons. Plain links + optional copy-to-clipboard button.
+    Theme authors override at themes/<slug>/components/social-share.latte.
+*}
+<div class="td-social-share" aria-label="Share this page">
+    <ul class="td-social-share-list">
+        {foreach $links as $l}
+            <li class="td-social-share-item td-social-share-item--{$l['name']}">
+                <a href="{$l['url']}" target="_blank" rel="noopener noreferrer nofollow"
+                   data-network="{$l['name']}">
+                    {$l['label']}
+                </a>
+            </li>
+        {/foreach}
+        {if $show_copy}
+            <li class="td-social-share-item td-social-share-item--copy">
+                <button type="button" class="td-social-share-copy"
+                        data-copy-url="{$page_url}"
+                        data-td-copy-link
+                        aria-live="polite">
+                    Copy link
+                </button>
+            </li>
+        {/if}
+    </ul>
+</div>
+{if $show_copy}
+{syntax off}
+<script>
+document.querySelectorAll('[data-td-copy-link]').forEach(el => {
+    el.addEventListener('click', () => {
+        navigator.clipboard.writeText(el.dataset.copyUrl).then(() => { el.textContent = 'Copied'; });
+    });
+});
+</script>
+{/syntax}
+{/if}

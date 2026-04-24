@@ -1,0 +1,198 @@
+{layout $plugin_ui_layout}
+
+{block page_title}{if $form}Edit form{else}New form{/if}{/block}
+
+{block content}
+<div class="page-header">
+    <h1>{if $form}Edit form{else}New form{/if}</h1>
+    <a href="{$admin_url()}" class="btn btn-secondary">← All forms</a>
+</div>
+
+<form method="post" action="{if $form}{$admin_url($form['id'])}{else}{$admin_url()}{/if}"
+      data-td-form-builder>
+    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+
+    <div class="columns-main-sidebar">
+        <div>
+            <div class="card">
+                <div class="form-group">
+                    <label for="name">Form name</label>
+                    <input type="text" id="name" name="name" value="{$form['name'] ?? ''}" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Fields</label>
+                    <div class="td-fb-rows" data-td-fb-rows>
+                        {foreach $fields as $i => $f}
+                            <div class="td-fb-row" data-td-fb-row>
+                                <div class="td-fb-row-grid">
+                                    <div>
+                                        <label class="td-fb-label">Field name</label>
+                                        <input type="text" name="fields[{$i}][name]" value="{$f['name']}" placeholder="email">
+                                    </div>
+                                    <div>
+                                        <label class="td-fb-label">Label</label>
+                                        <input type="text" name="fields[{$i}][label]" value="{$f['label']}" placeholder="Email address">
+                                    </div>
+                                    <div>
+                                        <label class="td-fb-label">Type</label>
+                                        <select name="fields[{$i}][type]" data-td-fb-type>
+                                            {foreach $field_types as $t => $tlabel}
+                                                <option value="{$t}" {if $f['type'] === $t}selected{/if}>{$tlabel}</option>
+                                            {/foreach}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="td-fb-label">Placeholder</label>
+                                        <input type="text" name="fields[{$i}][placeholder]" value="{$f['placeholder'] ?? ''}">
+                                    </div>
+                                    <div class="td-fb-row-flags">
+                                        <label class="td-fb-check">
+                                            <input type="checkbox" name="fields[{$i}][required]" value="1" {if $f['required']}checked{/if}>
+                                            Required
+                                        </label>
+                                    </div>
+                                </div>
+                                {var $needsOptions = in_array($f['type'], ['select', 'radio'], true)}
+                                <div class="td-fb-options" data-td-fb-options {if !$needsOptions}hidden{/if}>
+                                    <label class="td-fb-label">
+                                        Options <span class="td-fb-hint">(one per line, <code>value|Label</code>)</span>
+                                    </label>
+                                    <textarea name="fields[{$i}][options_text]" rows="3" placeholder="yes|Yes&#10;no|No">{foreach $f['options'] ?? [] as $v => $l}{if is_array($l)}{$l['value']}|{$l['label']}{else}{$v}|{$l}{/if}
+{/foreach}</textarea>
+                                </div>
+                                <div class="td-fb-row-actions">
+                                    <button type="button" class="btn btn-secondary btn-sm" data-td-fb-up>↑</button>
+                                    <button type="button" class="btn btn-secondary btn-sm" data-td-fb-down>↓</button>
+                                    <button type="button" class="btn btn-danger btn-sm" data-td-fb-remove>Remove</button>
+                                </div>
+                            </div>
+                        {/foreach}
+                    </div>
+                    <template data-td-fb-template>
+                        <div class="td-fb-row" data-td-fb-row>
+                            <div class="td-fb-row-grid">
+                                <div><label class="td-fb-label">Field name</label><input type="text" name="__NAME__[name]" placeholder="field_name"></div>
+                                <div><label class="td-fb-label">Label</label><input type="text" name="__NAME__[label]" placeholder="Label"></div>
+                                <div><label class="td-fb-label">Type</label>
+                                    <select name="__NAME__[type]" data-td-fb-type>
+                                        {foreach $field_types as $t => $tlabel}
+                                            <option value="{$t}">{$tlabel}</option>
+                                        {/foreach}
+                                    </select>
+                                </div>
+                                <div><label class="td-fb-label">Placeholder</label><input type="text" name="__NAME__[placeholder]"></div>
+                                <div class="td-fb-row-flags">
+                                    <label class="td-fb-check"><input type="checkbox" name="__NAME__[required]" value="1"> Required</label>
+                                </div>
+                            </div>
+                            <div class="td-fb-options" data-td-fb-options hidden>
+                                <label class="td-fb-label">Options <span class="td-fb-hint">(one per line, <code>value|Label</code>)</span></label>
+                                <textarea name="__NAME__[options_text]" rows="3"></textarea>
+                            </div>
+                            <div class="td-fb-row-actions">
+                                <button type="button" class="btn btn-secondary btn-sm" data-td-fb-up>↑</button>
+                                <button type="button" class="btn btn-secondary btn-sm" data-td-fb-down>↓</button>
+                                <button type="button" class="btn btn-danger btn-sm" data-td-fb-remove>Remove</button>
+                            </div>
+                        </div>
+                    </template>
+                    <div class="td-fb-add-row">
+                        <button type="button" class="btn btn-secondary" data-td-fb-add>+ Add field</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <div class="sidebar-panel">
+                <h3>Notifications</h3>
+                <div class="form-group">
+                    <label for="notify_email">Notify email</label>
+                    <input type="email" id="notify_email" name="notify_email"
+                           value="{$form['notify_email'] ?? ''}"
+                           placeholder="owner@example.com">
+                    <p class="form-hint">Sent via the active Mail provider whenever the form is submitted.</p>
+                </div>
+            </div>
+
+            <div class="sidebar-panel">
+                <h3>After submit</h3>
+                <div class="form-group">
+                    <label for="success_message">Success message</label>
+                    <textarea id="success_message" name="success_message" rows="3">{$form['success_message'] ?? ''}</textarea>
+                </div>
+            </div>
+
+            <div class="sidebar-panel">
+                <button type="submit" class="btn btn-primary w-full">Save form</button>
+                {if $form}
+                    <p class="mt-3 text-xs text-slate-500">
+                        Embed: <code>{syntax off}{component 'form' form_id="{/syntax}{$form['id']}{syntax off}"}{/syntax}</code>
+                    </p>
+                {/if}
+            </div>
+        </div>
+    </div>
+</form>
+
+<style>
+.td-fb-rows { display: flex; flex-direction: column; gap: 0.75rem; }
+.td-fb-row { border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 0.75rem; background: #fafafa; }
+.td-fb-row-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 0.5rem; align-items: end; }
+.td-fb-label { display: block; font-size: 0.75rem; color: #64748b; margin-bottom: 0.25rem; font-weight: 500; }
+.td-fb-hint { color: #94a3b8; font-weight: normal; }
+.td-fb-check { font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem; white-space: nowrap; }
+.td-fb-options { margin-top: 0.5rem; }
+.td-fb-options textarea { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.8rem; }
+.td-fb-row-actions { margin-top: 0.5rem; display: flex; gap: 0.25rem; justify-content: flex-end; }
+.td-fb-add-row { margin-top: 0.75rem; }
+@media (max-width: 900px) { .td-fb-row-grid { grid-template-columns: 1fr 1fr; } }
+</style>
+
+<script n:syntax="off">
+(() => {
+    const builder = document.querySelector('[data-td-form-builder]');
+    if (!builder) return;
+    const rowsEl = builder.querySelector('[data-td-fb-rows]');
+    const template = builder.querySelector('[data-td-fb-template]');
+
+    const reindex = () => {
+        rowsEl.querySelectorAll('[data-td-fb-row]').forEach((row, i) => {
+            row.querySelectorAll('[name]').forEach(el => {
+                el.name = el.name.replace(/^fields\[\d+\]|^__NAME__/, `fields[${i}]`);
+            });
+        });
+    };
+
+    const toggleOptions = (row) => {
+        const type = row.querySelector('[data-td-fb-type]').value;
+        const needs = type === 'select' || type === 'radio';
+        row.querySelector('[data-td-fb-options]').hidden = !needs;
+    };
+
+    rowsEl.addEventListener('click', (e) => {
+        const row = e.target.closest('[data-td-fb-row]');
+        if (!row) return;
+        if (e.target.matches('[data-td-fb-remove]')) { row.remove(); reindex(); }
+        else if (e.target.matches('[data-td-fb-up]'))   { row.previousElementSibling?.before(row); reindex(); }
+        else if (e.target.matches('[data-td-fb-down]')) { row.nextElementSibling?.after(row); reindex(); }
+    });
+
+    rowsEl.addEventListener('change', (e) => {
+        if (e.target.matches('[data-td-fb-type]')) {
+            toggleOptions(e.target.closest('[data-td-fb-row]'));
+        }
+    });
+
+    builder.querySelector('[data-td-fb-add]').addEventListener('click', () => {
+        const clone = template.content.firstElementChild.cloneNode(true);
+        rowsEl.appendChild(clone);
+        reindex();
+        toggleOptions(clone);
+    });
+
+    rowsEl.querySelectorAll('[data-td-fb-row]').forEach(toggleOptions);
+})();
+</script>
+{/block}

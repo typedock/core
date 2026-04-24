@@ -5,6 +5,12 @@ namespace TypeDock\Middleware;
 
 use TypeDock\Contract\RedirectResolver;
 
+/**
+ * Runs the redirect resolver chain before each non-admin GET request. Core
+ * owns the chain invoker; the individual resolvers are now contributed by
+ * plugins (e.g. RedirectPlugin registers ExactMatchResolver + RegexResolver).
+ * When no plugin is active the chain is empty and nothing redirects.
+ */
 class RedirectMiddleware
 {
     /** @var RedirectResolver[] */
@@ -23,21 +29,10 @@ class RedirectMiddleware
         if ($method !== 'GET') {
             return;
         }
-
-        // Skip admin and API routes
         if (str_starts_with($uri, '/admin') || str_starts_with($uri, '/api')) {
             return;
         }
 
-        // Check Core redirects (exact match)
-        $result = $this->checkCoreRedirects($uri);
-        if ($result !== null) {
-            [$target, $code] = $result;
-            header('Location: ' . $target, true, $code);
-            exit;
-        }
-
-        // Check module/plugin resolvers (filter chain)
         foreach (self::$resolvers as $resolver) {
             $result = $resolver->resolve($uri);
             if ($result !== null) {
@@ -45,25 +40,6 @@ class RedirectMiddleware
                 header('Location: ' . $target, true, $code);
                 exit;
             }
-        }
-    }
-
-    /** @return array{0: string, 1: int}|null */
-    private function checkCoreRedirects(string $sourcePath): ?array
-    {
-        try {
-            $pdo  = \Flight::db();
-            $stmt = $pdo->prepare(
-                'SELECT target_url, status_code FROM redirects WHERE source_path = ? LIMIT 1'
-            );
-            $stmt->execute([$sourcePath]);
-            $row = $stmt->fetch();
-            if ($row === false) {
-                return null;
-            }
-            return [(string) $row['target_url'], (int) $row['status_code']];
-        } catch (\Throwable) {
-            return null;
         }
     }
 }

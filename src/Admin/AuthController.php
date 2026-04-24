@@ -7,6 +7,8 @@ use TypeDock\Middleware\CsrfMiddleware;
 
 class AuthController
 {
+    private const LOGIN_CAPTCHA_ACTION = 'admin_login';
+
     public function showLogin(): void
     {
         if ($this->isLoggedIn()) {
@@ -14,10 +16,7 @@ class AuthController
             return;
         }
 
-        \Flight::latte()->render('pages/login.latte', [
-            'site'       => $this->getSiteData(),
-            'csrf_token' => CsrfMiddleware::generate(),
-        ], TYPEDOCK_ROOT . '/admin');
+        $this->renderLogin();
     }
 
     public function processLogin(): void
@@ -26,34 +25,37 @@ class AuthController
         $password = $_POST['password'] ?? '';
 
         if ($email === '' || $password === '') {
-            \Flight::latte()->render('pages/login.latte', [
-                'site'       => $this->getSiteData(),
-                'csrf_token' => CsrfMiddleware::generate(),
+            $this->renderLogin([
                 'error'      => 'Please enter your email address and password.',
                 'old_email'  => $email,
-            ], TYPEDOCK_ROOT . '/admin');
+            ]);
+            return;
+        }
+
+        $captcha = \Flight::captcha()->verify($_POST, self::LOGIN_CAPTCHA_ACTION, $this->captchaContext($email));
+        if (!$captcha->ok) {
+            $this->renderLogin([
+                'error'     => $captcha->error ?? 'Captcha verification failed.',
+                'old_email' => $email,
+            ]);
             return;
         }
 
         try {
             $result = \Flight::session()->login($email, $password);
         } catch (\TypeDock\Exception\TypeDockException $e) {
-            \Flight::latte()->render('pages/login.latte', [
-                'site'       => $this->getSiteData(),
-                'csrf_token' => CsrfMiddleware::generate(),
+            $this->renderLogin([
                 'error'      => 'Your account is locked. Please try again later.',
                 'old_email'  => $email,
-            ], TYPEDOCK_ROOT . '/admin');
+            ]);
             return;
         }
 
         if ($result === null) {
-            \Flight::latte()->render('pages/login.latte', [
-                'site'       => $this->getSiteData(),
-                'csrf_token' => CsrfMiddleware::generate(),
+            $this->renderLogin([
                 'error'      => 'Incorrect email address or password.',
                 'old_email'  => $email,
-            ], TYPEDOCK_ROOT . '/admin');
+            ]);
             return;
         }
 
@@ -152,6 +154,31 @@ class AuthController
             return false;
         }
         return \Flight::session()->check($token) !== null;
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     */
+    private function renderLogin(array $params = []): void
+    {
+        $email = isset($params['old_email']) ? (string) $params['old_email'] : null;
+        \Flight::latte()->render('pages/login.latte', array_merge([
+            'site'         => $this->getSiteData(),
+            'csrf_token'   => CsrfMiddleware::generate(),
+            'captcha_html' => \Flight::captcha()->render(self::LOGIN_CAPTCHA_ACTION, $this->captchaContext($email)),
+        ], $params), TYPEDOCK_ROOT . '/admin');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function captchaContext(?string $email = null): array
+    {
+        return [
+            'email'      => $email,
+            'ip'         => $_SERVER['REMOTE_ADDR'] ?? null,
+            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+        ];
     }
 
     private function getSiteData(): object

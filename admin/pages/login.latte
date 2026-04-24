@@ -39,6 +39,12 @@
                        autocomplete="current-password">
             </div>
 
+            {if ($captcha_html ?? '') !== ''}
+                <div class="form-group mb-0">
+                    {$captcha_html|noescape}
+                </div>
+            {/if}
+
             <button type="submit" class="btn btn-primary btn-block">Log in</button>
         </form>
     </div>

@@ -1,0 +1,14 @@
+{
+    "slug": "social",
+    "name": "Social",
+    "version": "1.0.0",
+    "description": "Social share and follow components.",
+    "main_class": "TypeDock\\Plugin\\Social\\SocialPlugin",
+    "min_core_version": "0.1",
+    "provides": [],
+    "autoload": {
+        "psr-4": {
+            "TypeDock\\Plugin\\Social\\": "src/"
+        }
+    }
+}

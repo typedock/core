@@ -1,0 +1,45 @@
+{layout $plugin_ui_layout}
+
+{block page_title}Turnstile Captcha{/block}
+
+{block content}
+<section>
+    <div class="page-header">
+        <div>
+            <h1>Turnstile Captcha</h1>
+            <p>Protect admin login and Form submissions with Cloudflare Turnstile.</p>
+        </div>
+    </div>
+
+    {if $flash}
+        <div class="plugin-flash plugin-flash--success" role="status">{$flash}</div>
+    {/if}
+
+    <form method="post" action="{$admin_url()}" class="card">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+
+        <div class="form-group">
+            <label for="site_key">Site key</label>
+            <input id="site_key" type="text" name="site_key" value="{$settings['site_key']}" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+            <label for="secret_key">Secret key</label>
+            <input id="secret_key" type="password" name="secret_key" value="{$settings['secret_key']}" autocomplete="new-password">
+        </div>
+
+        <div class="form-group">
+            <label for="theme">Theme</label>
+            <select id="theme" name="theme">
+                <option value="auto" {if $settings['theme'] === 'auto'}selected{/if}>Auto</option>
+                <option value="light" {if $settings['theme'] === 'light'}selected{/if}>Light</option>
+                <option value="dark" {if $settings['theme'] === 'dark'}selected{/if}>Dark</option>
+            </select>
+        </div>
+
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+    </form>
+</section>
+{/block}

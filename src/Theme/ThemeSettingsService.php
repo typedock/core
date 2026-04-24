@@ -257,9 +257,26 @@ class ThemeSettingsService
         return match ($type) {
             'number'  => $value === null || $value === '' ? null : (int) $value,
             'boolean' => (bool) $value,
+            'color'   => $this->coerceColor($field, $value),
             'select'  => $this->coerceSelect($field, $value),
             default   => $value === null ? '' : (string) $value,
         };
+    }
+
+    /**
+     * @param array<string, mixed> $field
+     */
+    private function coerceColor(array $field, mixed $value): string
+    {
+        $str = trim((string) ($value ?? ''));
+        if (preg_match('/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?([0-9a-fA-F]{2})?$/', $str) === 1) {
+            return $str;
+        }
+
+        $default = trim((string) ($field['default'] ?? ''));
+        return preg_match('/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?([0-9a-fA-F]{2})?$/', $default) === 1
+            ? $default
+            : '';
     }
 
     /**

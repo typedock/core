@@ -34,31 +34,56 @@ if ($debug) {
 // In production, the web server should serve public/themes/ and public/plugins/ directly.
 $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
 if (preg_match('#^/(themes|plugins)/([^/]+)/assets/(.+)$#', $uri, $m)) {
-    $safe = str_replace(['..', "\0"], '', $m[3]);
-    // Check published assets in public/ first, then fall back to source directory.
-    $published = TYPEDOCK_ROOT . '/public/' . $m[1] . '/' . $m[2] . '/assets/' . $safe;
-    $source    = TYPEDOCK_ROOT . '/' . $m[1] . '/' . $m[2] . '/assets/' . $safe;
-    $path      = is_file($published) ? $published : $source;
-    if (is_file($path)) {
-        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        $mime = match ($ext) {
-            'css' => 'text/css',
-            'js' => 'application/javascript',
-            'png' => 'image/png',
-            'jpg', 'jpeg' => 'image/jpeg',
-            'gif' => 'image/gif',
-            'svg' => 'image/svg+xml',
-            'webp' => 'image/webp',
-            'woff' => 'font/woff',
+    $bucket = $m[1];
+    $slug   = $m[2];
+    $rest   = $m[3];
+
+    // Bucket (themes/plugins) is fixed by the regex; slug is untrusted. Allow
+    // only the characters we actually use in directory names so the attacker
+    // can't pivot via unicode homoglyphs or separators that os-level globs
+    // would still expand.
+    if (preg_match('/^[A-Za-z0-9_-]+$/', $slug)) {
+        // Allowlist of asset extensions. An .php/.phtml lookup would never
+        // match a real theme asset, but we refuse to hand it to readfile
+        // anyway so the fallback can never double as a source disclosure.
+        $ext = strtolower(pathinfo($rest, PATHINFO_EXTENSION));
+        $mimeMap = [
+            'css'   => 'text/css',
+            'js'    => 'application/javascript',
+            'png'   => 'image/png',
+            'jpg'   => 'image/jpeg',
+            'jpeg'  => 'image/jpeg',
+            'gif'   => 'image/gif',
+            'svg'   => 'image/svg+xml',
+            'webp'  => 'image/webp',
+            'woff'  => 'font/woff',
             'woff2' => 'font/woff2',
-            'ttf' => 'font/ttf',
-            'map', 'json' => 'application/json',
-            default => 'application/octet-stream',
-        };
-        header('Content-Type: ' . $mime);
-        header('Content-Length: ' . filesize($path));
-        readfile($path);
-        return;
+            'ttf'   => 'font/ttf',
+            'map'   => 'application/json',
+            'json'  => 'application/json',
+        ];
+
+        if (isset($mimeMap[$ext])) {
+            foreach (['public/' . $bucket . '/' . $slug . '/assets', $bucket . '/' . $slug . '/assets'] as $relRoot) {
+                $root = realpath(TYPEDOCK_ROOT . '/' . $relRoot);
+                if ($root === false) {
+                    continue;
+                }
+                $candidate = realpath($root . '/' . $rest);
+                if ($candidate === false || !is_file($candidate)) {
+                    continue;
+                }
+                // Ensure the resolved path is still inside the intended root
+                // — belts and braces against symlink escape.
+                if (!str_starts_with($candidate . DIRECTORY_SEPARATOR, $root . DIRECTORY_SEPARATOR)) {
+                    continue;
+                }
+                header('Content-Type: ' . $mimeMap[$ext]);
+                header('Content-Length: ' . filesize($candidate));
+                readfile($candidate);
+                return;
+            }
+        }
     }
 }
 

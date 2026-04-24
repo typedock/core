@@ -47,6 +47,27 @@ class AuthMiddleware
         \Flight::set('current_user', $user);
     }
 
+    public function requirePermission(string $permission): void
+    {
+        $this->requireAuth();
+        $user = \Flight::get('current_user');
+        if (!\Flight::permissions()->can($user, $permission)) {
+            throw new \TypeDock\Exception\ForbiddenException("Missing permission: {$permission}");
+        }
+    }
+
+    public function requirePermissionJson(string $permission): void
+    {
+        $this->requireAuthJson();
+        $user = \Flight::get('current_user');
+        if (!\Flight::permissions()->can($user, $permission)) {
+            http_response_code(403);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Forbidden']);
+            exit;
+        }
+    }
+
     public function requireApiKey(?string $permission = null): void
     {
         $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';

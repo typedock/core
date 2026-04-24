@@ -102,7 +102,16 @@ class App
 
     private function registerMiddleware(): void
     {
-        // Register before-filter middlewares
+        // Locale resolution: off by default, opt in via config/app.php
+        // (`locale.routing_enabled` = true). When enabled, URL prefixes like
+        // /ja/about are stripped before dispatch so existing routes keep
+        // working for the localised variant.
+        if ((bool) config('app.locale_routing_enabled', false)) {
+            \Flight::before('start', function (): void {
+                (new \TypeDock\Locale\LocaleMiddleware(\Flight::locales()))->handle();
+            });
+        }
+
         \Flight::before('start', function () {
             // Run redirect checks
             (new RedirectMiddleware())->handle();

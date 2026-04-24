@@ -13,7 +13,6 @@ use TypeDock\Admin\CategoryController;
 use TypeDock\Admin\TagController;
 use TypeDock\Admin\UserController;
 use TypeDock\Admin\SettingsController;
-use TypeDock\Admin\RedirectController;
 use TypeDock\Admin\SlotController;
 use TypeDock\Admin\ThemeController;
 use TypeDock\Admin\ThemeSettingsController;
@@ -147,6 +146,15 @@ class Router
             $auth->requireAuth();
             (new MediaController())->index();
         });
+        \Flight::route('GET /admin/media/@id', function (string $id) use ($auth) {
+            $auth->requireAuth();
+            (new MediaController())->edit($id);
+        });
+        \Flight::route('POST /admin/media/@id', function (string $id) use ($auth, $csrf) {
+            $auth->requireAuth();
+            $csrf->verifyOrFail();
+            (new MediaController())->update($id);
+        });
         \Flight::route('POST /admin/media/delete/@id', function (string $id) use ($auth, $csrf) {
             $auth->requireAuth();
             $csrf->verifyOrFail();
@@ -155,52 +163,52 @@ class Router
 
         // Menus (location-driven — themes declare locations in theme.json)
         \Flight::route('GET /admin/menus', function () use ($auth) {
-            $auth->requireAuth();
+            $auth->requirePermission('menus:manage');
             (new MenuController())->index();
         });
         \Flight::route('GET /admin/menus/@location', function (string $location) use ($auth) {
-            $auth->requireAuth();
+            $auth->requirePermission('menus:manage');
             (new MenuController())->edit($location);
         });
         \Flight::route('POST /admin/menus/@location/items', function (string $location) use ($auth, $csrf) {
-            $auth->requireAuth();
+            $auth->requirePermission('menus:manage');
             $csrf->verifyOrFail();
             (new MenuController())->storeItem($location);
         });
         \Flight::route('POST /admin/menus/@location/items/@itemId/delete', function (string $location, string $itemId) use ($auth, $csrf) {
-            $auth->requireAuth();
+            $auth->requirePermission('menus:manage');
             $csrf->verifyOrFail();
             (new MenuController())->destroyItem($location, $itemId);
         });
 
         // Categories
         \Flight::route('GET /admin/categories', function () use ($auth) {
-            $auth->requireAuth();
+            $auth->requirePermission('categories:manage');
             (new CategoryController())->index();
         });
         \Flight::route('POST /admin/categories', function () use ($auth, $csrf) {
-            $auth->requireAuth();
+            $auth->requirePermission('categories:manage');
             $csrf->verifyOrFail();
             (new CategoryController())->store();
         });
         \Flight::route('POST /admin/categories/@id/delete', function (string $id) use ($auth, $csrf) {
-            $auth->requireAuth();
+            $auth->requirePermission('categories:manage');
             $csrf->verifyOrFail();
             (new CategoryController())->destroy($id);
         });
 
         // Tags
         \Flight::route('GET /admin/tags', function () use ($auth) {
-            $auth->requireAuth();
+            $auth->requirePermission('tags:manage');
             (new TagController())->index();
         });
         \Flight::route('POST /admin/tags', function () use ($auth, $csrf) {
-            $auth->requireAuth();
+            $auth->requirePermission('tags:manage');
             $csrf->verifyOrFail();
             (new TagController())->store();
         });
         \Flight::route('POST /admin/tags/@id/delete', function (string $id) use ($auth, $csrf) {
-            $auth->requireAuth();
+            $auth->requirePermission('tags:manage');
             $csrf->verifyOrFail();
             (new TagController())->destroy($id);
         });
@@ -261,30 +269,22 @@ class Router
             $auth->requireAuth('admin');
             (new SettingsController())->modules();
         });
+        \Flight::route('POST /admin/settings/modules/plugins/toggle', function () use ($auth, $csrf) {
+            $auth->requireAuth('admin');
+            $csrf->verifyOrFail();
+            (new SettingsController())->togglePlugin();
+        });
 
-        // Redirects
-        \Flight::route('GET /admin/redirects', function () use ($auth) {
-            $auth->requireAuth();
-            (new RedirectController())->index();
-        });
-        \Flight::route('POST /admin/redirects', function () use ($auth, $csrf) {
-            $auth->requireAuth();
-            $csrf->verifyOrFail();
-            (new RedirectController())->store();
-        });
-        \Flight::route('POST /admin/redirects/@id/delete', function (string $id) use ($auth, $csrf) {
-            $auth->requireAuth();
-            $csrf->verifyOrFail();
-            (new RedirectController())->destroy($id);
-        });
+        // Redirects are contributed by the drop-in Redirect plugin. Core only
+        // owns the middleware runner and RedirectResolver contract.
 
         // Slots
         \Flight::route('GET /admin/slots', function () use ($auth) {
-            $auth->requireAuth();
+            $auth->requirePermission('slots:manage');
             (new SlotController())->index();
         });
         \Flight::route('POST /admin/slots', function () use ($auth, $csrf) {
-            $auth->requireAuth();
+            $auth->requirePermission('slots:manage');
             $csrf->verifyOrFail();
             (new SlotController())->update();
         });
@@ -320,22 +320,33 @@ class Router
             (new ThemeSettingsController())->reset();
         });
 
-        // Admin internal API (for JS islands)
-        \Flight::route('POST /admin/api/media/upload', function () use ($auth) {
-            $auth->requireAuthJson();
+        // Admin internal API (for JS islands). Mutating routes require CSRF —
+        // session auth alone is not enough, since cross-origin forms can be
+        // posted with the session cookie attached.
+        \Flight::route('POST /admin/api/media/upload', function () use ($auth, $csrf) {
+            $auth->requirePermissionJson('media:upload');
+            $csrf->verifyOrFail();
             (new MediaController())->upload();
         });
         \Flight::route('GET /admin/api/media', function () use ($auth) {
             $auth->requireAuthJson();
             (new MediaController())->browse();
         });
-        \Flight::route('POST /admin/api/pages/@id/autosave', function (string $id) use ($auth) {
+        \Flight::route('POST /admin/api/pages/@id/autosave', function (string $id) use ($auth, $csrf) {
             $auth->requireAuthJson();
+            $csrf->verifyOrFail();
             (new PostController())->autosave($id);
         });
         \Flight::route('GET /admin/api/oembed', function () use ($auth) {
             $auth->requireAuthJson();
             (new \TypeDock\Admin\OembedController())->resolve();
+        });
+        \Flight::route('GET /admin/api/ogp', function () use ($auth) {
+            // Session auth only (matching /admin/api/oembed). The SSRF guard
+            // in OgpController blocks the dangerous shape of abuse — loopback
+            // and private-range targets — and the call is read-only.
+            $auth->requireAuthJson();
+            (new \TypeDock\Admin\OgpController())->resolve();
         });
         \Flight::route('GET /admin/api/link-card', function () use ($auth) {
             $auth->requireAuthJson();

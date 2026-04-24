@@ -1,0 +1,30 @@
+{*
+    Plugin UI layout — minimal naked chrome served *inside* the iframe
+    embedded by plugin-shell.latte. The plugin's own templates extend this
+    layout. No Tailwind, no sidebar — plugin authors ship their own CSS and
+    the iframe keeps it from leaking out.
+*}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{block page_title}{/block}</title>
+    <link rel="stylesheet" href="/admin/assets/css/plugins-ui.css">
+    {block head}{/block}
+</head>
+<body class="plugin-ui">
+    {ifset $flash_success}
+        {if $flash_success}<div class="plugin-flash plugin-flash--success" role="status">{$flash_success}</div>{/if}
+    {/ifset}
+    {ifset $flash_error}
+        {if $flash_error}<div class="plugin-flash plugin-flash--error" role="alert">{$flash_error}</div>{/if}
+    {/ifset}
+
+    <main class="plugin-main">
+        {block content}{/block}
+    </main>
+
+    {block scripts}{/block}
+</body>
+</html>

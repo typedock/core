@@ -39,6 +39,7 @@
 <div class="media-grid" id="media-grid">
     {foreach $media as $item}
     <div class="media-item" data-id="{$item['id']}">
+        <a href="/admin/media/{$item['id']}" class="media-item-link" aria-label="Edit {$item['original_filename']}">
         {if str_starts_with($item['mime_type'], 'image/')}
             <img src="{$item['url']}" alt="{$item['alt_text'] ?? ''}" loading="lazy">
         {else}
@@ -47,6 +48,7 @@
         <div class="media-info">
             <span class="media-name" title="{$item['original_filename']}">{$item['original_filename']}</span>
         </div>
+        </a>
         <div class="media-actions">
             <button class="btn btn-ghost btn-xs copy-url-btn" data-url="{$item['url']}">Copy URL</button>
             <button class="btn btn-ghost btn-xs copy-url-btn" data-url="{$item['id']}" title="Copy this item's ID (used by the SEO panel's OG image field)">Copy ID</button>

@@ -1,0 +1,14 @@
+{
+    "slug": "image-optimizer",
+    "name": "Image Optimizer",
+    "version": "1.0.0",
+    "description": "Shared-hosting friendly image quality and max-size defaults.",
+    "main_class": "TypeDock\\Plugin\\ImageOptimizer\\ImageOptimizerPlugin",
+    "min_core_version": "0.1",
+    "provides": [],
+    "autoload": {
+        "psr-4": {
+            "TypeDock\\Plugin\\ImageOptimizer\\": "src/"
+        }
+    }
+}

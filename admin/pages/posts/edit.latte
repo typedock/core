@@ -1,16 +1,19 @@
 {layout '../../layouts/admin-base.latte'}
 
-{block page_title}{$post['id'] ?? '' ? 'Edit Post' : 'New Post'}{/block}
+{var $pageType = $page_type ?? ($post['page_type'] ?? 'post')}
+{var $noun = $pageType === 'page' ? 'Page' : 'Post'}
+
+{block page_title}{$post['id'] ?? '' ? 'Edit ' . $noun : 'New ' . $noun}{/block}
 
 {block head}
-<link rel="stylesheet" href="/admin/assets/css/editor.css">
+<link rel="stylesheet" href="/admin/dist/editor.bundle.css">
 {/block}
 
 {block content}
 <form method="post" action="{$form_action}" id="post-form">
     <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-    <input type="hidden" name="page_type" value="post">
-    {* Hidden textarea: receives serialized Markdown on submit. Source of truth on POST. *}
+    <input type="hidden" name="page_type" value="{$pageType}">
+    {* Hidden textarea: receives serialized Tiptap JSON on submit. Source of truth on POST. *}
     <textarea name="body" id="body-field" hidden>{$post['body'] ?? ''}</textarea>
 
     {*
@@ -32,8 +35,10 @@
 
         <label class="pb-field">
             <span>Publish Date</span>
+            {var $publishedAtRaw = $post['published_at'] ?? ''}
+            {* datetime-local expects `YYYY-MM-DDTHH:MM`; DB stores `YYYY-MM-DD HH:MM:SS`. *}
             <input type="datetime-local" name="published_at"
-                   value="{$post['published_at'] ?? ''}">
+                   value="{$publishedAtRaw ? str_replace(' ', 'T', substr($publishedAtRaw, 0, 16)) : ''}">
         </label>
 
         {if isset($public_url) && ($post['status'] ?? '') === 'published'}
@@ -65,13 +70,12 @@
                    placeholder="url-slug">
         </div>
 
-        {* Tiptap editor mount point. editor.js renders a toolbar +
-           contenteditable here. The toolbar is visually attached to the
-           top of the editor card via editor.css. *}
+        {* Tiptap editor mount point. The editor bundle reads the hidden
+           #body-field above for the initial Tiptap JSON document and writes
+           it back on every keystroke. Floating toolbar + slash menu attach
+           themselves to document.body. *}
         <div class="editor-shell">
-            <div id="editor-toolbar" class="editor-toolbar" role="toolbar" aria-label="Formatting"></div>
-            <div id="editor" class="editor-surface" data-initial="{$post['body'] ?? ''}"></div>
-            <textarea id="editor-raw" class="editor-raw" hidden placeholder="# Markdown source"></textarea>
+            <div id="editor" class="editor-surface"></div>
         </div>
 
         {*
@@ -241,10 +245,12 @@
 {/block}
 
 {block scripts}
-{* Classic script first so window.TypeDockMedia is ready before the ES-module
-   editor imports run. Both editor.js (Img button) and the SEO panel below
-   consume openPicker from that global. *}
 <script src="/admin/assets/js/media-picker.js"></script>
-<script type="module" src="/admin/assets/js/editor.js"></script>
+{var $componentDefsJson = json_encode($component_defs ?? [], \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE)}
+<script>
+  // Component catalog for the editor's slash menu + componentBlock params.
+  window.typedockComponentDefs = {$componentDefsJson|noescape};
+</script>
+<script src="/admin/dist/editor.bundle.js" defer></script>
 <script src="/admin/assets/js/seo-og-image.js"></script>
 {/block}

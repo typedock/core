@@ -22,4 +22,9 @@ class AdvancedBlocksPlugin implements PluginInterface
     {
         return '1.0.0';
     }
+
+    public function provides(): array
+    {
+        return [];
+    }
 }
