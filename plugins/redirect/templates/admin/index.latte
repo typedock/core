@@ -16,11 +16,20 @@
     <div class="form-group">
         <label for="source_path">Source path</label>
         <input id="source_path" type="text" name="source_path" placeholder="/old-path or ~^/old/(.*)$" required>
+        <p class="form-hint">
+            Use a plain path for exact matches, for example <code>/old-path</code>.
+            Prefix the source with <code>~</code> to enable regular expression matching,
+            for example <code>~^/old/(.*)$</code>.
+        </p>
     </div>
 
     <div class="form-group">
         <label for="target_url">Target URL</label>
         <input id="target_url" type="text" name="target_url" placeholder="/new-path or https://example.com/$1" required>
+        <p class="form-hint">
+            Regex targets can reuse capture groups with <code>$1</code>, <code>$2</code>, and so on.
+            Example: <code>~^/old/(.*)$</code> → <code>/new/$1</code>.
+        </p>
     </div>
 
     <div class="form-group">

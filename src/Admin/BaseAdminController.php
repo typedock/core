@@ -187,11 +187,13 @@ abstract class BaseAdminController
     {
         try {
             $registry = \Flight::components();
+            $optionsResolver = new \TypeDock\Component\ParamOptionsResolver();
             $defs     = [];
             foreach ($registry->list() as $type => $def) {
                 if (!empty($def->placeable) && !in_array('block', $def->placeable, true)) {
                     continue;
                 }
+                $def = $optionsResolver->enrich($def);
                 $defaults = [];
                 foreach ($def->params as $p) {
                     if (isset($p['name'])) {

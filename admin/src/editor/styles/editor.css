@@ -52,14 +52,17 @@
 .typedock-editor figure.editor-image {
   position: relative;
   margin: 1.5em 0;
+  width: fit-content;
+  max-width: 100%;
 }
-.typedock-editor figure.editor-image--left   { margin-left: 0; margin-right: auto; max-width: 50%; }
-.typedock-editor figure.editor-image--right  { margin-left: auto; margin-right: 0; max-width: 50%; }
+.typedock-editor figure.editor-image--left   { margin-left: 0; margin-right: auto; }
+.typedock-editor figure.editor-image--right  { margin-left: auto; margin-right: 0; }
 .typedock-editor figure.editor-image--center { margin-left: auto; margin-right: auto; }
 
 .typedock-editor figure.editor-image .image-wrapper {
   position: relative;
-  display: inline-block;
+  display: block;
+  max-width: 100%;
 }
 .typedock-editor figure.editor-image img {
   max-width: 100%;

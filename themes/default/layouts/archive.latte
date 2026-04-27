@@ -25,14 +25,19 @@
             <div class="post-list">
                 {foreach $posts as $post}
                 <article class="post-card">
-                    <h2 class="post-card-title">
-                        <a href="{$site->postUrl($post['slug'])}">{$post['title']}</a>
-                    </h2>
-                    {if $post['excerpt']}
-                        <p class="post-card-excerpt">{$post['excerpt']}</p>
+                    {if $post->thumbnail}
+                        <a class="post-card-thumb" href="{$post->url}" aria-label="Read {$post->title}">
+                            <img src="{$post->thumbnail}" alt="{$post->thumbnailAlt}" loading="lazy">
+                        </a>
                     {/if}
-                    {if $post['published_at']}
-                        <time class="post-card-date" datetime="{$post['published_at']}">{$post['published_at']|date:'F j, Y'}</time>
+                    <h2 class="post-card-title">
+                        <a href="{$post->url}">{$post->title}</a>
+                    </h2>
+                    {if $post->excerpt}
+                        <p class="post-card-excerpt">{$post->excerpt}</p>
+                    {/if}
+                    {if $post->publishedAt}
+                        <time class="post-card-date" datetime="{$post->publishedAt}">{$post->publishedAt|date:'F j, Y'}</time>
                     {/if}
                 </article>
                 {/foreach}

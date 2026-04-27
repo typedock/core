@@ -1,4 +1,4 @@
-import { uploadImage } from './image-upload.js'
+import { openImagePicker } from './image-picker.js'
 
 const STATIC_ITEMS = [
   {
@@ -17,7 +17,7 @@ const STATIC_ITEMS = [
   {
     group: 'Media',
     items: [
-      { label: 'Image', icon: '🖼', cmd: (e) => triggerImageUpload(e) },
+      { label: 'Image', icon: '🖼', cmd: (e) => openImagePicker(e) },
       { label: 'Bookmark', icon: '🔗', cmd: (e) => e.chain().focus().setBookmark('').run() },
       { label: 'Embed', icon: '📺', cmd: (e) => e.chain().focus().setEmbed('').run() },
     ],
@@ -160,23 +160,6 @@ function executeItem(editor, item, slashFrom) {
     editor.chain().deleteRange({ from: slashFrom, to: $from.pos }).run()
   }
   item.cmd(editor)
-}
-
-function triggerImageUpload(editor) {
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = 'image/*'
-  input.addEventListener('change', async () => {
-    const file = input.files?.[0]
-    if (!file) return
-    try {
-      const attrs = await uploadImage(file)
-      editor.chain().focus().setImage(attrs).run()
-    } catch (err) {
-      console.error('Image upload failed', err)
-    }
-  })
-  input.click()
 }
 
 function escapeHtml(str) {

@@ -1,0 +1,110 @@
+{layout '../../layouts/admin-base.latte'}
+
+{block page_title}Mail Settings{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <h1>Mail Settings</h1>
+        <p class="subtitle">Configure how TypeDock sends password reset, 2FA, and form notification email.</p>
+    </div>
+</div>
+
+<nav class="tabs">
+    <a href="/admin/settings/general">General</a>
+    <a href="/admin/settings/seo">SEO</a>
+    <a href="/admin/settings/mail" class="is-active">Mail</a>
+    <a href="/admin/settings/modules">Modules</a>
+</nav>
+
+{if isset($flash_success) && $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if isset($flash_error) && $flash_error}<div class="alert alert-danger">{$flash_error}</div>{/if}
+
+<div class="card max-w-3xl">
+    <div class="card-body">
+        <form method="post" action="/admin/settings/mail">
+            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+
+            <fieldset class="form-fieldset">
+                <legend>Sender</legend>
+                <div class="form-group">
+                    <label for="from_email">From email</label>
+                    <input type="email" id="from_email" name="from_email" value="{$mail['from_email']}" required>
+                </div>
+                <div class="form-group">
+                    <label for="from_name">From name</label>
+                    <input type="text" id="from_name" name="from_name" value="{$mail['from_name']}" required>
+                </div>
+            </fieldset>
+
+            <fieldset class="form-fieldset">
+                <legend>Delivery</legend>
+                <div class="form-group">
+                    <label for="mail_default">Mailer</label>
+                    <select id="mail_default" name="mail_default">
+                        <option value="php" {$mail['default'] === 'php' ? 'selected' : ''}>PHP mail()</option>
+                        <option value="sendmail" {$mail['default'] === 'sendmail' ? 'selected' : ''}>Sendmail</option>
+                        <option value="smtp" {$mail['default'] === 'smtp' ? 'selected' : ''}>SMTP</option>
+                    </select>
+                    <small class="form-hint">Use SMTP for most shared hosting providers. PHP mail() depends on the server's local mail setup.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="smtp_host">SMTP host</label>
+                    <input type="text" id="smtp_host" name="smtp_host" value="{$mail['smtp']['host']}" placeholder="smtp.example.com">
+                </div>
+
+                <div class="columns">
+                    <div class="form-group">
+                        <label for="smtp_port">SMTP port</label>
+                        <input type="number" id="smtp_port" name="smtp_port" min="1" max="65535" value="{$mail['smtp']['port']}">
+                    </div>
+                    <div class="form-group">
+                        <label for="smtp_encryption">Encryption</label>
+                        <select id="smtp_encryption" name="smtp_encryption">
+                            <option value="" {$mail['smtp']['encryption'] === '' ? 'selected' : ''}>None</option>
+                            <option value="tls" {$mail['smtp']['encryption'] === 'tls' ? 'selected' : ''}>TLS</option>
+                            <option value="ssl" {$mail['smtp']['encryption'] === 'ssl' ? 'selected' : ''}>SSL</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="smtp_username">SMTP username</label>
+                    <input type="text" id="smtp_username" name="smtp_username" value="{$mail['smtp']['username']}" autocomplete="username">
+                </div>
+
+                <div class="form-group">
+                    <label for="smtp_password">SMTP password</label>
+                    <input type="password" id="smtp_password" name="smtp_password" value="" autocomplete="new-password" placeholder="Leave blank to keep the current password">
+                    {if $mail['smtp']['password'] !== ''}
+                        <label class="switch mt-2">
+                            <input type="checkbox" name="clear_smtp_password" value="1">
+                            <span>Clear saved password</span>
+                        </label>
+                    {/if}
+                </div>
+            </fieldset>
+
+            <div class="mt-6">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card max-w-3xl">
+    <div class="card-header"><h2>Send Test Email</h2></div>
+    <div class="card-body">
+        <form method="post" action="/admin/settings/mail/test">
+            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+            <div class="form-group">
+                <label for="test_to">Recipient</label>
+                <input type="email" id="test_to" name="test_to" placeholder="you@example.com" required>
+                <small class="form-hint">Save settings first, then send a test email to confirm delivery.</small>
+            </div>
+            <button type="submit" class="btn btn-secondary">Send Test</button>
+        </form>
+    </div>
+</div>
+{/block}

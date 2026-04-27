@@ -110,9 +110,13 @@ export const CustomImage = Image.extend({
         dom: figure,
         update: (updatedNode) => {
           if (updatedNode.type.name !== 'image') return false
-          img.src = updatedNode.attrs.src
-          img.alt = updatedNode.attrs.alt || ''
-          img.style.width = updatedNode.attrs.width ? `${updatedNode.attrs.width}px` : ''
+          if (img.getAttribute('src') !== updatedNode.attrs.src) {
+            img.src = updatedNode.attrs.src
+          }
+          const nextAlt = updatedNode.attrs.alt || ''
+          if (img.alt !== nextAlt) img.alt = nextAlt
+          const nextWidth = updatedNode.attrs.width ? `${updatedNode.attrs.width}px` : ''
+          if (img.style.width !== nextWidth) img.style.width = nextWidth
           figure.className = `editor-image editor-image--${updatedNode.attrs.align || 'center'}`
           alignBar.querySelectorAll('button').forEach((btn) => {
             btn.classList.toggle('is-active', btn.dataset.align === updatedNode.attrs.align)

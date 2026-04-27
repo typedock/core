@@ -111,6 +111,22 @@ if (!function_exists('storage_path')) {
     }
 }
 
+if (!function_exists('public_path')) {
+    /**
+     * Filesystem path to the web-accessible directory.
+     *
+     * Defaults to TYPEDOCK_ROOT/public (standard source layout). The shared-hosting
+     * distribution ships with `public_html/` and `typedock/` as sibling folders and
+     * sets TYPEDOCK_PUBLIC_DIR at the entry point so asset publishing and uploads
+     * target the correct directory.
+     */
+    function public_path(string $path = ''): string
+    {
+        $base = defined('TYPEDOCK_PUBLIC_DIR') ? TYPEDOCK_PUBLIC_DIR : TYPEDOCK_ROOT . '/public';
+        return $base . ($path !== '' ? DIRECTORY_SEPARATOR . ltrim($path, DIRECTORY_SEPARATOR) : '');
+    }
+}
+
 if (!function_exists('site_option')) {
     /**
      * Read a site_options row, decoded from JSON. Cached for the lifetime of

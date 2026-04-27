@@ -48,6 +48,7 @@ class TagService
      */
     public function findBySlug(string $slug, string $locale = 'en'): ?array
     {
+        $slug = TermSlugger::normalize($slug, $slug);
         $stmt = $this->pdo->prepare('SELECT * FROM tags WHERE slug = ? AND locale = ? LIMIT 1');
         $stmt->execute([$slug, $locale]);
         $row = $stmt->fetch();
@@ -62,7 +63,12 @@ class TagService
     {
         $id   = \Ramsey\Uuid\Uuid::uuid7()->toString();
         $now  = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
-        $slug = $data['slug'] ?? $this->nameToSlug((string) ($data['name'] ?? ''));
+        $slug = trim((string) ($data['slug'] ?? ''));
+        $slug = $slug !== ''
+            ? TermSlugger::normalize($slug, 'tag-' . date('YmdHis'))
+            : TermSlugger::fromName((string) ($data['name'] ?? ''), 'tag');
+
+        $this->ensureUniqueSlug($slug, $data['locale'] ?? 'en');
 
         $stmt = $this->pdo->prepare(
             'INSERT INTO tags (id, slug, name, locale, created_at) VALUES (?, ?, ?, ?, ?)'
@@ -91,7 +97,7 @@ class TagService
             if ($name === '') {
                 continue;
             }
-            $slug = $this->nameToSlug($name);
+            $slug = TermSlugger::fromName($name, 'tag');
             $stmt = $this->pdo->prepare('SELECT id FROM tags WHERE slug = ? AND locale = ? LIMIT 1');
             $stmt->execute([$slug, $locale]);
             $row = $stmt->fetch();
@@ -105,12 +111,14 @@ class TagService
         return $ids;
     }
 
-    private function nameToSlug(string $name): string
+    private function ensureUniqueSlug(string $slug, string $locale): void
     {
-        $slug = mb_strtolower($name, 'UTF-8');
-        $slug = preg_replace('/[^a-z0-9\s\-]/u', '', $slug) ?? '';
-        $slug = preg_replace('/[\s\-]+/', '-', trim($slug)) ?? '';
-        $slug = trim($slug, '-');
-        return $slug !== '' ? $slug : 'tag-' . date('YmdHis');
+        $stmt = $this->pdo->prepare('SELECT id FROM tags WHERE slug = ? AND locale = ? LIMIT 1');
+        $stmt->execute([$slug, $locale]);
+        if ($stmt->fetch() !== false) {
+            throw new \TypeDock\Exception\ValidationException(
+                ['slug' => ['This slug is already in use.']]
+            );
+        }
     }
 }

@@ -12,7 +12,9 @@
                 <h1 class="post-title">{$page->title}</h1>
                 <div class="post-meta">
                     {if $page->author->name}
-                        <span class="author">{$page->author->name}</span>
+                        <span class="author">
+                            {if $page->author->slug}<a href="/author/{$page->author->slug}">{$page->author->name}</a>{else}{$page->author->name}{/if}
+                        </span>
                     {/if}
                     {if $page->publishedAt}
                         <time datetime="{$page->publishedAt}">{$page->publishedAt|date:'F j, Y'}</time>
@@ -25,6 +27,7 @@
             </div>
 
             <footer class="post-footer">
+                {=component('author_profile')|noescape}
                 {=slot('after_content')|noescape}
             </footer>
         </article>

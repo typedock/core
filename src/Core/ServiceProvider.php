@@ -24,6 +24,7 @@ use TypeDock\Core\ProviderRegistry;
 use TypeDock\Locale\LocaleService;
 use TypeDock\Mail\MailService;
 use TypeDock\Media\MediaService;
+use flight\database\SimplePdo;
 
 class ServiceProvider
 {
@@ -102,12 +103,6 @@ class ServiceProvider
 
     private function registerDatabase(): void
     {
-        \Flight::register('db', \PDO::class, [], function (\PDO $pdo): void {
-            $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-            $pdo->setAttribute(\PDO::ATTR_DEFAULT_FETCH_MODE, \PDO::FETCH_ASSOC);
-        });
-
-        // Override default PDO creation to use our config
         \Flight::map('db', function (): \PDO {
             static $pdo = null;
             if ($pdo !== null) {
@@ -134,17 +129,17 @@ class ServiceProvider
                 ),
             };
 
-            $options = [
+            $pdoOptions = [
                 \PDO::ATTR_ERRMODE            => \PDO::ERRMODE_EXCEPTION,
                 \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
                 \PDO::ATTR_EMULATE_PREPARES   => false,
             ];
 
-            $pdo = new \PDO(
+            $pdo = new SimplePdo(
                 $dsn,
                 $driver === 'sqlite' ? null : ($db['username'] ?? 'root'),
                 $driver === 'sqlite' ? null : ($db['password'] ?? ''),
-                $options
+                $pdoOptions
             );
 
             return $pdo;

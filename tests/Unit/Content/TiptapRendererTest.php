@@ -250,7 +250,12 @@ final class TiptapRendererTest extends TestCase
             ]],
         ];
         $html = $this->renderer->render($doc);
-        $this->assertSame('<div class="stub-component" data-type="search_form"></div>', $html);
+        $this->assertSame(
+            '<div class="td-component-block td-component-block--search_form">'
+            . '<div class="stub-component" data-type="search_form"></div>'
+            . '</div>',
+            $html
+        );
     }
 
     public function testJsonStringIsParsed(): void
@@ -263,5 +268,66 @@ final class TiptapRendererTest extends TestCase
             ]],
         ]);
         $this->assertSame('<p>hi</p>', $this->renderer->render($json));
+    }
+
+    public function testPlainTextExtractsNestedTextAndHardBreaks(): void
+    {
+        $doc = [
+            'type' => 'doc',
+            'content' => [
+                [
+                    'type' => 'heading',
+                    'content' => [['type' => 'text', 'text' => 'Hello']],
+                ],
+                [
+                    'type' => 'paragraph',
+                    'content' => [
+                        ['type' => 'text', 'text' => '世界'],
+                        ['type' => 'hardBreak'],
+                        ['type' => 'text', 'text' => 'again'],
+                    ],
+                ],
+                [
+                    'type' => 'bulletList',
+                    'content' => [[
+                        'type' => 'listItem',
+                        'content' => [[
+                            'type' => 'paragraph',
+                            'content' => [['type' => 'text', 'text' => 'nested']],
+                        ]],
+                    ]],
+                ],
+            ],
+        ];
+
+        $this->assertSame('Hello 世界 again nested', TiptapRenderer::toPlainText($doc));
+    }
+
+    public function testPlainTextHandlesJsonStringAndInvalidInput(): void
+    {
+        $json = json_encode([
+            'type' => 'doc',
+            'content' => [[
+                'type' => 'paragraph',
+                'content' => [['type' => 'text', 'text' => 'From JSON']],
+            ]],
+        ]);
+
+        $this->assertSame('From JSON', TiptapRenderer::toPlainText($json));
+        $this->assertSame('', TiptapRenderer::toPlainText('not json'));
+        $this->assertSame('', TiptapRenderer::toPlainText(null));
+    }
+
+    public function testPlainTextReturnsEmptyForImageOnlyDocument(): void
+    {
+        $doc = [
+            'type' => 'doc',
+            'content' => [[
+                'type' => 'image',
+                'attrs' => ['src' => '/uploads/photo.jpg'],
+            ]],
+        ];
+
+        $this->assertSame('', TiptapRenderer::toPlainText($doc));
     }
 }

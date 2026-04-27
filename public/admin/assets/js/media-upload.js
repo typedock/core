@@ -18,12 +18,11 @@
             return;
         }
 
-        const grid = document.getElementById('media-grid');
-
         window.TypeDockMedia.attachDropZone(area, {
             onUploaded(media) {
-                appendMediaItem(media);
                 hideEmptyState();
+                appendMediaItem(media);
+                showSuccess(`${media.original_filename || 'File'} uploaded.`);
             },
             onError(err, file) {
                 showError(`${file.name}: ${err.message}`);
@@ -89,11 +88,23 @@
     }
 
     function showError(message) {
-        let bar = document.getElementById('media-upload-error');
+        showNotice('media-upload-error', 'alert alert-error mb-4', message);
+    }
+
+    function showSuccess(message) {
+        showNotice('media-upload-success', 'alert alert-success mb-4', message);
+    }
+
+    function showNotice(id, className, message) {
+        const otherId = id === 'media-upload-error' ? 'media-upload-success' : 'media-upload-error';
+        const other = document.getElementById(otherId);
+        if (other) other.remove();
+
+        let bar = document.getElementById(id);
         if (!bar) {
             bar = document.createElement('div');
-            bar.id = 'media-upload-error';
-            bar.className = 'alert alert-error mb-4';
+            bar.id = id;
+            bar.className = className;
             const main = document.querySelector('.admin-main') || document.body;
             main.insertBefore(bar, main.firstChild);
         }

@@ -171,8 +171,10 @@ class FetchResolver
         $limit = max(1, (int) ($params['limit'] ?? 10));
         $order = $this->buildOrderBy($sort, 'p', 'published_at', 'DESC');
 
-        $sql = "SELECT p.*, u.name as author_name FROM pages p
+        $sql = "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name,
+                       u.slug as author_slug, sm.og_image_id FROM pages p
                 LEFT JOIN users u ON u.id = p.author_id
+                LEFT JOIN seo_meta sm ON sm.target_type = p.page_type AND sm.target_id = p.id
                 WHERE " . implode(' AND ', $where) . "
                 ORDER BY {$order}
                 LIMIT ?";
@@ -180,7 +182,7 @@ class FetchResolver
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($args);
-        return array_map([$this, 'toPostObject'], $stmt->fetchAll());
+        return \TypeDock\Content\PostView::projectList($stmt->fetchAll());
     }
 
     /**
@@ -276,9 +278,11 @@ class FetchResolver
         $joinCol   = $by === 'tag' ? 'tag_id' : 'category_id';
 
         $stmt = $pdo->prepare(
-            "SELECT DISTINCT p.*, u.name as author_name
+            "SELECT DISTINCT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name,
+                    u.slug as author_slug, sm.og_image_id
              FROM pages p
              LEFT JOIN users u ON u.id = p.author_id
+             LEFT JOIN seo_meta sm ON sm.target_type = p.page_type AND sm.target_id = p.id
              JOIN {$joinTable} jt1 ON jt1.page_id = p.id
              JOIN {$joinTable} jt2 ON jt2.{$joinCol} = jt1.{$joinCol} AND jt2.page_id = ?
              WHERE p.id != ? AND p.status = 'published'
@@ -286,7 +290,7 @@ class FetchResolver
              LIMIT ?"
         );
         $stmt->execute([$currentId, $currentId, $limit]);
-        return array_map([$this, 'toPostObject'], $stmt->fetchAll());
+        return \TypeDock\Content\PostView::projectList($stmt->fetchAll());
     }
 
     /**
@@ -332,26 +336,4 @@ class FetchResolver
         return $alias . '.' . $sort . ' ' . ($desc ? 'DESC' : 'ASC');
     }
 
-    /**
-     * Project a pages row into the shape the spec documents ($post->title,
-     * $post->url, $post->thumbnail, etc.).
-     *
-     * @param  array<string, mixed> $row
-     */
-    private function toPostObject(array $row): object
-    {
-        $base   = rtrim((string) config('app.url', ''), '/');
-        $prefix = (($row['page_type'] ?? '') === 'post') ? post_path() . '/' : '/';
-        return (object) [
-            'id'           => $row['id'] ?? null,
-            'title'        => $row['title'] ?? '',
-            'slug'         => $row['slug'] ?? '',
-            'url'          => $base . $prefix . ltrim((string) ($row['slug'] ?? ''), '/'),
-            'excerpt'      => $row['excerpt'] ?? null,
-            'publishedAt'  => $row['published_at'] ?? null,
-            'thumbnail'    => null,
-            'author'       => (object) ['name' => $row['author_name'] ?? null],
-            'pageType'     => $row['page_type'] ?? null,
-        ];
-    }
 }

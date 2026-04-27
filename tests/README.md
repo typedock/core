@@ -1,6 +1,8 @@
 # TypeDock Test Suite
 
-PHPUnit-based tests covering pure logic (unit) and migration / wiring smoke tests (integration).
+PHPUnit-based tests cover PHP logic, migrations, and Latte compile smoke checks.
+Vitest + jsdom covers small browser-side admin regressions without starting a
+real browser.
 
 ## Layout
 
@@ -11,6 +13,7 @@ tests/
 │   ├── Auth/
 │   ├── Content/
 │   └── Core/
+├── js/                    # Vitest + jsdom admin JavaScript tests
 └── Integration/           # Spins up SQLite, runs the migrations, etc.
 ```
 
@@ -27,6 +30,9 @@ vendor/bin/phpunit --testsuite=integration
 # A single file or filter
 vendor/bin/phpunit tests/Unit/Content/SlugValidatorTest.php
 vendor/bin/phpunit --filter=testCreateProducesProperlyFormattedToken
+
+# Admin JavaScript tests
+npm run test:js
 ```
 
 ## Conventions
@@ -35,3 +41,4 @@ vendor/bin/phpunit --filter=testCreateProducesProperlyFormattedToken
 - Integration tests get a fresh SQLite file per test (see `MigrationsTest`) and clean up in `tearDown()`.
 - Test classes live under the `TypeDock\Tests\` namespace, mirroring the directory layout under `tests/`.
 - Run `composer install` first so `vendor/bin/phpunit` is available (PHPUnit ^11 is declared in `require-dev`).
+- JS tests should stay narrow and DOM-focused. Prefer jsdom unit tests for small admin behaviors; use browser E2E only when a real upload, navigation, or editor interaction cannot be covered with jsdom.

@@ -10,9 +10,16 @@
 
 {if empty($forms)}
     <div class="card">
-        <p class="text-slate-500">No forms yet. Create one to embed via <code>{syntax off}{component 'form' form_id="…"}{/syntax}</code>.</p>
+        <p class="text-slate-500">No forms yet. Create one, then insert it from the editor slash menu with Component Block → Form.</p>
     </div>
 {else}
+<div class="card">
+    <p class="text-slate-500">
+        Insert forms in page or post content from the editor slash menu:
+        <strong>Component Block → Form</strong>. Pick the form in the parameter dialog.
+        Forms can also be placed in theme slots from Appearance → Slots.
+    </p>
+</div>
 <div class="card">
     <table class="data-table">
         <thead>

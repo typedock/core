@@ -67,6 +67,7 @@ class ParamOptionsResolver
             'select_category'       => $this->categories(),
             'select_tag'            => $this->tags(),
             'select_page'           => $this->pages(),
+            'select_form'           => $this->forms(),
             'select_menu_location'  => $this->menuLocations(),
             'select_collection'     => $this->collections(),
             default                 => null,
@@ -119,6 +120,23 @@ class ParamOptionsResolver
             $out = [];
             foreach ($stmt->fetchAll() as $row) {
                 $out[(string) $row['id']] = (string) $row['title'];
+            }
+            return $out;
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function forms(): array
+    {
+        try {
+            $stmt = \Flight::db()->query('SELECT id, name FROM plugin_form_forms ORDER BY name ASC');
+            $out = [];
+            foreach ($stmt->fetchAll() as $row) {
+                $out[(string) $row['id']] = (string) $row['name'];
             }
             return $out;
         } catch (\Throwable) {

@@ -204,14 +204,17 @@ class SeoService
         };
 
         $title       = $pick('seo_title')        ?? (string) ($page['title'] ?? '');
-        $description = $pick('meta_description') ?? (string) ($page['excerpt'] ?? '');
+        $description = $pick('meta_description')
+            ?? (trim((string) ($page['excerpt'] ?? '')) !== ''
+                ? (string) $page['excerpt']
+                : \TypeDock\Content\PageService::excerptFromRow($page));
         $ogTitle     = $pick('og_title')         ?? $title;
         $ogDesc      = $pick('og_description')   ?? $description;
         $twitterCard = $pick('twitter_card')     ?? 'summary_large_image';
         $robots      = $pick('robots');
         $canonical   = $pick('canonical_url')    ?? $this->defaultCanonical($page);
         $ogImageId   = $raw['og_image_id'] ?? $global['og_image_id'] ?? null;
-        $ogImageUrl  = $ogImageId ? $this->resolveOgImageUrl((string) $ogImageId) : null;
+        $ogImageUrl  = $this->resolveOgImageUrl(is_string($ogImageId) ? $ogImageId : null);
         $schemaType  = $pick('schema_type');
 
         return (object) [
@@ -229,6 +232,36 @@ class SeoService
         ];
     }
 
+    public function resolveForHome(string $fallbackTitle, string $fallbackDescription = ''): object
+    {
+        $global = $this->findByTarget('global', null) ?? [];
+        $pick = static function (string $key) use ($global): ?string {
+            $v = $global[$key] ?? null;
+            return ($v !== null && $v !== '') ? (string) $v : null;
+        };
+
+        $title       = $pick('seo_title')        ?? $fallbackTitle;
+        $description = $pick('meta_description') ?? $fallbackDescription;
+        $ogTitle     = $pick('og_title')         ?? $title;
+        $ogDesc      = $pick('og_description')   ?? $description;
+        $canonical   = rtrim((string) config('app.url', ''), '/') . '/';
+        $ogImageUrl  = $this->resolveOgImageUrl(isset($global['og_image_id']) ? (string) $global['og_image_id'] : null);
+
+        return (object) [
+            'title'          => $title,
+            'description'    => $description,
+            'canonical'      => $canonical,
+            'robots'         => $pick('robots'),
+            'ogType'         => 'website',
+            'ogTitle'        => $ogTitle,
+            'ogDescription'  => $ogDesc,
+            'ogImageUrl'     => $ogImageUrl,
+            'twitterCard'    => $pick('twitter_card') ?? 'summary_large_image',
+            'schemaType'     => null,
+            'jsonLd'         => '',
+        ];
+    }
+
     private function defaultCanonical(array $page): string
     {
         $base = rtrim((string) config('app.url', ''), '/');
@@ -237,20 +270,45 @@ class SeoService
         return $base . $prefix . $slug;
     }
 
-    private function resolveOgImageUrl(string $mediaId): ?string
+    public function resolveOgImageUrl(?string $mediaId): ?string
     {
-        $stmt = $this->pdo->prepare('SELECT path FROM media WHERE id = ? LIMIT 1');
-        $stmt->execute([$mediaId]);
-        $path = $stmt->fetchColumn();
-        if ($path === false || $path === null || $path === '') {
+        return $this->resolveOgImage($mediaId)['url'] ?? null;
+    }
+
+    /**
+     * Resolve a media id into the public URL plus alt text. Themes consume
+     * this through PostView (`$post->thumbnail` + `$post->thumbnailAlt`);
+     * SEO meta consumers can use the URL-only `resolveOgImageUrl()` shortcut.
+     *
+     * @return array{url: string, alt: string}|null
+     */
+    public function resolveOgImage(?string $mediaId): ?array
+    {
+        if ($mediaId === null || $mediaId === '') {
             return null;
         }
-        $path = (string) $path;
-        if (preg_match('#^https?://#i', $path)) {
-            return $path;
+        $stmt = $this->pdo->prepare('SELECT path, alt_text FROM media WHERE id = ? LIMIT 1');
+        $stmt->execute([$mediaId]);
+        $row = $stmt->fetch();
+        if ($row === false) {
+            return null;
         }
-        $base = rtrim((string) config('app.url', ''), '/');
-        return $base . '/' . ltrim($path, '/');
+        $path = (string) ($row['path'] ?? '');
+        if ($path === '') {
+            return null;
+        }
+
+        if (preg_match('#^https?://#i', $path)) {
+            $url = $path;
+        } else {
+            try {
+                $url = \Flight::storage()->url($path);
+            } catch (\Throwable) {
+                $url = rtrim((string) config('app.url', ''), '/') . '/uploads/' . ltrim($path, '/');
+            }
+        }
+
+        return ['url' => $url, 'alt' => (string) ($row['alt_text'] ?? '')];
     }
 
     /**
@@ -280,8 +338,11 @@ class SeoService
             ],
         ];
 
-        if (!empty($page['excerpt'])) {
-            $data['description'] = $page['excerpt'];
+        $excerpt = trim((string) ($page['excerpt'] ?? '')) !== ''
+            ? (string) $page['excerpt']
+            : \TypeDock\Content\PageService::excerptFromRow($page);
+        if ($excerpt !== '') {
+            $data['description'] = $excerpt;
         }
         if (!empty($page['published_at'])) {
             $data['datePublished'] = $page['published_at'];

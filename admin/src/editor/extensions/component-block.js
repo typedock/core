@@ -15,6 +15,14 @@ function summarizeParams(params) {
     .join(', ')
 }
 
+function normalizeOptions(options) {
+  if (Array.isArray(options)) return options
+  if (options && typeof options === 'object') {
+    return Object.entries(options).map(([value, label]) => ({ value, label }))
+  }
+  return []
+}
+
 export const ComponentBlock = Node.create({
   name: 'componentBlock',
   group: 'block',
@@ -132,8 +140,8 @@ function openComponentParamsModal(componentType, currentParams, onSave) {
       const checked = val === true || val === 'true' ? 'checked' : ''
       fields += `<label class="form-group"><span>${label}</span>
         <input type="checkbox" name="${escapeHtml(p.name)}" ${checked}>${hint}</label>`
-    } else if (p.type === 'select' && Array.isArray(p.options)) {
-      const opts = p.options
+    } else if (p.type === 'select') {
+      const opts = normalizeOptions(p.options)
         .map((o) => {
           const v = typeof o === 'object' ? o.value : o
           const lbl = typeof o === 'object' ? o.label : o

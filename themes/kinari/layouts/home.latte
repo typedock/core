@@ -18,8 +18,8 @@
         {else}
             <h1 class="hero-title">{$site->name}</h1>
         {/if}
-        {if isset($page) && $page->excerpt}
-            <p class="hero-excerpt">{$page->excerpt}</p>
+        {if isset($page) && !empty($page->lede)}
+            <p class="hero-excerpt">{$page->lede}</p>
         {elseif !isset($page) && $site->option('site.description')}
             <p class="hero-excerpt">{$site->option('site.description')}</p>
         {/if}
@@ -59,22 +59,27 @@
             <div class="post-grid">
                 {foreach $posts as $post}
                 <article class="post-card">
+                    {if $post->thumbnail}
+                        <a class="post-card-thumb" href="{$post->url}" aria-label="Read {$post->title}">
+                            <img src="{$post->thumbnail}" alt="{$post->thumbnailAlt}" loading="lazy">
+                        </a>
+                    {/if}
                     <h2 class="post-card-title">
-                        <a href="{$site->postUrl($post['slug'])}">{$post['title']}</a>
+                        <a href="{$post->url}">{$post->title}</a>
                     </h2>
                     <div class="post-card-meta">
-                        {if $post['published_at']}
-                            <time datetime="{$post['published_at']}">{$post['published_at']|date:'M j, Y'}</time>
+                        {if $post->publishedAt}
+                            <time datetime="{$post->publishedAt}">{$post->publishedAt|date:'M j, Y'}</time>
                         {/if}
-                        {if $post['author_name'] ?? ''}
+                        {if $post->author->name}
                             <span class="entry-meta-sep" aria-hidden="true">·</span>
-                            <span>{$post['author_name']}</span>
+                            <span>{$post->author->name}</span>
                         {/if}
                     </div>
-                    {if $post['excerpt']}
-                        <p class="post-card-excerpt">{$post['excerpt']}</p>
+                    {if $post->excerpt}
+                        <p class="post-card-excerpt">{$post->excerpt}</p>
                     {/if}
-                    <a href="{$site->postUrl($post['slug'])}" class="post-card-more">Read →</a>
+                    <a href="{$post->url}" class="post-card-more">Read →</a>
                 </article>
                 {/foreach}
             </div>

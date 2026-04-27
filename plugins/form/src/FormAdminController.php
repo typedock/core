@@ -145,6 +145,7 @@ class FormAdminController
     {
         return [
             'name'            => (string) ($_POST['name'] ?? ''),
+            'slug'            => (string) ($_POST['slug'] ?? ''),
             'fields'          => $this->parseFieldRepeater(),
             'notify_email'    => (string) ($_POST['notify_email'] ?? ''),
             'success_message' => (string) ($_POST['success_message'] ?? ''),

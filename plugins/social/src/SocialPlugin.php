@@ -51,7 +51,7 @@ final class SocialPlugin implements PluginInterface
                 ['name' => 'github_url',   'label' => 'GitHub URL',        'type' => 'text', 'default' => ''],
                 ['name' => 'rss_url',      'label' => 'RSS URL',           'type' => 'text', 'default' => ''],
             ],
-            placeable: ['slot', 'block'],
+            placeable: ['slot'],
             template: 'plugins/social/templates/components/social-follow.latte',
             dataProvider: SocialFollowProvider::class,
         ));

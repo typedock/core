@@ -13,6 +13,7 @@
 <nav class="tabs">
     <a href="/admin/settings/general">General</a>
     <a href="/admin/settings/seo" class="is-active">SEO</a>
+    <a href="/admin/settings/mail">Mail</a>
     <a href="/admin/settings/modules">Modules</a>
 </nav>
 
@@ -23,15 +24,41 @@
             <div class="form-group">
                 <label>Default SEO Title</label>
                 <input type="text" name="seo_title" value="{$seo['seo_title'] ?? ''}">
-                <small class="form-hint">Appears in &lt;title&gt; when a page has no custom SEO title.</small>
+                <small class="form-hint">Used for the home page title and as the fallback &lt;title&gt; when an individual page or post has no custom SEO title.</small>
             </div>
             <div class="form-group">
                 <label>Default Meta Description</label>
                 <textarea name="meta_description" rows="3">{$seo['meta_description'] ?? ''}</textarea>
+                <small class="form-hint">Used when a page or post has no custom meta description or excerpt fallback.</small>
             </div>
             <div class="form-group">
                 <label>Robots Directives</label>
                 <input type="text" name="robots" value="{$seo['robots'] ?? 'index,follow'}" placeholder="index,follow" class="font-mono">
+            </div>
+            <div class="form-group" id="og-image-field">
+                <label>Default OG Image</label>
+                <div class="og-image-control">
+                    <input type="text" name="og_image_id" id="og-image-id" maxlength="36"
+                           value="{$seo['og_image_id'] ?? ''}"
+                           placeholder="Pick an image from the library"
+                           class="font-mono text-xs" readonly>
+                    <button type="button" class="btn btn-secondary btn-sm" id="og-image-pick">Choose image</button>
+                    <button type="button" class="btn btn-ghost btn-sm" id="og-image-clear" {if empty($seo['og_image_id'])}hidden{/if}>Clear</button>
+                </div>
+                <div id="og-image-preview" class="og-image-preview" {if empty($default_og_image)}hidden{/if}>
+                    {if !empty($default_og_image)}
+                        <img src="{$default_og_image['url']}" alt="{$default_og_image['alt_text'] ?? ''}" loading="lazy">
+                    {/if}
+                </div>
+                <small class="form-hint">Used for &lt;meta property="og:image"&gt; and Twitter images when a post or page has no individual OG image.</small>
+            </div>
+            <div class="form-group">
+                <label>Default Twitter Card</label>
+                {var $twCard = $seo['twitter_card'] ?? 'summary_large_image'}
+                <select name="twitter_card">
+                    <option value="summary" {$twCard === 'summary' ? 'selected' : ''}>summary</option>
+                    <option value="summary_large_image" {$twCard === 'summary_large_image' ? 'selected' : ''}>summary_large_image</option>
+                </select>
             </div>
             <div class="mt-6">
                 <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -39,4 +66,9 @@
         </form>
     </div>
 </div>
+{/block}
+
+{block scripts}
+<script src="/admin/assets/js/media-picker.js"></script>
+<script src="/admin/assets/js/seo-og-image.js"></script>
 {/block}

@@ -1,0 +1,20 @@
+{if isset($author) && $author}
+<div class="author-profile author-profile--kinari">
+    {if $author['avatar_url']}
+        <img src="{$author['avatar_url']}" alt="{$author['display_name']}" class="author-avatar" width="88" height="88">
+    {/if}
+    <div class="author-info">
+        <p class="author-kicker">Written by</p>
+        <h3 class="author-name">
+            {if !empty($author['slug'])}<a href="/author/{$author['slug']}">{$author['display_name']}</a>{else}{$author['display_name']}{/if}
+        </h3>
+        {if $author['bio']}<p class="author-bio">{$author['bio']}</p>{/if}
+        <div class="author-links">
+            {if $author['website_url']}<a href="{$author['website_url']}" rel="me noopener" target="_blank">Website</a>{/if}
+            {foreach $author['social_links'] as $label => $url}
+                {if $url}<a href="{$url}" rel="me noopener" target="_blank">{$label}</a>{/if}
+            {/foreach}
+        </div>
+    </div>
+</div>
+{/if}

@@ -17,6 +17,7 @@ class FormPlugin implements PluginInterface
     public function register(PluginContext $ctx): void
     {
         $ctx->migrate(__DIR__ . '/../migrations');
+        $this->seedNewsletterFormOnce($ctx);
 
         $ctx->registerComponent(new ComponentDefinition(
             type: 'form',
@@ -24,9 +25,9 @@ class FormPlugin implements PluginInterface
             description: 'Renders a form defined in the Form plugin admin.',
             params: [[
                 'name'  => 'form_id',
-                'label' => 'Form ID',
-                'type'  => 'text',
-                'hint'  => 'UUID of the form created under /admin/plugins/form.',
+                'label' => 'Form',
+                'type'  => 'select_form',
+                'hint'  => 'Form created under /admin/plugins/form.',
             ]],
             placeable: ['slot', 'block'],
             template: 'themes/default/components/form.latte',
@@ -60,5 +61,39 @@ class FormPlugin implements PluginInterface
     public function provides(): array
     {
         return [];
+    }
+
+    /**
+     * Create a default `newsletter` form on the first request after the
+     * plugin is enabled, so theme slot defaults like
+     * `{"component":"form","params":{"slug":"newsletter"}}` render
+     * something instead of going blank. The marker option keeps re-runs
+     * cheap and lets operators delete the seed form without it coming
+     * back on the next request.
+     */
+    private function seedNewsletterFormOnce(PluginContext $ctx): void
+    {
+        if ($ctx->getSiteOption('plugin.form.seeded_newsletter') !== null) {
+            return;
+        }
+        $service = new FormService($ctx->db()->pdo());
+        if ($service->findBySlug('newsletter') === null) {
+            $service->create([
+                'name'            => 'Newsletter',
+                'slug'            => 'newsletter',
+                'fields'          => [
+                    [
+                        'name'        => 'email',
+                        'label'       => 'Email',
+                        'type'        => 'email',
+                        'required'    => true,
+                        'placeholder' => 'you@example.com',
+                        'options'     => [],
+                    ],
+                ],
+                'success_message' => "Thanks! You're subscribed.",
+            ]);
+        }
+        $ctx->setSiteOption('plugin.form.seeded_newsletter', 1, 'plugin.form');
     }
 }

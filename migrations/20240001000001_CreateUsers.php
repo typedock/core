@@ -15,6 +15,12 @@ final class CreateUsers extends Migration
             $t->string('email', 254);
             $t->string('password_hash', 255);
             $t->string('name', 255);
+            $t->string('display_name', 120)->null();
+            $t->string('slug', 120)->null();
+            $t->text('bio')->null();
+            $t->string('avatar_media_id', 36)->null();
+            $t->string('website_url', 500)->null();
+            $t->text('social_links')->null();
             $t->string('role', 20)->default('contributor');
             $t->string('avatar_path', 1000)->null();
             $t->string('two_factor_secret', 255)->null();
@@ -26,6 +32,7 @@ final class CreateUsers extends Migration
             $t->datetime('updated_at');
             $t->primary(['id']);
             $t->unique(['email']);
+            $t->unique(['slug']);
         });
 
         $schema->create('sessions', function (Blueprint $t) {

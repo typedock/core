@@ -15,6 +15,7 @@ final class CreatePages extends Migration
             $t->string('slug', 1000);
             $t->string('title', 500);
             $t->text('body')->null();
+            $t->text('body_markdown')->null();
             $t->text('excerpt')->null();
             $t->string('page_type', 20)->default('post');
             $t->string('status', 20)->default('draft');
@@ -41,6 +42,7 @@ final class CreatePages extends Migration
             $t->string('page_id', 36);
             $t->string('title', 500);
             $t->text('body')->null();
+            $t->text('body_markdown')->null();
             $t->string('author_id', 36)->null();
             $t->datetime('created_at')->useCurrent();
             $t->primary(['id']);

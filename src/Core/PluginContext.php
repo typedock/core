@@ -37,6 +37,7 @@ class PluginContext
     private ?FileCache $cache = null;
     private ?PluginLogger $logger = null;
     private ?PluginMigrationRunner $migrations = null;
+    private bool $hasAdminSurface = false;
 
     public function __construct(
         private readonly string $pluginSlug,
@@ -103,6 +104,7 @@ class PluginContext
         callable $handler,
         bool $requireCsrf = true
     ): void {
+        $this->hasAdminSurface = true;
         $path   = ltrim($path, '/');
         $base   = '/admin/plugins/' . $this->pluginSlug;
         $full   = $path === '' ? $base : $base . '/' . $path;
@@ -129,10 +131,16 @@ class PluginContext
 
     public function addAdminMenuItem(string $label, string $path): void
     {
+        $this->hasAdminSurface = true;
         $path = ltrim($path, '/');
         $base = '/admin/plugins/' . $this->pluginSlug;
         $full = $path === '' ? $base : $base . '/' . $path;
         \Flight::plugin_admin_menu()->add($this->pluginSlug, $label, $full);
+    }
+
+    public function hasAdminSurface(): bool
+    {
+        return $this->hasAdminSurface;
     }
 
     public function provideSingle(string $type, object $instance): void

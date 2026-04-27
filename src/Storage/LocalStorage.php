@@ -13,7 +13,7 @@ class LocalStorage implements StorageDriver
     /** @param array<string, mixed> $config */
     public function __construct(array $config = [])
     {
-        $this->root = rtrim((string) ($config['root'] ?? TYPEDOCK_ROOT . '/public/uploads'), '/');
+        $this->root = rtrim((string) ($config['root'] ?? public_path('uploads')), '/');
         $this->url  = rtrim((string) ($config['url'] ?? config('app.url', '') . '/uploads'), '/');
     }
 

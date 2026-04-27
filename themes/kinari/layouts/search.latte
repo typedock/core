@@ -27,9 +27,9 @@
                 {foreach $results as $post}
                 <article class="post-card">
                     <h2 class="post-card-title">
-                        <a href="{$site->postUrl($post['slug'])}">{$post['title']}</a>
+                        <a href="{$post->url}">{$post->title}</a>
                     </h2>
-                    {if $post['excerpt']}<p class="post-card-excerpt">{$post['excerpt']}</p>{/if}
+                    {if $post->excerpt}<p class="post-card-excerpt">{$post->excerpt}</p>{/if}
                 </article>
                 {/foreach}
             </div>

@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace TypeDock\Admin;
 
+use League\CommonMark\CommonMarkConverter;
+
 class SettingsController extends BaseAdminController
 {
     public function general(): void
@@ -71,6 +73,7 @@ class SettingsController extends BaseAdminController
         $seo = $stmt->fetch() ?: [];
         $this->render('pages/settings/seo.latte', [
             'seo'           => $seo,
+            'default_og_image' => $this->mediaPreview($seo['og_image_id'] ?? null),
             'flash_success' => $this->getFlash('success'),
             'flash_error'   => $this->getFlash('error'),
         ]);
@@ -83,14 +86,112 @@ class SettingsController extends BaseAdminController
             'seo_title'        => $_POST['seo_title'] ?? null,
             'meta_description' => $_POST['meta_description'] ?? null,
             'robots'           => $_POST['robots'] ?? null,
+            'og_image_id'      => trim((string) ($_POST['og_image_id'] ?? '')) ?: null,
+            'twitter_card'     => $_POST['twitter_card'] ?? null,
         ]);
         $this->redirect('/admin/settings/seo', 'SEO settings saved successfully.');
+    }
+
+    public function mail(): void
+    {
+        $this->render('pages/settings/mail.latte', [
+            'mail'          => $this->mailSettings(),
+            'flash_success' => $this->getFlash('success'),
+            'flash_error'   => $this->getFlash('error'),
+        ]);
+    }
+
+    public function updateMail(): void
+    {
+        $current = $this->mailSettings();
+        $driver = (string) ($_POST['mail_default'] ?? 'php');
+        if (!in_array($driver, ['php', 'sendmail', 'smtp'], true)) {
+            $driver = 'php';
+        }
+
+        $password = (string) ($_POST['smtp_password'] ?? '');
+        if ($password === '' && empty($_POST['clear_smtp_password'])) {
+            $password = (string) ($current['smtp']['password'] ?? '');
+        }
+
+        $this->setOption('mail.default', $driver, 'mail');
+        $this->setOption('mail.from_email', trim((string) ($_POST['from_email'] ?? '')), 'mail');
+        $this->setOption('mail.from_name', trim((string) ($_POST['from_name'] ?? '')), 'mail');
+        $this->setOption('mail.smtp.host', trim((string) ($_POST['smtp_host'] ?? '')), 'mail');
+        $this->setOption('mail.smtp.port', max(1, min(65535, (int) ($_POST['smtp_port'] ?? 587))), 'mail');
+        $this->setOption('mail.smtp.username', trim((string) ($_POST['smtp_username'] ?? '')), 'mail');
+        $this->setOption('mail.smtp.password', $password, 'mail');
+        $this->setOption('mail.smtp.encryption', $this->mailEncryption((string) ($_POST['smtp_encryption'] ?? 'tls')), 'mail');
+
+        $this->redirect('/admin/settings/mail', 'Mail settings saved successfully.');
+    }
+
+    public function testMail(): void
+    {
+        $to = trim((string) ($_POST['test_to'] ?? ''));
+        if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            $this->redirect('/admin/settings/mail', 'Enter a valid recipient email address.', 'error');
+            return;
+        }
+
+        $ok = \Flight::mailer()->send(
+            $to,
+            'TypeDock test email',
+            "This is a test email from TypeDock.\n\nIf you received this, your mail settings are working.",
+            ['html' => false]
+        );
+
+        $this->redirect(
+            '/admin/settings/mail',
+            $ok ? 'Test email sent.' : 'Test email failed. Check SMTP host, credentials, and server logs.',
+            $ok ? 'success' : 'error'
+        );
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function mediaPreview(mixed $mediaId): ?array
+    {
+        $mediaId = is_string($mediaId) ? trim($mediaId) : '';
+        if ($mediaId === '') {
+            return null;
+        }
+        try {
+            return \Flight::media_service()->find($mediaId);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * @return array{default:string,from_email:string,from_name:string,smtp:array{host:string,port:int,username:string,password:string,encryption:string}}
+     */
+    private function mailSettings(): array
+    {
+        return [
+            'default' => (string) site_option('mail.default', config('mail.default', 'php')),
+            'from_email' => (string) site_option('mail.from_email', config('mail.from_email', 'noreply@example.com')),
+            'from_name' => (string) site_option('mail.from_name', config('mail.from_name', 'TypeDock')),
+            'smtp' => [
+                'host' => (string) site_option('mail.smtp.host', config('mail.smtp.host', 'localhost')),
+                'port' => (int) site_option('mail.smtp.port', config('mail.smtp.port', 587)),
+                'username' => (string) site_option('mail.smtp.username', config('mail.smtp.username', '')),
+                'password' => (string) site_option('mail.smtp.password', config('mail.smtp.password', '')),
+                'encryption' => (string) site_option('mail.smtp.encryption', config('mail.smtp.encryption', 'tls')),
+            ],
+        ];
+    }
+
+    private function mailEncryption(string $value): string
+    {
+        return in_array($value, ['', 'tls', 'ssl'], true) ? $value : 'tls';
     }
 
     public function modules(): void
     {
         $this->render('pages/settings/modules.latte', [
-            'modules'        => config('modules.modules', []),
+            'modules'        => $this->visibleModules(),
             'plugins'        => $this->discoverAllPlugins(),
             'plugin_issues'  => \Flight::plugin_diagnostics()->all(),
             'flash_success'  => $this->getFlash('success'),
@@ -98,9 +199,27 @@ class SettingsController extends BaseAdminController
         ]);
     }
 
+    public function pluginDocs(string $slug): void
+    {
+        $doc = $this->pluginReadme($slug);
+        if ($doc === null) {
+            throw new \TypeDock\Exception\NotFoundException("Plugin documentation not found: {$slug}");
+        }
+
+        $converter = new CommonMarkConverter([
+            'html_input' => 'strip',
+            'allow_unsafe_links' => false,
+        ]);
+
+        $this->render('pages/plugins/docs.latte', [
+            'plugin' => $doc['plugin'],
+            'html'   => (string) $converter->convert($doc['markdown']),
+        ]);
+    }
+
     /**
      * Toggle a plugin's enabled flag in site_options. DB state overrides the
-     * env/config fallback chain in PluginLoader.
+     * env fallback in PluginLoader.
      */
     public function togglePlugin(): void
     {
@@ -137,7 +256,7 @@ class SettingsController extends BaseAdminController
      * drop-ins from plugins/<slug>/ — annotated with their current runtime
      * enabled state and the source of that state (DB / env / default).
      *
-     * @return array<int, array{slug:string,name:string,version:string,source:string,enabled:bool,state_source:string}>
+     * @return array<int, array{slug:string,name:string,version:string,source:string,enabled:bool,state_source:string,docs_url:?string}>
      */
     private function discoverAllPlugins(): array
     {
@@ -145,17 +264,21 @@ class SettingsController extends BaseAdminController
 
         // Legacy built-in plugins (hardcoded in PluginLoader::$builtInPlugins).
         $builtIns = [
-            'AdvancedBlocks' => \TypeDock\Plugin\AdvancedBlocks\AdvancedBlocksPlugin::class,
+            'advancedblocks' => [
+                'class' => \TypeDock\Plugin\AdvancedBlocks\AdvancedBlocksPlugin::class,
+                'env'   => 'PLUGIN_ADVANCED_BLOCKS',
+            ],
         ];
-        foreach ($builtIns as $name => $class) {
-            $slug = strtolower($name);
+        foreach ($builtIns as $slug => $plugin) {
+            $class = $plugin['class'];
             $rows[$slug] = [
                 'slug'         => $slug,
-                'name'         => class_exists($class) ? (new $class())->getName() : $name,
+                'name'         => class_exists($class) ? (new $class())->getName() : $slug,
                 'version'      => class_exists($class) ? (new $class())->getVersion() : '—',
                 'source'       => 'built-in',
-                'enabled'      => $this->resolveEnabled($slug, $name),
+                'enabled'      => $this->resolveEnabled($slug, $plugin['env']),
                 'state_source' => $this->stateSource($slug),
+                'docs_url'     => null,
             ];
         }
 
@@ -171,8 +294,11 @@ class SettingsController extends BaseAdminController
                 'name'         => (string) ($manifest['name'] ?? ucfirst($slug)),
                 'version'      => (string) ($manifest['version'] ?? '—'),
                 'source'       => 'drop-in',
-                'enabled'      => $this->resolveEnabled($slug, $this->configKeyForSlug($slug)),
+                'enabled'      => $this->resolveEnabled($slug),
                 'state_source' => $this->stateSource($slug),
+                'docs_url'     => $this->pluginReadmePath($manifest, dirname($manifestPath)) !== null
+                    ? '/admin/plugins/' . rawurlencode($slug) . '/docs'
+                    : null,
             ];
         }
 
@@ -180,17 +306,27 @@ class SettingsController extends BaseAdminController
         return array_values($rows);
     }
 
-    private function resolveEnabled(string $slug, string $configKey): bool
+    /**
+     * Modules are being retired. Hide Collection from admin while it remains
+     * parked in code for future re-design around external data/feed imports.
+     *
+     * @return array<string, bool>
+     */
+    private function visibleModules(): array
+    {
+        return [
+            'Backup' => (bool) env('MODULE_BACKUP', false),
+        ];
+    }
+
+    private function resolveEnabled(string $slug, ?string $envKey = null): bool
     {
         $db = $this->readDbPluginFlag($slug);
         if ($db !== null) {
             return $db;
         }
-        $plugins = (array) config('modules.plugins', []);
-        if (array_key_exists($configKey, $plugins)) {
-            return (bool) $plugins[$configKey];
-        }
-        return (bool) env('PLUGIN_' . strtoupper(str_replace('-', '_', $slug)), false);
+        $envKey ??= $this->envKeyForSlug($slug);
+        return (bool) env($envKey, false);
     }
 
     private function stateSource(string $slug): string
@@ -198,9 +334,9 @@ class SettingsController extends BaseAdminController
         return $this->readDbPluginFlag($slug) !== null ? 'admin UI' : 'env/default';
     }
 
-    private function configKeyForSlug(string $slug): string
+    private function envKeyForSlug(string $slug): string
     {
-        return str_replace(' ', '', ucwords(str_replace(['-', '_'], ' ', $slug)));
+        return 'PLUGIN_' . strtoupper(str_replace('-', '_', $slug));
     }
 
     private function readDbPluginFlag(string $slug): ?bool
@@ -217,6 +353,57 @@ class SettingsController extends BaseAdminController
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    /**
+     * @return array{plugin:array<string,mixed>, markdown:string}|null
+     */
+    private function pluginReadme(string $slug): ?array
+    {
+        if (preg_match('/^[a-z][a-z0-9_-]{0,63}$/', $slug) !== 1) {
+            return null;
+        }
+
+        $manifestPath = TYPEDOCK_ROOT . '/plugins/' . $slug . '/plugin.json';
+        $manifest = json_decode((string) @file_get_contents($manifestPath), true);
+        if (!is_array($manifest)) {
+            return null;
+        }
+
+        $path = $this->pluginReadmePath($manifest, dirname($manifestPath));
+        if ($path === null) {
+            return null;
+        }
+
+        $markdown = file_get_contents($path);
+        if ($markdown === false) {
+            return null;
+        }
+
+        return [
+            'plugin' => [
+                'slug' => $slug,
+                'name' => (string) ($manifest['name'] ?? ucfirst($slug)),
+                'version' => (string) ($manifest['version'] ?? '—'),
+            ],
+            'markdown' => $markdown,
+        ];
+    }
+
+    private function pluginReadmePath(array $manifest, string $pluginDir): ?string
+    {
+        $readme = trim((string) ($manifest['readme'] ?? 'README.md'));
+        if ($readme === '') {
+            return null;
+        }
+
+        $root = realpath($pluginDir);
+        $path = realpath($pluginDir . '/' . ltrim($readme, '/'));
+        if ($root === false || $path === false || !str_starts_with($path, $root . DIRECTORY_SEPARATOR)) {
+            return null;
+        }
+
+        return is_file($path) ? $path : null;
     }
 
     /** @return array<string, mixed> */

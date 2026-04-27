@@ -48,6 +48,7 @@ class CategoryService
      */
     public function findBySlug(string $slug, string $locale = 'en'): ?array
     {
+        $slug = TermSlugger::normalize($slug, $slug);
         $stmt = $this->pdo->prepare('SELECT * FROM categories WHERE slug = ? AND locale = ? LIMIT 1');
         $stmt->execute([$slug, $locale]);
         $row = $stmt->fetch();
@@ -62,7 +63,10 @@ class CategoryService
     {
         $id   = \Ramsey\Uuid\Uuid::uuid7()->toString();
         $now  = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
-        $slug = $data['slug'] ?? $this->nameToSlug((string) ($data['name'] ?? ''));
+        $slug = trim((string) ($data['slug'] ?? ''));
+        $slug = $slug !== ''
+            ? TermSlugger::normalize($slug, 'category-' . date('YmdHis'))
+            : TermSlugger::fromName((string) ($data['name'] ?? ''), 'category');
 
         $this->ensureUniqueSlug($slug, $data['locale'] ?? 'en');
 
@@ -99,7 +103,9 @@ class CategoryService
             'UPDATE categories SET slug = ?, name = ?, description = ?, parent_id = ?, sort_order = ? WHERE id = ?'
         );
         $stmt->execute([
-            $data['slug'] ?? $cat['slug'],
+            isset($data['slug']) && trim((string) $data['slug']) !== ''
+                ? TermSlugger::normalize((string) $data['slug'], (string) $cat['slug'])
+                : $cat['slug'],
             $data['name'] ?? $cat['name'],
             $data['description'] ?? $cat['description'],
             $data['parent_id'] ?? $cat['parent_id'],
@@ -122,15 +128,6 @@ class CategoryService
                 ->execute([$id]);
         }
         $this->pdo->prepare('DELETE FROM categories WHERE id = ?')->execute([$id]);
-    }
-
-    private function nameToSlug(string $name): string
-    {
-        $slug = mb_strtolower($name, 'UTF-8');
-        $slug = preg_replace('/[^a-z0-9\s\-]/u', '', $slug) ?? '';
-        $slug = preg_replace('/[\s\-]+/', '-', trim($slug)) ?? '';
-        $slug = trim($slug, '-');
-        return $slug !== '' ? $slug : 'category-' . date('YmdHis');
     }
 
     private function ensureUniqueSlug(string $slug, string $locale): void

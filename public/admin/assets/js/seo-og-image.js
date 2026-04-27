@@ -30,7 +30,9 @@
                 preview.hidden = false;
                 clear.hidden = false;
             } else if (input.value) {
-                preview.innerHTML = '<span class="og-image-pill">Image selected</span>';
+                if (!preview.querySelector('img')) {
+                    preview.innerHTML = '<span class="og-image-pill">Image selected</span>';
+                }
                 preview.hidden = false;
                 clear.hidden = false;
             } else {

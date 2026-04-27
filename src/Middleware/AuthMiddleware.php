@@ -10,6 +10,18 @@ class AuthMiddleware
         // Handled per-route via requireAuth()
     }
 
+    /**
+     * Flight group-middleware entry. Enforces session auth for every route in
+     * the admin HTML group; unauthenticated requests are redirected to the
+     * login screen before the route handler runs.
+     *
+     * @param array<string,string> $params Route params (unused)
+     */
+    public function before(array $params = []): void
+    {
+        $this->requireAuth();
+    }
+
     public function requireAuth(?string $requiredRole = null): void
     {
         $user = $this->getCurrentUser();

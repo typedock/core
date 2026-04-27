@@ -2,7 +2,7 @@
     "slug": "form",
     "name": "Form",
     "version": "1.0.0",
-    "description": "Contact form builder. Forms are rendered via {component 'form' form_id=\"…\"} and submissions are stored in plugin-owned tables.",
+    "description": "Contact form builder. Insert forms with the editor's Component Block or theme slots; submissions are stored in plugin-owned tables.",
     "main_class": "TypeDock\\Plugin\\Form\\FormPlugin",
     "min_core_version": "0.1",
     "provides": [],

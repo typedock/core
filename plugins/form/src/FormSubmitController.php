@@ -7,9 +7,9 @@ use TypeDock\Core\PluginContext;
 use TypeDock\Middleware\CsrfMiddleware;
 
 /**
- * Public endpoint receiving {component 'form'} submissions. Runs entirely
- * through PluginContext utilities (db, mail, log) — a Hubspot-style plugin
- * replacing this flow would build the exact same way.
+ * Public endpoint receiving Form component submissions. Runs entirely through
+ * PluginContext utilities (db, mail, log) — a Hubspot-style plugin replacing
+ * this flow would build the exact same way.
  */
 class FormSubmitController
 {
@@ -86,7 +86,7 @@ class FormSubmitController
             'submission_id' => $result['submission_id'],
         ]);
         $this->flash($formId, 'success', $message, [], []);
-        $this->redirect($back);
+        $this->redirect($this->withQueryParam($back, 'form_submitted', $formId));
     }
 
     /**
@@ -159,5 +159,27 @@ class FormSubmitController
     {
         \Flight::redirect($path);
         exit;
+    }
+
+    private function withQueryParam(string $path, string $key, string $value): string
+    {
+        $fragment = '';
+        if (str_contains($path, '#')) {
+            [$path, $fragment] = explode('#', $path, 2);
+            $fragment = '#' . $fragment;
+        }
+
+        $query = '';
+        if (str_contains($path, '?')) {
+            [$path, $query] = explode('?', $path, 2);
+        }
+
+        $params = [];
+        if ($query !== '') {
+            parse_str($query, $params);
+        }
+        $params[$key] = $value;
+
+        return $path . '?' . http_build_query($params) . $fragment;
     }
 }

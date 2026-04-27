@@ -1,6 +1,7 @@
 {if !empty($tags)}
+{var $title = isset($params['title']) ? (string) $params['title'] : 'Tags'}
 <div class="widget widget-tag-cloud">
-    <h3 class="widget-title">Tags</h3>
+    {if $title !== ''}<h3 class="widget-title">{$title}</h3>{/if}
     <div class="tag-cloud">
         {foreach $tags as $tag}
         <a href="/tag/{$tag['slug']}" class="tag-cloud-item"

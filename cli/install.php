@@ -8,6 +8,8 @@ use TypeDock\Install\Installer;
 
 typedock_load_config(TYPEDOCK_ROOT);
 
+$withDemo = in_array('--with-demo', array_slice($argv ?? [], 1), true);
+
 echo "TypeDock Installer\n==================\n\n";
 
 $installer = new Installer(TYPEDOCK_ROOT);
@@ -45,6 +47,14 @@ try {
     // Seed the active theme + default slot placements so a fresh install has
     // something to render. Admins can switch later from /admin/themes.
     $installer->activateTheme($db, 'default');
+
+    if ($withDemo) {
+        echo "\nSeeding demo content (categories, tags, posts, pages, menus)...\n";
+        $created = $installer->seedDemoContent($db);
+        foreach ($created as $resource => $count) {
+            echo "  {$resource}: {$count}\n";
+        }
+    }
 
     $installer->lock('0.1.0');
 

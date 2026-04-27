@@ -10,15 +10,14 @@ use TypeDock\Contract\PluginInterface;
  *
  * Two classes of plugin sit side by side:
  *   1. Legacy bundled plugins under `src/Plugin/<Name>/` — declared via the
- *      $builtInPlugins array below. Enabled by `PLUGIN_<NAME>` env flags
- *      (matching the legacy config/modules.php plugins map).
- *   2. Drop-in plugins under `plugins/<slug>/` — auto-discovered from
- *      their plugin.json manifest. Manifest fields: slug, main_class,
- *      version, provides[], min_core_version, autoload.psr-4. These
- *      plugins carry their own source code and templates alongside the
- *      manifest and do NOT live inside `src/` — they are deliberately
- *      decoupled from Core's PSR-4 tree so a plugin author can zip-up
- *      `plugins/<slug>/` and ship it.
+ *      $builtInPlugins array below.
+ *   2. Drop-in plugins under `plugins/<slug>/` — discovered from their
+ *      plugin.json manifest.
+ *
+ * Both use the same enable rule: DB admin toggle first, then `PLUGIN_*` env.
+ * Manifest fields: slug, main_class, version, provides[], min_core_version,
+ * autoload.psr-4. Drop-ins carry their own source code and templates alongside
+ * the manifest and do NOT live inside `src/`.
  *
  * All plugins go through the same boot pipeline: autoload setup → class
  * instantiation → provides() conflict check → register().
@@ -29,11 +28,14 @@ class PluginLoader
 
     /**
      * Bundled plugins that still live inside src/Plugin/. Each entry is
-     * [env key => fqcn]. New plugins should prefer the plugins/<slug>/
+     * [slug => metadata]. New plugins should prefer the plugins/<slug>/
      * drop-in layout instead.
      */
     private array $builtInPlugins = [
-        'AdvancedBlocks' => \TypeDock\Plugin\AdvancedBlocks\AdvancedBlocksPlugin::class,
+        'advancedblocks' => [
+            'class' => \TypeDock\Plugin\AdvancedBlocks\AdvancedBlocksPlugin::class,
+            'env'   => 'PLUGIN_ADVANCED_BLOCKS',
+        ],
     ];
 
     public function load(): void
@@ -44,9 +46,9 @@ class PluginLoader
 
     private function loadBuiltInPlugins(): void
     {
-        foreach ($this->builtInPlugins as $name => $class) {
-            $slug = strtolower($name);
-            if (!$this->isPluginEnabled($slug, $name)) {
+        foreach ($this->builtInPlugins as $slug => $plugin) {
+            $class = $plugin['class'];
+            if (!$this->isPluginEnabled($slug, $plugin['env'])) {
                 continue;
             }
             if (!class_exists($class)) {
@@ -62,10 +64,8 @@ class PluginLoader
 
     /**
      * Scan plugins/<slug>/plugin.json and boot each plugin whose enable flag
-     * is truthy. Enable flag resolution (in order):
-     *   1. `config('modules.plugins.<slug>')` — legacy env-based toggle
-     *   2. `PLUGIN_<SLUG_UPPER>` env fallback
-     *   3. otherwise disabled (explicit opt-in required)
+     * is truthy. Enable flag resolution is DB admin toggle first, then
+     * `PLUGIN_<SLUG_UPPER>` env. Otherwise plugins are disabled.
      */
     private function loadDropInPlugins(): void
     {
@@ -79,7 +79,7 @@ class PluginLoader
             if (preg_match(self::SLUG_REGEX, $slug) !== 1) {
                 continue;
             }
-            if (!$this->isPluginEnabled($slug, $this->configKeyForSlug($slug))) {
+            if (!$this->isPluginEnabled($slug)) {
                 continue;
             }
             $this->loadDropInPlugin($slug, $manifestPath);
@@ -91,20 +91,16 @@ class PluginLoader
      *
      * Precedence (first hit wins):
      *   1. DB `site_options.plugin.<slug>.enabled` — admin-UI toggle
-     *   2. `config('modules.plugins.<configKey>')` / env `PLUGIN_<UPPER>` — legacy
+     *   2. `PLUGIN_<UPPER>` env
      *   3. default false
      */
-    private function isPluginEnabled(string $slug, string $configKey): bool
+    private function isPluginEnabled(string $slug, ?string $envKey = null): bool
     {
         $dbState = $this->readDbEnabledFlag($slug);
         if ($dbState !== null) {
             return $dbState;
         }
-        $plugins = (array) config('modules.plugins', []);
-        if (array_key_exists($configKey, $plugins)) {
-            return (bool) $plugins[$configKey];
-        }
-        $envKey = 'PLUGIN_' . strtoupper(str_replace('-', '_', $slug));
+        $envKey ??= $this->envKeyForSlug($slug);
         return (bool) env($envKey, false);
     }
 
@@ -185,7 +181,10 @@ class PluginLoader
             ));
         }
 
-        $this->bootPlugin($slug, $plugin, $pluginDir);
+        $context = $this->bootPlugin($slug, $plugin, $pluginDir);
+        if (!$context->hasAdminSurface() && $this->resolveReadmePath($manifest, $pluginDir) === null) {
+            $diag->warn($slug, 'Plugin has no admin UI and no README.md; add plugin.json readme or a root README.md so admins know how to use it.');
+        }
     }
 
     /**
@@ -216,7 +215,7 @@ class PluginLoader
         }
     }
 
-    private function bootPlugin(string $slug, PluginInterface $plugin, ?string $pluginDir = null): void
+    private function bootPlugin(string $slug, PluginInterface $plugin, ?string $pluginDir = null): PluginContext
     {
         // Pre-register provider claims so the registry can surface a conflict
         // even if the plugin's register() errors out before calling provideSingle().
@@ -230,6 +229,21 @@ class PluginLoader
 
         $context = new PluginContext($slug, \Flight::db(), $pluginDir);
         $plugin->register($context);
+        return $context;
+    }
+
+    private function resolveReadmePath(array $manifest, string $pluginDir): ?string
+    {
+        $readme = trim((string) ($manifest['readme'] ?? 'README.md'));
+        if ($readme === '') {
+            return null;
+        }
+        $path = realpath($pluginDir . '/' . ltrim($readme, '/'));
+        $root = realpath($pluginDir);
+        if ($path === false || $root === false || !str_starts_with($path, $root . DIRECTORY_SEPARATOR)) {
+            return null;
+        }
+        return is_file($path) ? $path : null;
     }
 
     private function coreVersionSatisfies(string $required): bool
@@ -238,8 +252,8 @@ class PluginLoader
         return version_compare($core, $required, '>=');
     }
 
-    private function configKeyForSlug(string $slug): string
+    private function envKeyForSlug(string $slug): string
     {
-        return str_replace(' ', '', ucwords(str_replace(['-', '_'], ' ', $slug)));
+        return 'PLUGIN_' . strtoupper(str_replace('-', '_', $slug));
     }
 }

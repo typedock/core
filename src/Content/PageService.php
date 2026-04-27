@@ -50,7 +50,8 @@ class PageService
             $params[] = $options['locale'];
         }
         if (isset($options['search'])) {
-            $where[]  = '(p.title LIKE ? OR p.excerpt LIKE ?)';
+            $where[]  = '(p.title LIKE ? OR p.excerpt LIKE ? OR p.body_markdown LIKE ?)';
+            $params[] = '%' . $options['search'] . '%';
             $params[] = '%' . $options['search'] . '%';
             $params[] = '%' . $options['search'] . '%';
         }
@@ -69,17 +70,20 @@ class PageService
 
         $listParams   = array_merge($params, [$perPage, $offset]);
         $stmt = $this->pdo->prepare(
-            "SELECT p.id, p.slug, p.title, p.excerpt, p.page_type, p.status,
+            "SELECT p.id, p.slug, p.title, p.body, p.excerpt, p.page_type, p.status,
                     p.author_id, p.locale, p.published_at, p.created_at, p.updated_at,
-                    u.name as author_name
+                    COALESCE(NULLIF(u.display_name, ''), u.name) as author_name,
+                    sm.og_image_id
              FROM pages p
              LEFT JOIN users u ON u.id = p.author_id
+             LEFT JOIN seo_meta sm ON sm.target_type = p.page_type AND sm.target_id = p.id
              WHERE {$whereStr}
              ORDER BY {$order}
              LIMIT ? OFFSET ?"
         );
         $stmt->execute($listParams);
         $items = $stmt->fetchAll();
+        $items = $this->decorateRows($items);
 
         return ['items' => $items, 'total' => $total, 'page' => $page, 'per_page' => $perPage];
     }
@@ -155,18 +159,20 @@ class PageService
         }
 
         $body = is_array($data['body'] ?? null) ? json_encode($data['body']) : ($data['body'] ?? null);
+        $bodyMarkdown = TiptapMarkdownRenderer::render($body);
 
         $stmt = $this->pdo->prepare(
-            'INSERT INTO pages (id, slug, title, body, excerpt, page_type, status, author_id, parent_id,
+            'INSERT INTO pages (id, slug, title, body, body_markdown, excerpt, page_type, status, author_id, parent_id,
                                 template, layout, locale, translation_group_id, published_at, scheduled_at,
                                 created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $id,
             $slug,
             $data['title'] ?? '',
             $body,
+            $bodyMarkdown !== '' ? $bodyMarkdown : null,
             $data['excerpt'] ?? null,
             $pageType,
             $status,
@@ -223,9 +229,10 @@ class PageService
         $body = isset($data['body'])
             ? (is_array($data['body']) ? json_encode($data['body']) : $data['body'])
             : $page['body'];
+        $bodyMarkdown = TiptapMarkdownRenderer::render($body);
 
         $stmt = $this->pdo->prepare(
-            'UPDATE pages SET slug = ?, title = ?, body = ?, excerpt = ?, page_type = ?,
+            'UPDATE pages SET slug = ?, title = ?, body = ?, body_markdown = ?, excerpt = ?, page_type = ?,
                               status = ?, author_id = ?, parent_id = ?, template = ?, layout = ?,
                               locale = ?, published_at = ?, scheduled_at = ?, updated_at = ?
              WHERE id = ?'
@@ -234,6 +241,7 @@ class PageService
             $slug,
             $data['title'] ?? $page['title'],
             $body,
+            $bodyMarkdown !== '' ? $bodyMarkdown : null,
             $data['excerpt'] ?? $page['excerpt'],
             $data['page_type'] ?? $page['page_type'],
             $status,
@@ -349,15 +357,53 @@ class PageService
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
         $this->pdo->prepare(
-            'INSERT INTO page_revisions (id, page_id, title, body, author_id, created_at)
-             VALUES (?, ?, ?, ?, ?, ?)'
+            'INSERT INTO page_revisions (id, page_id, title, body, body_markdown, author_id, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)'
         )->execute([
             $id,
             $page['id'],
             $page['title'],
             $page['body'],
+            $page['body_markdown'] ?? TiptapMarkdownRenderer::render($page['body'] ?? null),
             $page['author_id'],
             $now,
         ]);
+    }
+
+    /**
+     * @param array<array<string, mixed>> $rows
+     * @return array<array<string, mixed>>
+     */
+    private function decorateRows(array $rows): array
+    {
+        $seo = new \TypeDock\Seo\SeoService($this->pdo);
+        $global = $seo->findByTarget('global', null) ?? [];
+        $globalOgImageId = isset($global['og_image_id']) ? (string) $global['og_image_id'] : null;
+        foreach ($rows as &$row) {
+            $row['excerpt'] = self::excerptFromRow($row);
+            $ogImageId = !empty($row['og_image_id']) ? (string) $row['og_image_id'] : $globalOgImageId;
+            $row['og_image_url'] = $seo->resolveOgImageUrl($ogImageId);
+        }
+        unset($row);
+        return $rows;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    public static function excerptFromRow(array $row, int $length = 120): string
+    {
+        $explicit = trim((string) ($row['excerpt'] ?? ''));
+        if ($explicit !== '') {
+            return $explicit;
+        }
+        $text = TiptapRenderer::toPlainText($row['body'] ?? null);
+        if ($text === '') {
+            return '';
+        }
+        if (mb_strlen($text, 'UTF-8') <= $length) {
+            return $text;
+        }
+        return rtrim(mb_substr($text, 0, $length, 'UTF-8')) . '…';
     }
 }

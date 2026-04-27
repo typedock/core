@@ -21,6 +21,12 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="slug">Slug</label>
+                    <input type="text" id="slug" name="slug" value="{$form['slug'] ?? ''}" placeholder="newsletter">
+                    <p class="help">Optional. Used by themes that target a form by name (e.g. <code>{l}component('form', ['slug' =&gt; 'newsletter']){r}</code>). Lowercase letters, numbers, and dashes.</p>
+                </div>
+
+                <div class="form-group">
                     <label>Fields</label>
                     <div class="td-fb-rows" data-td-fb-rows>
                         {foreach $fields as $i => $f}
@@ -128,7 +134,9 @@
                 <button type="submit" class="btn btn-primary w-full">Save form</button>
                 {if $form}
                     <p class="mt-3 text-xs text-slate-500">
-                        Embed: <code>{syntax off}{component 'form' form_id="{/syntax}{$form['id']}{syntax off}"}{/syntax}</code>
+                        Insert this form from the editor slash menu:
+                        <strong>Component Block → Form</strong>, then select
+                        <code>{$form['name']}</code> in the parameter dialog.
                     </p>
                 {/if}
             </div>

@@ -7,10 +7,12 @@ use Ramsey\Uuid\Uuid;
 
 /**
  * Honeypot + IP rate-limit check for form submissions. Absorbs the former
- * Antispam module (doc28 §1.3). Reuses the Core `antispam_log` table.
+ * Antispam module (doc28 §1.3) into a plugin-owned table.
  */
 class FormAntispam
 {
+    private const TABLE = 'plugin_form_antispam_log';
+
     public function __construct(
         private readonly \PDO $pdo,
         private readonly string $honeypotField = 'website',
@@ -47,7 +49,7 @@ class FormAntispam
         try {
             $since = (new \DateTimeImmutable('-' . $this->windowSeconds . ' seconds'))->format('Y-m-d H:i:s');
             $stmt  = $this->pdo->prepare(
-                'SELECT COUNT(*) FROM antispam_log WHERE ip_address = ? AND scope = ? AND created_at >= ?'
+                'SELECT COUNT(*) FROM ' . self::TABLE . ' WHERE ip_address = ? AND scope = ? AND created_at >= ?'
             );
             $stmt->execute([$ip, $scope, $since]);
             return ((int) $stmt->fetchColumn()) >= $this->rateLimit;
@@ -60,7 +62,7 @@ class FormAntispam
     {
         try {
             $this->pdo->prepare(
-                'INSERT INTO antispam_log (id, ip_address, scope, created_at) VALUES (?, ?, ?, ?)'
+                'INSERT INTO ' . self::TABLE . ' (id, ip_address, scope, created_at) VALUES (?, ?, ?, ?)'
             )->execute([
                 Uuid::uuid7()->toString(),
                 $ip,

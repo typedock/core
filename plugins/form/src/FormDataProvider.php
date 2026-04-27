@@ -12,9 +12,20 @@ class FormDataProvider implements DataProvider
     public function resolve(array $params, RenderContext $context): array
     {
         $formId  = trim((string) ($params['form_id'] ?? ''));
+        $slug    = trim((string) ($params['slug'] ?? ''));
         $service = new FormService(\Flight::db());
 
-        $form   = $formId !== '' ? $service->find($formId) : null;
+        $form = null;
+        if ($formId !== '') {
+            $form = $service->find($formId);
+        }
+        // Slot defaults reference forms by slug (`{"slug":"newsletter"}`)
+        // so the slot keeps working when the underlying form id changes.
+        if ($form === null && $slug !== '') {
+            $form   = $service->findBySlug($slug);
+            $formId = $form !== null ? (string) $form['id'] : '';
+        }
+
         $fields = $form !== null ? $service->decodeFields($form['fields'] ?? null) : [];
 
         return [

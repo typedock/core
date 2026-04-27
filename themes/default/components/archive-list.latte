@@ -1,6 +1,7 @@
 {if !empty($archives)}
+{var $title = isset($params['title']) ? (string) $params['title'] : 'Archive'}
 <div class="widget widget-archive">
-    <h3 class="widget-title">Archive</h3>
+    {if $title !== ''}<h3 class="widget-title">{$title}</h3>{/if}
     <ul class="archive-list">
         {foreach $archives as $archive}
         <li>

@@ -3,6 +3,7 @@
     "name": "Redirect",
     "version": "1.0.0",
     "description": "Manage exact and regex URL redirects.",
+    "readme": "README.md",
     "main_class": "TypeDock\\Plugin\\Redirect\\RedirectPlugin",
     "min_core_version": "0.1",
     "provides": [],

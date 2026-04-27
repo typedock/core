@@ -10,6 +10,11 @@
 {var $errors = $flash['errors'] ?? []}
 {var $returnTo = $_SERVER['REQUEST_URI'] ?? '/'}
 
+{if ($flash['type'] ?? '') === 'success'}
+    <div class="td-form-thanks" role="status">
+        <p class="td-form-success">{$flash['message']}</p>
+    </div>
+{else}
 <form class="td-form" method="post" action="/plugins/form/submit" novalidate>
     <input type="hidden" name="_csrf_token" value="{$csrf_token}">
     <input type="hidden" name="form_id" value="{$form['id']}">
@@ -20,9 +25,7 @@
         <label>Website<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
     </div>
 
-    {if ($flash['type'] ?? '') === 'success'}
-        <p class="td-form-success" role="status">{$flash['message']}</p>
-    {elseif ($flash['type'] ?? '') === 'error'}
+    {if ($flash['type'] ?? '') === 'error'}
         <p class="td-form-error" role="alert">{$flash['message']}</p>
     {/if}
 
@@ -79,4 +82,5 @@
         <button type="submit">Send</button>
     </div>
 </form>
+{/if}
 {/if}

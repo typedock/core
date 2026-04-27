@@ -21,18 +21,12 @@ class MediaService
     // and SVG can embed <script>/CSS that runs in that origin. Re-enabling it
     // requires either a sanitiser (e.g. enshrined/svg-sanitize) or serving
     // uploads from a separate cookieless/static origin.
-    private const ALLOWED_MIME_TYPES = [
+    private const DEFAULT_ALLOWED_MIME_TYPES = [
         'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-        'video/mp4', 'video/webm',
-        'audio/mpeg', 'audio/ogg',
         'application/pdf',
-        'application/zip',
-        'text/plain', 'text/csv',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/vnd.ms-excel',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     ];
+
+    private const DEFAULT_ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'];
 
     private const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
@@ -96,9 +90,17 @@ class MediaService
         }
 
         $mimeType = $this->detectMimeType($file['tmp_name']);
-        if (!in_array($mimeType, self::ALLOWED_MIME_TYPES, true)) {
+        if (!in_array($mimeType, $this->allowedMimeTypes(), true)) {
             throw new \TypeDock\Exception\ValidationException(
                 ['file' => ['This file format is not supported.']]
+            );
+        }
+
+        $originalName = (string) $file['name'];
+        $ext          = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+        if (!in_array($ext, $this->allowedExtensions(), true)) {
+            throw new \TypeDock\Exception\ValidationException(
+                ['file' => ['This file extension is not supported.']]
             );
         }
 
@@ -116,8 +118,6 @@ class MediaService
             }
         }
 
-        $originalName = (string) $file['name'];
-        $ext          = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
         $safeName     = \Ramsey\Uuid\Uuid::uuid7()->toString() . '.' . $ext;
         $folder       = '/' . trim($folder, '/');
         $year         = date('Y');
@@ -284,6 +284,35 @@ class MediaService
     {
         $finfo = new \finfo(FILEINFO_MIME_TYPE);
         return $finfo->file($filePath) ?: 'application/octet-stream';
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function allowedMimeTypes(): array
+    {
+        $configured = config('filesystems.allowed_mime_types', self::DEFAULT_ALLOWED_MIME_TYPES);
+        if (!is_array($configured) || $configured === []) {
+            return self::DEFAULT_ALLOWED_MIME_TYPES;
+        }
+
+        return array_values(array_filter($configured, 'is_string'));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function allowedExtensions(): array
+    {
+        $configured = config('filesystems.allowed_extensions', self::DEFAULT_ALLOWED_EXTENSIONS);
+        if (!is_array($configured) || $configured === []) {
+            return self::DEFAULT_ALLOWED_EXTENSIONS;
+        }
+
+        return array_values(array_map(
+            static fn (string $ext): string => strtolower(ltrim($ext, '.')),
+            array_filter($configured, 'is_string')
+        ));
     }
 
     /** @return array{int|null, int|null} */

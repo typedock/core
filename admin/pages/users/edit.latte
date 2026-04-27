@@ -7,7 +7,7 @@
     <div>
         <h1>{isset($user['id']) ? 'Edit User' : 'New User'}</h1>
         <p class="subtitle">
-            {if isset($user['id'])}Update name, password, or role.{else}Create a new user account.{/if}
+            {if isset($user['id'])}Update account access and public profile.{else}Create a new user account.{/if}
         </p>
     </div>
     <a href="/admin/users" class="btn btn-secondary">← Back to list</a>
@@ -19,7 +19,7 @@
             <input type="hidden" name="_csrf_token" value="{$csrf_token}">
 
             <div class="form-group">
-                <label for="name">Display Name</label>
+                <label for="name">Account Name</label>
                 <input type="text" id="name" name="name"
                        value="{$user['name'] ?? ''}" required>
             </div>
@@ -51,10 +51,63 @@
                 </select>
             </div>
 
+            <fieldset>
+                <legend>Public Profile</legend>
+
+                <div class="form-group">
+                    <label for="display_name">Display Name</label>
+                    <input type="text" id="display_name" name="display_name"
+                           value="{$user['display_name'] ?? ''}"
+                           placeholder="Shown on posts and author pages">
+                </div>
+
+                <div class="form-group">
+                    <label for="slug">Author Slug</label>
+                    <input type="text" id="slug" name="slug"
+                           value="{$user['slug'] ?? ''}"
+                           placeholder="jane-doe">
+                    {if !empty($user['slug'])}
+                    <small class="form-hint"><a href="/author/{$user['slug']}" target="_blank" rel="noopener">View on site</a></small>
+                    {/if}
+                </div>
+
+                <div class="form-group">
+                    <label for="bio">Bio</label>
+                    <textarea id="bio" name="bio" rows="5">{$user['bio'] ?? ''}</textarea>
+                </div>
+
+                <div class="form-group" data-user-avatar data-avatar-url="{$user['avatar_url'] ?? ''}">
+                    <label>Avatar</label>
+                    <input type="hidden" id="avatar_media_id" name="avatar_media_id" value="{$user['avatar_media_id'] ?? ''}">
+                    <div class="og-image-control">
+                        <button type="button" class="btn btn-secondary btn-sm" data-avatar-pick>Choose image</button>
+                        <button type="button" class="btn btn-ghost btn-sm" data-avatar-clear {if empty($user['avatar_media_id'])}hidden{/if}>Clear</button>
+                    </div>
+                    <div class="og-image-preview" data-avatar-preview hidden></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="website_url">Website URL</label>
+                    <input type="url" id="website_url" name="website_url"
+                           value="{$user['website_url'] ?? ''}"
+                           placeholder="https://example.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="social_links">Social Links <small>(JSON)</small></label>
+                    <textarea id="social_links" name="social_links" rows="4" placeholder='{"twitter":"https://x.com/example","github":"https://github.com/example"}'>{$user['social_links'] ?? ''}</textarea>
+                </div>
+            </fieldset>
+
             <div class="mt-6">
                 <button type="submit" class="btn btn-primary">{isset($user['id']) ? 'Save Changes' : 'Create User'}</button>
             </div>
         </form>
     </div>
 </div>
+{/block}
+
+{block scripts}
+<script src="/admin/assets/js/media-picker.js"></script>
+<script src="/admin/assets/js/user-profile.js"></script>
 {/block}

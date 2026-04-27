@@ -11,7 +11,7 @@
     <div class="container hero-inner">
         <p class="hero-kicker">Welcome</p>
         <h1 class="hero-title">{$page->title}</h1>
-        {if $page->excerpt}<p class="hero-excerpt">{$page->excerpt}</p>{/if}
+        {if $page->lede}<p class="hero-excerpt">{$page->lede}</p>{/if}
         <div class="hero-slot">
             {=slot('hero')|noescape}
         </div>
@@ -27,7 +27,7 @@
         {if $page->slug !== ''}
             <header class="entry-header">
                 <h1 class="entry-title">{$page->title}</h1>
-                {if $page->excerpt}<p class="entry-lede">{$page->excerpt}</p>{/if}
+                {if $page->lede}<p class="entry-lede">{$page->lede}</p>{/if}
             </header>
         {/if}
 

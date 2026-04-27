@@ -10,10 +10,13 @@ namespace TypeDock\Core;
 class AssetPublisher
 {
     private string $root;
+    private string $publicDir;
 
-    public function __construct(?string $root = null)
+    public function __construct(?string $root = null, ?string $publicDir = null)
     {
-        $this->root = $root ?? TYPEDOCK_ROOT;
+        $this->root      = $root ?? TYPEDOCK_ROOT;
+        $this->publicDir = $publicDir
+            ?? (defined('TYPEDOCK_PUBLIC_DIR') ? TYPEDOCK_PUBLIC_DIR : $this->root . '/public');
     }
 
     /**
@@ -50,7 +53,7 @@ class AssetPublisher
     public function publishTheme(string $themeName): ?array
     {
         $source = $this->root . '/themes/' . $themeName . '/assets';
-        $dest   = $this->root . '/public/themes/' . $themeName . '/assets';
+        $dest   = $this->publicDir . '/themes/' . $themeName . '/assets';
 
         if (!is_dir($source)) {
             return null;
@@ -68,7 +71,7 @@ class AssetPublisher
     public function publishPlugin(string $pluginSlug): ?array
     {
         $source = $this->root . '/plugins/' . $pluginSlug . '/assets';
-        $dest   = $this->root . '/public/plugins/' . $pluginSlug . '/assets';
+        $dest   = $this->publicDir . '/plugins/' . $pluginSlug . '/assets';
 
         if (!is_dir($source)) {
             return null;
@@ -83,7 +86,7 @@ class AssetPublisher
      */
     public function unpublishTheme(string $themeName): void
     {
-        $dest = $this->root . '/public/themes/' . $themeName;
+        $dest = $this->publicDir . '/themes/' . $themeName;
         $this->removeDir($dest);
     }
 
@@ -92,7 +95,7 @@ class AssetPublisher
      */
     public function unpublishPlugin(string $pluginSlug): void
     {
-        $dest = $this->root . '/public/plugins/' . $pluginSlug;
+        $dest = $this->publicDir . '/plugins/' . $pluginSlug;
         $this->removeDir($dest);
     }
 

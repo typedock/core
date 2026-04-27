@@ -1,0 +1,14 @@
+{if !empty($items)}
+{var $title = isset($params['title']) ? (string) $params['title'] : 'Table of Contents'}
+{var $aria = $title !== '' ? $title : 'Table of Contents'}
+<nav class="td-c-toc" aria-label="{$aria}">
+    {if $title !== ''}<p class="td-c-toc-title">{$title}</p>{/if}
+    <ol class="td-c-toc-list">
+        {foreach $items as $item}
+        <li class="td-c-toc-item td-c-toc-level-{$item['level']}">
+            <a href="#{$item['id']}">{$item['text']}</a>
+        </li>
+        {/foreach}
+    </ol>
+</nav>
+{/if}

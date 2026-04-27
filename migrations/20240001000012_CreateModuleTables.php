@@ -44,18 +44,6 @@ final class CreateModuleTables extends Migration
         });
 
         // ---------------------------------------------------------------
-        // Antispam module: rate-limit log
-        // ---------------------------------------------------------------
-        $schema->create('antispam_log', function (Blueprint $t) {
-            $t->string('id', 36);
-            $t->string('ip_address', 64);
-            $t->string('scope', 64)->default('default');
-            $t->datetime('created_at')->useCurrent();
-            $t->primary(['id']);
-            $t->index(['ip_address', 'scope', 'created_at']);
-        });
-
-        // ---------------------------------------------------------------
         // Backup module: backup history
         // ---------------------------------------------------------------
         $schema->create('backups', function (Blueprint $t) {

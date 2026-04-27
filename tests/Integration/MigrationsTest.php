@@ -67,7 +67,6 @@ final class MigrationsTest extends TestCase
             'snapshots',
             'collections',
             'collection_items',
-            'antispam_log',
             'backups',
             'locales',
             'migrations',
@@ -80,6 +79,14 @@ final class MigrationsTest extends TestCase
                 "Expected table \"{$name}\" to exist after migrations. Got: " . implode(', ', $tables)
             );
         }
+
+        $pageColumns = $pdo->query("PRAGMA table_info('pages')")->fetchAll(\PDO::FETCH_ASSOC);
+        $pageColumnNames = array_map('strval', array_column($pageColumns, 'name'));
+        $this->assertContains('body_markdown', $pageColumnNames);
+
+        $revisionColumns = $pdo->query("PRAGMA table_info('page_revisions')")->fetchAll(\PDO::FETCH_ASSOC);
+        $revisionColumnNames = array_map('strval', array_column($revisionColumns, 'name'));
+        $this->assertContains('body_markdown', $revisionColumnNames);
     }
 
     public function testRedirectPluginMigrationCreatesRedirectsTable(): void
@@ -95,6 +102,24 @@ final class MigrationsTest extends TestCase
             ->fetchAll(\PDO::FETCH_COLUMN);
 
         $this->assertContains('redirects', $tables);
+        $this->assertContains('plugin_migrations', $tables);
+    }
+
+    public function testFormPluginMigrationCreatesOwnedTables(): void
+    {
+        $pdo = new \PDO('sqlite::memory:');
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+
+        $runner = new \TypeDock\Plugin\Util\PluginMigrationRunner($pdo, 'form');
+        $runner->runFromDirectory(TYPEDOCK_ROOT . '/plugins/form/migrations');
+
+        $tables = $pdo
+            ->query("SELECT name FROM sqlite_master WHERE type='table'")
+            ->fetchAll(\PDO::FETCH_COLUMN);
+
+        $this->assertContains('plugin_form_forms', $tables);
+        $this->assertContains('plugin_form_submissions', $tables);
+        $this->assertContains('plugin_form_antispam_log', $tables);
         $this->assertContains('plugin_migrations', $tables);
     }
 }

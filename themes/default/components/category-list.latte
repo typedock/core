@@ -1,6 +1,7 @@
 {if !empty($categories)}
+{var $title = isset($params['title']) ? (string) $params['title'] : 'Categories'}
 <div class="widget widget-category-list">
-    <h3 class="widget-title">Categories</h3>
+    {if $title !== ''}<h3 class="widget-title">{$title}</h3>{/if}
     <ul class="category-list">
         {foreach $categories as $cat}
         {if !$cat['parent_id']}

@@ -23,8 +23,8 @@
             <div class="search-results">
                 {foreach $results as $post}
                 <article class="search-result">
-                    <h2><a href="{$site->postUrl($post['slug'])}">{$post['title']}</a></h2>
-                    {if $post['excerpt']}<p>{$post['excerpt']}</p>{/if}
+                    <h2><a href="{$post->url}">{$post->title}</a></h2>
+                    {if $post->excerpt}<p>{$post->excerpt}</p>{/if}
                 </article>
                 {/foreach}
             </div>

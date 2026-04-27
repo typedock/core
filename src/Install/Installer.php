@@ -45,12 +45,13 @@ final class Installer
             $opt[$e] = extension_loaded($e);
         }
 
+        $publicDir = defined('TYPEDOCK_PUBLIC_DIR') ? TYPEDOCK_PUBLIC_DIR : $this->root . '/public';
         $writable = [
             'storage'          => is_writable($this->root . '/storage'),
             'storage/cache'    => is_writable($this->root . '/storage/cache'),
             'storage/logs'     => is_writable($this->root . '/storage/logs'),
             'storage/sessions' => is_writable($this->root . '/storage/sessions'),
-            'public/uploads'   => is_writable($this->root . '/public/uploads'),
+            'uploads'          => is_writable($publicDir . '/uploads'),
             'root (for config.php)' => is_writable($this->root),
         ];
 
@@ -229,10 +230,16 @@ final class Installer
         $id   = Uuid::uuid7()->toString();
         $hash = password_hash($password, PASSWORD_BCRYPT);
         $now  = (new DateTimeImmutable())->format('Y-m-d H:i:s');
+        $displayName = $name !== '' ? $name : $email;
+        // Author archive routes (`/author/<slug>`) need a slug to resolve.
+        // Derive one up-front so the very first install has a working
+        // author page without requiring the operator to edit their profile.
+        $slug = \TypeDock\Content\TermSlugger::normalize($displayName, 'admin');
 
         $pdo->prepare(
-            'INSERT INTO users (id, email, password_hash, name, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        )->execute([$id, $email, $hash, $name !== '' ? $name : $email, 'admin', $now, $now]);
+            'INSERT INTO users (id, email, password_hash, name, slug, role, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        )->execute([$id, $email, $hash, $displayName, $slug, 'admin', $now, $now]);
 
         return $id;
     }
@@ -294,6 +301,25 @@ final class Installer
                 $insert->execute([$key, $json, 'general', $now]);
             }
         }
+    }
+
+    /**
+     * Run the demo content seeder against the connected database. Every
+     * insert is checked for slug/location collisions first so the call is
+     * a safe no-op when the demo content already exists — operators can
+     * re-run `cli/seed.php` after a fresh `cli/install.php --with-demo`
+     * without truncating their work.
+     *
+     * @param array{driver:string,host?:string,port?:int|string,database?:string,username?:string,password?:string,sqlite_path?:string,charset?:string} $db
+     * @return array<string, int> per-resource count of rows actually created
+     */
+    public function seedDemoContent(array $db, ?string $authorId = null): array
+    {
+        $pdo = $this->makePdo($db);
+        if (($db['driver'] ?? '') === 'sqlite') {
+            $pdo->exec('PRAGMA foreign_keys = ON');
+        }
+        return (new DemoSeeder($pdo))->seed($authorId);
     }
 
     public function lock(string $version): void

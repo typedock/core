@@ -38,6 +38,25 @@ class FormService
     }
 
     /**
+     * Find a form by its operator-set slug. Themes use this so theme.json
+     * can declare `{"component":"form","params":{"slug":"newsletter"}}`
+     * without baking a UUID into the theme.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findBySlug(string $slug): ?array
+    {
+        $slug = trim($slug);
+        if ($slug === '') {
+            return null;
+        }
+        $stmt = $this->pdo->prepare('SELECT * FROM ' . self::TABLE_FORMS . ' WHERE slug = ? LIMIT 1');
+        $stmt->execute([$slug]);
+        $row = $stmt->fetch();
+        return $row !== false ? $row : null;
+    }
+
+    /**
      * @param array<string, mixed> $payload
      */
     public function create(array $payload): string
@@ -46,11 +65,12 @@ class FormService
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
         $this->pdo->prepare(
-            'INSERT INTO ' . self::TABLE_FORMS . ' (id, name, fields, notify_email, success_message, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO ' . self::TABLE_FORMS . ' (id, name, slug, fields, notify_email, success_message, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
         )->execute([
             $id,
             (string) ($payload['name'] ?? 'Untitled form'),
+            $this->normalizeSlug($payload['slug'] ?? null),
             $this->encodeFields($payload['fields'] ?? []),
             $this->nullableTrim($payload['notify_email'] ?? null),
             $this->nullableTrim($payload['success_message'] ?? null),
@@ -69,10 +89,11 @@ class FormService
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $this->pdo->prepare(
             'UPDATE ' . self::TABLE_FORMS . "
-             SET name = ?, fields = ?, notify_email = ?, success_message = ?, updated_at = ?
+             SET name = ?, slug = ?, fields = ?, notify_email = ?, success_message = ?, updated_at = ?
              WHERE id = ?"
         )->execute([
             (string) ($payload['name'] ?? 'Untitled form'),
+            $this->normalizeSlug($payload['slug'] ?? null),
             $this->encodeFields($payload['fields'] ?? []),
             $this->nullableTrim($payload['notify_email'] ?? null),
             $this->nullableTrim($payload['success_message'] ?? null),
@@ -208,6 +229,24 @@ class FormService
             $raw = $decoded;
         }
         return (string) json_encode($this->decodeFields($raw), JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Normalize a slug input into [a-z0-9-]+ or null. Strict so two forms
+     * never end up with subtly-different slugs (`Newsletter` vs `newsletter`).
+     */
+    private function normalizeSlug(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+        $raw = strtolower(trim((string) $value));
+        if ($raw === '') {
+            return null;
+        }
+        $clean = preg_replace('/[^a-z0-9]+/', '-', $raw) ?? '';
+        $clean = trim($clean, '-');
+        return $clean === '' ? null : substr($clean, 0, 120);
     }
 
     private function nullableTrim(mixed $value): ?string

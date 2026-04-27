@@ -1,0 +1,45 @@
+{layout 'base.latte'}
+
+{block title}{$author['display_name']} - {$site->name}{/block}
+{block description}{$author['bio'] ?? ''}{/block}
+
+{block content}
+<div class="container">
+    <div class="content-area">
+        <header class="author-archive-header">
+            {include '../components/author-profile.latte'}
+        </header>
+
+        {if empty($posts)}
+            <p class="no-posts">No posts found.</p>
+        {else}
+            <div class="post-list">
+                {foreach $posts as $post}
+                <article class="post-card">
+                    {if $post->thumbnail}
+                        <a class="post-card-thumb" href="{$post->url}" aria-label="Read {$post->title}">
+                            <img src="{$post->thumbnail}" alt="{$post->thumbnailAlt}" loading="lazy">
+                        </a>
+                    {/if}
+                    <h2 class="post-card-title">
+                        <a href="{$post->url}">{$post->title}</a>
+                    </h2>
+                    {if $post->excerpt}
+                        <p class="post-card-excerpt">{$post->excerpt}</p>
+                    {/if}
+                    {if $post->publishedAt}
+                        <time class="post-card-date" datetime="{$post->publishedAt}">{$post->publishedAt|date:'F j, Y'}</time>
+                    {/if}
+                </article>
+                {/foreach}
+            </div>
+
+            {include '../partials/pagination.latte'}
+        {/if}
+    </div>
+
+    <aside class="sidebar">
+        {=slot('sidebar')|noescape}
+    </aside>
+</div>
+{/block}

@@ -7,6 +7,7 @@ use TypeDock\Content\BlockRenderer;
 use TypeDock\Component\ComponentRenderer;
 use TypeDock\Content\PageService;
 use TypeDock\Content\CategoryService;
+use TypeDock\Content\PostView;
 use TypeDock\Content\TagService;
 use TypeDock\Core\PaginationData;
 use TypeDock\Seo\BreadcrumbBuilder;
@@ -56,12 +57,41 @@ class FrontendController
             return;
         }
 
+        if (str_ends_with($slug, '.md')) {
+            $slug = substr($slug, 0, -3);
+            $page = $this->getPageBySlug($slug);
+            if ($page === null || ($page['page_type'] ?? '') !== 'page') {
+                throw new \TypeDock\Exception\NotFoundException("Page not found: {$slug}");
+            }
+            $this->renderMarkdown($page);
+            return;
+        }
+
         $page = $this->getPageBySlug($slug);
         if ($page === null) {
             throw new \TypeDock\Exception\NotFoundException("Page not found: {$slug}");
         }
 
         $this->renderPage($page);
+    }
+
+    public function blogPostMarkdown(string $slug): void
+    {
+        $pdo  = \Flight::db();
+        $stmt = $pdo->prepare(
+            "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM pages p
+             LEFT JOIN users u ON u.id = p.author_id
+             LEFT JOIN seo_meta sm ON sm.target_type = p.page_type AND sm.target_id = p.id
+             WHERE p.slug = ? AND p.page_type = 'post' AND p.status = 'published' LIMIT 1"
+        );
+        $stmt->execute([$slug]);
+        $page = $stmt->fetch();
+
+        if ($page === false) {
+            throw new \TypeDock\Exception\NotFoundException("Post not found: {$slug}");
+        }
+
+        $this->renderMarkdown($page);
     }
 
     public function blogIndex(int $page = 1, bool $isHome = false): void
@@ -83,7 +113,13 @@ class FrontendController
         $builder  = new BreadcrumbBuilder(\Flight::db());
 
         $this->renderLatte($resolver->resolveArchive(null, '', $isHome), [
-            'posts'       => $result['items'],
+            'posts'       => PostView::projectList($result['items']),
+            'seo'         => $isHome
+                ? (new SeoService(\Flight::db()))->resolveForHome(
+                    (string) site_option('site.posts_archive_label', 'Blog'),
+                    (string) site_option('site.description', '')
+                )
+                : null,
             'pagination'  => new PaginationData(
                 current: $page,
                 totalPages: (int) ceil(($result['total'] ?: 1) / self::POSTS_PER_PAGE),
@@ -100,8 +136,9 @@ class FrontendController
     {
         $pdo  = \Flight::db();
         $stmt = $pdo->prepare(
-            "SELECT p.*, u.name as author_name FROM pages p
+            "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM pages p
              LEFT JOIN users u ON u.id = p.author_id
+             LEFT JOIN seo_meta sm ON sm.target_type = p.page_type AND sm.target_id = p.id
              WHERE p.slug = ? AND p.page_type = 'post' AND p.status = 'published' LIMIT 1"
         );
         $stmt->execute([$slug]);
@@ -136,14 +173,15 @@ class FrontendController
         $total = (int) $stmt->fetchColumn();
 
         $stmt = $pdo->prepare(
-            "SELECT p.*, u.name as author_name FROM pages p
+            "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM pages p
              LEFT JOIN users u ON u.id = p.author_id
+             LEFT JOIN seo_meta sm ON sm.target_type = p.page_type AND sm.target_id = p.id
              JOIN page_categories pc ON pc.page_id = p.id
              WHERE pc.category_id = ? AND p.status = 'published'
              ORDER BY p.published_at DESC LIMIT ? OFFSET ?"
         );
         $stmt->execute([$category['id'], $perPage, $offset]);
-        $posts = $stmt->fetchAll();
+        $posts = PostView::projectList($stmt->fetchAll());
 
         $this->setPageContext(null, 'archive', $category, 'archive');
         $resolver = new TemplateResolver(TYPEDOCK_ROOT . '/themes', \Flight::latte()->getActiveTheme());
@@ -184,14 +222,15 @@ class FrontendController
         $total = (int) $stmt->fetchColumn();
 
         $stmt = $pdo->prepare(
-            "SELECT p.*, u.name as author_name FROM pages p
+            "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM pages p
              LEFT JOIN users u ON u.id = p.author_id
+             LEFT JOIN seo_meta sm ON sm.target_type = p.page_type AND sm.target_id = p.id
              JOIN page_tags pt ON pt.page_id = p.id
              WHERE pt.tag_id = ? AND p.status = 'published'
              ORDER BY p.published_at DESC LIMIT ? OFFSET ?"
         );
         $stmt->execute([$tag['id'], $perPage, $offset]);
-        $posts = $stmt->fetchAll();
+        $posts = PostView::projectList($stmt->fetchAll());
 
         $this->setPageContext(null, 'archive', $tag, 'archive');
         $resolver = new TemplateResolver(TYPEDOCK_ROOT . '/themes', \Flight::latte()->getActiveTheme());
@@ -227,7 +266,7 @@ class FrontendController
         $searchBase = '/search?q=' . rawurlencode($query);
         $this->renderLatte('layouts/search.latte', [
             'query'       => $query,
-            'results'     => $results['items'],
+            'results'     => PostView::projectList($results['items']),
             'pagination'  => new PaginationData(
                 current: $page,
                 totalPages: (int) ceil((($results['total'] ?: 1)) / self::POSTS_PER_PAGE),
@@ -241,16 +280,78 @@ class FrontendController
         ]);
     }
 
+    public function authorArchive(string $slug, int $page = 1): void
+    {
+        $author = $this->getAuthorBySlug($slug);
+        if ($author === null) {
+            throw new \TypeDock\Exception\NotFoundException("Author not found: {$slug}");
+        }
+
+        $perPage = self::POSTS_PER_PAGE;
+        $offset  = ($page - 1) * $perPage;
+        $pdo     = \Flight::db();
+
+        $stmt = $pdo->prepare(
+            "SELECT COUNT(*) FROM pages
+             WHERE author_id = ? AND page_type = 'post' AND status = 'published'"
+        );
+        $stmt->execute([$author['id']]);
+        $total = (int) $stmt->fetchColumn();
+
+        $stmt = $pdo->prepare(
+            "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id
+             FROM pages p
+             LEFT JOIN users u ON u.id = p.author_id
+             LEFT JOIN seo_meta sm ON sm.target_type = p.page_type AND sm.target_id = p.id
+             WHERE p.author_id = ? AND p.page_type = 'post' AND p.status = 'published'
+             ORDER BY p.published_at DESC LIMIT ? OFFSET ?"
+        );
+        $stmt->execute([$author['id'], $perPage, $offset]);
+
+        $this->setPageContext(null, 'archive', null, 'author');
+        $this->renderLatte('layouts/author.latte', [
+            'author'     => $author,
+            'posts'      => PostView::projectList($stmt->fetchAll()),
+            'pagination' => new PaginationData(
+                current: $page,
+                totalPages: (int) ceil(($total ?: 1) / $perPage),
+                perPage: $perPage,
+                totalItems: $total,
+                baseUrl: '/author/' . $slug,
+            ),
+            'body_class' => 'archive author-archive author-' . $slug,
+        ]);
+    }
+
     /**
      * @param  array<string, mixed> $page
      */
     private function renderPage(array $page, bool $isHome = false): void
     {
+        // Don't mutate $page['excerpt'] here — keep the raw column value so
+        // PostView can distinguish operator-set lede from auto-generated
+        // archive fallback. SeoService computes its own body fallback for
+        // <meta description>.
+        $pageType   = (string) ($page['page_type'] ?? 'page');
+        $this->setPageContext($page, $pageType, null, $isHome ? 'home' : 'single');
+        $bodyContext = new \TypeDock\Component\RenderContext(
+            locale: (string) config('app.locale', 'en'),
+            page: $page,
+            currentUrl: (string) ($_SERVER['REQUEST_URI'] ?? '/'),
+            contextType: $pageType,
+            pageType: $pageType !== '' ? $pageType : null,
+            routeType: $isHome ? 'home' : 'single',
+        );
         $blockRenderer = new BlockRenderer(\Flight::component_renderer());
-        $renderedBody  = $blockRenderer->render($page['body']);
+        $renderedBody  = $blockRenderer->render($page['body'], $bodyContext);
 
-        $pageType = (string) ($page['page_type'] ?? 'page');
-        $resolver = new TemplateResolver(TYPEDOCK_ROOT . '/themes', \Flight::latte()->getActiveTheme());
+        $resolver   = new TemplateResolver(TYPEDOCK_ROOT . '/themes', \Flight::latte()->getActiveTheme());
+        $service    = new PageService(\Flight::db());
+        // Categories/tags are part of the documented `$page` shape now, so
+        // load them up-front for every single render — used both for
+        // template selection (post) and for the projected view model.
+        $categories = $pageType === 'post' ? $service->getCategories((string) $page['id']) : [];
+        $tags       = $pageType === 'post' ? $service->getTags((string) $page['id']) : [];
 
         if (!empty($page['template'])) {
             // Explicit per-page template override still wins.
@@ -258,8 +359,7 @@ class FrontendController
         } elseif ($isHome) {
             $layout = $resolver->resolveHome($page);
         } elseif ($pageType === 'post') {
-            $categories = (new PageService(\Flight::db()))->getCategories((string) $page['id']);
-            $layout     = $resolver->resolvePost($page, $categories);
+            $layout = $resolver->resolvePost($page, $categories);
         } else {
             $layout = $resolver->resolvePage($page);
         }
@@ -273,9 +373,8 @@ class FrontendController
             $breadcrumbs = $breadcrumbBuilder->forPage($page);
         }
 
-        $this->setPageContext($page, $pageType, null, $isHome ? 'home' : 'single');
         $this->renderLatte($layout, [
-            'page'        => $this->buildPageObject($page, $renderedBody),
+            'page'        => PostView::projectSingle($page, $renderedBody, $categories, $tags),
             'seo'         => (new SeoService(\Flight::db()))->resolveForPage($page),
             'breadcrumbs' => $breadcrumbs,
             'body_class'  => $isHome
@@ -285,25 +384,52 @@ class FrontendController
     }
 
     /**
-     * @param  array<string, mixed> $page
+     * @param array<string, mixed> $page
      */
-    private function buildPageObject(array $page, string $renderedBody): object
+    private function renderMarkdown(array $page): void
     {
-        $prefix = ($page['page_type'] ?? '') === 'post' ? post_path() . '/' : '/';
-        $base   = rtrim((string) config('app.url', ''), '/');
-        return (object) [
-            'id'           => $page['id'],
-            'slug'         => $page['slug'],
-            'title'        => $page['title'],
-            'renderedBody' => $renderedBody,
-            'excerpt'      => $page['excerpt'],
-            'pageType'     => $page['page_type'],
-            'status'       => $page['status'],
-            'publishedAt'  => $page['published_at'],
-            'updatedAt'    => $page['updated_at'],
-            'author'       => (object) ['name' => $page['author_name'] ?? null],
-            'url'          => $base . $prefix . ltrim((string) $page['slug'], '/'),
-        ];
+        $markdown = trim((string) ($page['body_markdown'] ?? ''));
+        if ($markdown === '') {
+            $markdown = \TypeDock\Content\TiptapMarkdownRenderer::render($page['body'] ?? null);
+        }
+
+        $title = trim((string) ($page['title'] ?? ''));
+        $parts = [];
+        if ($title !== '') {
+            $parts[] = '# ' . $this->escapeMarkdownHeading($title);
+        }
+        $excerpt = trim((string) ($page['excerpt'] ?? ''));
+        if ($excerpt !== '') {
+            $parts[] = $this->escapeMarkdownParagraph($excerpt);
+        }
+        if ($markdown !== '') {
+            $parts[] = $markdown;
+        }
+
+        header('Content-Type: text/markdown; charset=utf-8');
+        echo trim(implode("\n\n", $parts)) . "\n";
+    }
+
+    private function escapeMarkdownHeading(string $text): string
+    {
+        return strtr($text, [
+            '\\' => '\\\\',
+            '`'  => '\\`',
+            '['  => '\\[',
+            ']'  => '\\]',
+        ]);
+    }
+
+    private function escapeMarkdownParagraph(string $text): string
+    {
+        return strtr($text, [
+            '\\' => '\\\\',
+            '*'  => '\\*',
+            '_'  => '\\_',
+            '`'  => '\\`',
+            '['  => '\\[',
+            ']'  => '\\]',
+        ]);
     }
 
     public function renderErrorPage(string $type, string $message): void
@@ -450,7 +576,11 @@ HTML;
         return new class {
             public function hasModule(string $name): bool
             {
-                return (bool) config('modules.modules.' . $name, false);
+                return match ($name) {
+                    'Collection' => (bool) env('MODULE_COLLECTION', false),
+                    'Backup'     => (bool) env('MODULE_BACKUP', false),
+                    default      => false,
+                };
             }
         };
     }
@@ -462,8 +592,9 @@ HTML;
     {
         $pdo  = \Flight::db();
         $stmt = $pdo->prepare(
-            "SELECT p.*, u.name as author_name FROM pages p
+            "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM pages p
              LEFT JOIN users u ON u.id = p.author_id
+             LEFT JOIN seo_meta sm ON sm.target_type = p.page_type AND sm.target_id = p.id
              WHERE p.slug = ? AND p.status = 'published' LIMIT 1"
         );
         $stmt->execute([$slug]);
@@ -482,12 +613,46 @@ HTML;
     {
         $pdo  = \Flight::db();
         $stmt = $pdo->prepare(
-            "SELECT p.*, u.name as author_name FROM pages p
+            "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM pages p
              LEFT JOIN users u ON u.id = p.author_id
+             LEFT JOIN seo_meta sm ON sm.target_type = p.page_type AND sm.target_id = p.id
              WHERE p.id = ? AND p.status = 'published' LIMIT 1"
         );
         $stmt->execute([$id]);
         $row = $stmt->fetch();
         return $row !== false ? $row : null;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function getAuthorBySlug(string $slug): ?array
+    {
+        $slug = \TypeDock\Content\TermSlugger::normalize($slug, $slug);
+        $stmt = \Flight::db()->prepare(
+            'SELECT u.id, u.name, u.display_name, u.slug, u.bio, u.website_url, u.social_links,
+                    u.avatar_path, m.path AS avatar_media_path
+             FROM users u
+             LEFT JOIN media m ON m.id = u.avatar_media_id
+             WHERE u.slug = ? LIMIT 1'
+        );
+        $stmt->execute([$slug]);
+        $row = $stmt->fetch();
+        if ($row === false) {
+            return null;
+        }
+
+        $row['display_name'] = $row['display_name'] ?: $row['name'];
+        if (!empty($row['avatar_media_path'])) {
+            $row['avatar_url'] = \Flight::storage()->url((string) $row['avatar_media_path']);
+        } elseif (!empty($row['avatar_path'])) {
+            $row['avatar_url'] = $row['avatar_path'];
+        } else {
+            $row['avatar_url'] = null;
+        }
+        $links = json_decode((string) ($row['social_links'] ?? ''), true);
+        $row['social_links'] = is_array($links) ? $links : [];
+
+        return $row;
     }
 }

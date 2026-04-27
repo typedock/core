@@ -83,9 +83,15 @@ class MailService implements MailerInterface
         $mailer = new PHPMailer(true);
         $mailer->CharSet = 'UTF-8';
 
-        $driver = (string) config('mail.default', 'php');
+        $driver = (string) $this->mailOption('mail.default', config('mail.default', 'php'));
         if ($driver === 'smtp') {
-            $smtp = (array) config('mail.smtp', []);
+            $smtp = [
+                'host' => $this->mailOption('mail.smtp.host', config('mail.smtp.host', 'localhost')),
+                'port' => $this->mailOption('mail.smtp.port', config('mail.smtp.port', 587)),
+                'username' => $this->mailOption('mail.smtp.username', config('mail.smtp.username', '')),
+                'password' => $this->mailOption('mail.smtp.password', config('mail.smtp.password', '')),
+                'encryption' => $this->mailOption('mail.smtp.encryption', config('mail.smtp.encryption', 'tls')),
+            ];
             $mailer->isSMTP();
             $mailer->Host = (string) ($smtp['host'] ?? 'localhost');
             $mailer->Port = (int) ($smtp['port'] ?? 587);
@@ -104,9 +110,18 @@ class MailService implements MailerInterface
         }
 
         $mailer->setFrom(
-            (string) config('mail.from_email', 'noreply@example.com'),
-            (string) config('mail.from_name', 'TypeDock')
+            (string) $this->mailOption('mail.from_email', config('mail.from_email', 'noreply@example.com')),
+            (string) $this->mailOption('mail.from_name', config('mail.from_name', 'TypeDock'))
         );
         return $mailer;
+    }
+
+    private function mailOption(string $key, mixed $default): mixed
+    {
+        try {
+            return site_option($key, $default);
+        } catch (\Throwable) {
+            return $default;
+        }
     }
 }

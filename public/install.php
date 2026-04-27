@@ -48,6 +48,45 @@ $step   = $_POST['step'] ?? $_GET['step'] ?? 'welcome';
 $errors = [];
 $data   = $_SESSION['install_data'] ?? [];
 
+$normalizeDbDriver = static function (string $driver): string {
+    return in_array($driver, ['mysql', 'pgsql', 'sqlite'], true) ? $driver : 'mysql';
+};
+
+$dbDefaultsFor = static function (string $driver) use ($root): array {
+    return match ($driver) {
+        'pgsql' => [
+            'driver'      => 'pgsql',
+            'host'        => '127.0.0.1',
+            'port'        => 5432,
+            'database'    => 'typedock',
+            'username'    => 'postgres',
+            'password'    => '',
+            'charset'     => 'utf8mb4',
+            'sqlite_path' => $root . '/storage/database.sqlite',
+        ],
+        'sqlite' => [
+            'driver'      => 'sqlite',
+            'host'        => '',
+            'port'        => '',
+            'database'    => '',
+            'username'    => '',
+            'password'    => '',
+            'charset'     => 'utf8mb4',
+            'sqlite_path' => $root . '/storage/database.sqlite',
+        ],
+        default => [
+            'driver'      => 'mysql',
+            'host'        => '127.0.0.1',
+            'port'        => 3306,
+            'database'    => 'typedock',
+            'username'    => 'root',
+            'password'    => '',
+            'charset'     => 'utf8mb4',
+            'sqlite_path' => $root . '/storage/database.sqlite',
+        ],
+    };
+};
+
 if ($method === 'POST') {
     // CSRF check
     if (!hash_equals($csrf, (string) ($_POST['_csrf'] ?? ''))) {
@@ -72,15 +111,18 @@ if ($method === 'POST') {
             if (!isset($_POST['db_driver'])) {
                 break;
             }
+            $driver = $normalizeDbDriver((string) ($_POST['db_driver'] ?? 'mysql'));
+            $defaults = $dbDefaultsFor($driver);
+            $port = trim((string) ($_POST['db_port'] ?? ''));
             $db = [
-                'driver'      => $_POST['db_driver'] ?? 'mysql',
-                'host'        => trim((string) ($_POST['db_host'] ?? '127.0.0.1')),
-                'port'        => (int) ($_POST['db_port'] ?? 3306),
-                'database'    => trim((string) ($_POST['db_database'] ?? '')),
-                'username'    => (string) ($_POST['db_username'] ?? ''),
+                'driver'      => $driver,
+                'host'        => trim((string) ($_POST['db_host'] ?? $defaults['host'])),
+                'port'        => $port === '' ? $defaults['port'] : (int) $port,
+                'database'    => trim((string) ($_POST['db_database'] ?? $defaults['database'])),
+                'username'    => (string) ($_POST['db_username'] ?? $defaults['username']),
                 'password'    => (string) ($_POST['db_password'] ?? ''),
                 'charset'     => 'utf8mb4',
-                'sqlite_path' => trim((string) ($_POST['db_sqlite_path'] ?? $root . '/storage/database.sqlite')),
+                'sqlite_path' => trim((string) ($_POST['db_sqlite_path'] ?? $defaults['sqlite_path'])),
             ];
             $err = $installer->testDatabase($db);
             if ($err !== null) {
@@ -95,18 +137,36 @@ if ($method === 'POST') {
             break;
 
         case 'site':
+            $locale = trim((string) ($_POST['site_locale'] ?? 'en'));
+            $timezone = trim((string) ($_POST['site_timezone'] ?? 'UTC'));
+            if ($locale === '') {
+                $locale = 'en';
+            }
+            if ($timezone === '') {
+                $timezone = 'UTC';
+            }
+            if (strlen($locale) > 10 || !preg_match('/^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/', $locale)) {
+                $errors[] = 'Choose a valid language code.';
+            }
+            if (!in_array($timezone, \DateTimeZone::listIdentifiers(), true) && $timezone !== 'UTC') {
+                $errors[] = 'Choose a valid timezone.';
+            }
             $data['site'] = [
                 'name'     => trim((string) ($_POST['site_name'] ?? 'TypeDock')),
                 'url'      => trim((string) ($_POST['site_url'] ?? '')),
-                'locale'   => trim((string) ($_POST['site_locale'] ?? 'en')),
-                'timezone' => trim((string) ($_POST['site_timezone'] ?? 'UTC')),
+                'locale'   => $locale,
+                'timezone' => $timezone,
             ];
             if ($data['site']['url'] === '') {
                 $scheme = !empty($_SERVER['HTTPS']) ? 'https' : 'http';
                 $data['site']['url'] = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
             }
-            $_SESSION['install_data'] = $data;
-            $step = 'admin';
+            if ($errors === []) {
+                $_SESSION['install_data'] = $data;
+                $step = 'admin';
+            } else {
+                $step = 'site';
+            }
             break;
 
         case 'admin':
@@ -197,9 +257,47 @@ if ($method === 'POST') {
 }
 
 $env = $installer->checkEnvironment();
+$dbDriverDefaults = [
+    'mysql'  => $dbDefaultsFor('mysql'),
+    'pgsql'  => $dbDefaultsFor('pgsql'),
+    'sqlite' => $dbDefaultsFor('sqlite'),
+];
+$languageOptions = [
+    'en' => 'English',
+    'en-US' => 'English (United States)',
+    'en-GB' => 'English (United Kingdom)',
+    'ja' => 'Japanese',
+    'es' => 'Spanish',
+    'fr' => 'French',
+    'de' => 'German',
+    'it' => 'Italian',
+    'pt-BR' => 'Portuguese (Brazil)',
+    'pt' => 'Portuguese',
+    'zh-Hans' => 'Chinese (Simplified)',
+    'zh-Hant' => 'Chinese (Traditional)',
+    'ko' => 'Korean',
+    'nl' => 'Dutch',
+    'sv' => 'Swedish',
+];
+$commonTimezones = [
+    'UTC' => 'UTC',
+    'America/New_York' => 'Eastern Time (New York)',
+    'America/Chicago' => 'Central Time (Chicago)',
+    'America/Denver' => 'Mountain Time (Denver)',
+    'America/Los_Angeles' => 'Pacific Time (Los Angeles)',
+    'Europe/London' => 'London',
+    'Europe/Paris' => 'Central Europe (Paris)',
+    'Europe/Berlin' => 'Central Europe (Berlin)',
+    'Asia/Tokyo' => 'Japan (Tokyo)',
+    'Asia/Seoul' => 'Korea (Seoul)',
+    'Asia/Singapore' => 'Singapore',
+    'Australia/Sydney' => 'Australia (Sydney)',
+];
+$allTimezones = array_values(array_diff(\DateTimeZone::listIdentifiers(), array_keys($commonTimezones)));
 
 // --- Rendering helpers ---
 $e = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+$json = fn($v) => json_encode($v, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
 
 ?><!doctype html>
 <html lang="en">
@@ -216,8 +314,12 @@ label { display: block; margin: .75rem 0 .25rem; font-weight: 600; }
 input[type=text], input[type=email], input[type=password], input[type=number], select {
   width: 100%; padding: .5rem; border: 1px solid #bbb; border-radius: 4px; font-size: 1rem; box-sizing: border-box;
 }
+fieldset { border: 1px solid #ddd; border-radius: 6px; padding: .75rem 1rem 1rem; margin: 1rem 0; }
+legend { font-weight: 700; padding: 0 .25rem; }
+[hidden] { display: none !important; }
 button { background: #2b6cb0; color: #fff; border: 0; padding: .6rem 1.2rem; border-radius: 4px; font-size: 1rem; cursor: pointer; }
 button:hover { background: #2c5282; }
+button:disabled { background: #aaa; cursor: not-allowed; }
 .ok { color: #2f855a; }
 .bad { color: #c53030; }
 .warn { color: #b7791f; }
@@ -288,36 +390,50 @@ code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; }
     // env vars (docker-compose / Kubernetes), then built-in defaults. This
     // keeps the driver pulldown on SQLite when DB_DRIVER=sqlite is in env,
     // instead of snapping back to MySQL after a form reload.
-    $db = $data['db'] ?? $installer->dbFromEnv() ?? [];
+    $storedDb = $data['db'] ?? $installer->dbFromEnv() ?? [];
+    $currentDriver = $normalizeDbDriver((string) ($storedDb['driver'] ?? 'mysql'));
+    $db = array_replace($dbDefaultsFor($currentDriver), $storedDb, ['driver' => $currentDriver]);
   ?>
   <form method="post">
     <input type="hidden" name="_csrf" value="<?= $e($csrf) ?>">
     <input type="hidden" name="step" value="database">
 
-    <label>Driver</label>
-    <select name="db_driver">
-      <?php foreach (['mysql', 'pgsql', 'sqlite'] as $d): ?>
-        <option value="<?= $d ?>" <?= ($db['driver'] ?? 'mysql') === $d ? 'selected' : '' ?>><?= $d ?></option>
-      <?php endforeach; ?>
+    <label for="db_driver">Database type</label>
+    <select id="db_driver" name="db_driver" data-db-driver>
+      <option value="mysql" <?= $currentDriver === 'mysql' ? 'selected' : '' ?>>MySQL / MariaDB</option>
+      <option value="pgsql" <?= $currentDriver === 'pgsql' ? 'selected' : '' ?>>PostgreSQL</option>
+      <option value="sqlite" <?= $currentDriver === 'sqlite' ? 'selected' : '' ?>>SQLite</option>
     </select>
+    <div class="hint" data-driver-hint="mysql">Use MySQL/MariaDB for most shared hosting accounts.</div>
+    <div class="hint" data-driver-hint="pgsql" hidden>Use PostgreSQL when your host provides a PostgreSQL database.</div>
+    <div class="hint" data-driver-hint="sqlite" hidden>Use SQLite for local testing or small single-file installs.</div>
 
-    <label>Host</label>
-    <input type="text" name="db_host" value="<?= $e($db['host'] ?? '127.0.0.1') ?>">
+    <fieldset data-db-fields="server">
+      <legend>Database server</legend>
 
-    <label>Port</label>
-    <input type="number" name="db_port" value="<?= $e($db['port'] ?? 3306) ?>">
+      <label for="db_host">Host</label>
+      <input id="db_host" type="text" name="db_host" value="<?= $e($db['host']) ?>" data-db-default-field="host">
 
-    <label>Database name</label>
-    <input type="text" name="db_database" value="<?= $e($db['database'] ?? 'typedock') ?>">
+      <label for="db_port">Port</label>
+      <input id="db_port" type="number" name="db_port" value="<?= $e($db['port']) ?>" data-db-default-field="port">
 
-    <label>Username</label>
-    <input type="text" name="db_username" value="<?= $e($db['username'] ?? 'root') ?>">
+      <label for="db_database">Database name</label>
+      <input id="db_database" type="text" name="db_database" value="<?= $e($db['database']) ?>" data-db-default-field="database">
 
-    <label>Password</label>
-    <input type="password" name="db_password" value="<?= $e($db['password'] ?? '') ?>">
+      <label for="db_username">Username</label>
+      <input id="db_username" type="text" name="db_username" value="<?= $e($db['username']) ?>" data-db-default-field="username">
 
-    <label>SQLite path (sqlite only)</label>
-    <input type="text" name="db_sqlite_path" value="<?= $e($db['sqlite_path'] ?? $root . '/storage/database.sqlite') ?>">
+      <label for="db_password">Password</label>
+      <input id="db_password" type="password" name="db_password" value="<?= $e($db['password']) ?>">
+    </fieldset>
+
+    <fieldset data-db-fields="sqlite">
+      <legend>SQLite file</legend>
+
+      <label for="db_sqlite_path">Database file path</label>
+      <input id="db_sqlite_path" type="text" name="db_sqlite_path" value="<?= $e($db['sqlite_path']) ?>" data-db-default-field="sqlite_path">
+      <div class="hint">The default location is inside TypeDock storage and will be created if possible.</div>
+    </fieldset>
 
     <p><button type="submit">Test connection and continue</button></p>
   </form>
@@ -338,11 +454,26 @@ code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; }
     <label>Site URL</label>
     <input type="text" name="site_url" value="<?= $e($site['url'] ?? $defaultUrl) ?>" required>
 
-    <label>Locale</label>
-    <input type="text" name="site_locale" value="<?= $e($site['locale'] ?? 'en') ?>">
+    <label for="site_locale">Language</label>
+    <input id="site_locale" type="text" name="site_locale" list="language-options" value="<?= $e($site['locale'] ?? 'en') ?>" autocomplete="off">
+    <datalist id="language-options">
+      <?php foreach ($languageOptions as $code => $label): ?>
+        <option value="<?= $e($code) ?>" label="<?= $e($label) ?>"></option>
+      <?php endforeach; ?>
+    </datalist>
+    <div class="hint">Choose a language, or enter a standard language code such as <code>en</code> or <code>ja</code>.</div>
 
-    <label>Timezone</label>
-    <input type="text" name="site_timezone" value="<?= $e($site['timezone'] ?? 'UTC') ?>">
+    <label for="site_timezone">Timezone</label>
+    <input id="site_timezone" type="text" name="site_timezone" list="timezone-options" value="<?= $e($site['timezone'] ?? 'UTC') ?>" autocomplete="off">
+    <datalist id="timezone-options">
+      <?php foreach ($commonTimezones as $zone => $label): ?>
+        <option value="<?= $e($zone) ?>" label="<?= $e($label) ?>"></option>
+      <?php endforeach; ?>
+      <?php foreach ($allTimezones as $zone): ?>
+        <option value="<?= $e($zone) ?>"></option>
+      <?php endforeach; ?>
+    </datalist>
+    <div class="hint">Your browser timezone will be selected automatically when possible.</div>
 
     <p><button type="submit">Next: administrator</button></p>
   </form>
@@ -394,5 +525,71 @@ code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; }
     <p class="ok">Installer file has been removed.</p>
   <?php endif; ?>
 <?php endif; ?>
+<script>
+(() => {
+  const driver = document.querySelector('[data-db-driver]');
+  if (!driver) {
+    return;
+  }
+
+  const defaults = <?= $json($dbDriverDefaults) ?>;
+  const fields = document.querySelectorAll('[data-db-default-field]');
+
+  const isKnownDefault = (field, value) => Object.values(defaults).some((driverDefaults) => {
+    return String(driverDefaults[field] ?? '') === String(value);
+  });
+
+  const applyDefaults = () => {
+    const driverDefaults = defaults[driver.value] || defaults.mysql;
+    fields.forEach((input) => {
+      const field = input.dataset.dbDefaultField;
+      if (input.value === '' || isKnownDefault(field, input.value)) {
+        input.value = driverDefaults[field] ?? '';
+      }
+    });
+  };
+
+  const updateVisibility = () => {
+    const isSqlite = driver.value === 'sqlite';
+    document.querySelectorAll('[data-db-fields="server"]').forEach((group) => {
+      group.hidden = isSqlite;
+      group.querySelectorAll('input, select, textarea').forEach((input) => {
+        input.disabled = isSqlite;
+      });
+    });
+    document.querySelectorAll('[data-db-fields="sqlite"]').forEach((group) => {
+      group.hidden = !isSqlite;
+      group.querySelectorAll('input, select, textarea').forEach((input) => {
+        input.disabled = !isSqlite;
+      });
+    });
+    document.querySelectorAll('[data-driver-hint]').forEach((hint) => {
+      hint.hidden = hint.dataset.driverHint !== driver.value;
+    });
+  };
+
+  driver.addEventListener('change', () => {
+    applyDefaults();
+    updateVisibility();
+  });
+  updateVisibility();
+})();
+
+(() => {
+  const timezone = document.getElementById('site_timezone');
+  if (!timezone || (timezone.value !== '' && timezone.value !== 'UTC')) {
+    return;
+  }
+
+  try {
+    const guessed = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (guessed) {
+      timezone.value = guessed;
+    }
+  } catch (error) {
+    // Keep the server default when the browser cannot report a timezone.
+  }
+})();
+</script>
 </body>
 </html>

@@ -15,6 +15,21 @@ class CsrfMiddleware
         }
     }
 
+    /**
+     * Flight group-middleware entry. Verifies CSRF on mutating HTTP methods
+     * and is a no-op for safe verbs (GET/HEAD/OPTIONS) so read-only routes
+     * don't need to be broken out of the group.
+     *
+     * @param array<string,string> $params Route params (unused)
+     */
+    public function before(array $params = []): void
+    {
+        $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+        if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
+            $this->verifyOrFail();
+        }
+    }
+
     public function verify(): bool
     {
         if (session_status() === PHP_SESSION_NONE) {

@@ -44,6 +44,56 @@ class TiptapRenderer
     }
 
     /**
+     * Extract readable text from a Tiptap document without rendering HTML.
+     *
+     * @param  string|array<string, mixed>|null $doc
+     */
+    public static function toPlainText(string|array|null $doc): string
+    {
+        if ($doc === null || $doc === '') {
+            return '';
+        }
+        if (is_string($doc)) {
+            $decoded = json_decode($doc, true);
+            if (!is_array($decoded)) {
+                return '';
+            }
+            $doc = $decoded;
+        }
+        if (($doc['type'] ?? '') !== 'doc') {
+            return '';
+        }
+        return trim(self::plainTextFromNodes($doc['content'] ?? []));
+    }
+
+    /**
+     * @param array<int, mixed> $nodes
+     */
+    private static function plainTextFromNodes(array $nodes): string
+    {
+        $chunks = [];
+        foreach ($nodes as $node) {
+            if (!is_array($node)) {
+                continue;
+            }
+            $type = (string) ($node['type'] ?? '');
+            if ($type === 'text') {
+                $chunks[] = (string) ($node['text'] ?? '');
+                continue;
+            }
+            if ($type === 'hardBreak') {
+                $chunks[] = "\n";
+                continue;
+            }
+            $inner = self::plainTextFromNodes($node['content'] ?? []);
+            if ($inner !== '') {
+                $chunks[] = $inner;
+            }
+        }
+        return trim(preg_replace('/[ \t\r\n]+/u', ' ', implode(' ', $chunks)) ?? '');
+    }
+
+    /**
      * @param array<int, array<string, mixed>> $nodes
      */
     private function renderNodes(array $nodes): string
@@ -187,10 +237,17 @@ class TiptapRenderer
         $params = (array)  ($a['params'] ?? []);
         if ($type === '') return '';
         try {
-            return $this->componentRenderer->render($type, $params, $this->context);
+            $inner = $this->componentRenderer->render($type, $params, $this->context);
         } catch (\Throwable) {
             return '<!-- component "' . $this->escape($type) . '" failed to render -->';
         }
+        // Wrap inline component output with a stable class theme CSS can target
+        // (vertical rhythm, list-reset, etc.) without having to know each
+        // component's internal markup.
+        $cssType = preg_replace('/[^a-z0-9_-]/i', '', $type) ?? '';
+        return '<div class="td-component-block td-component-block--' . $cssType . '">'
+            . $inner
+            . '</div>';
     }
 
     // --- inline ---
@@ -288,11 +345,17 @@ class TiptapRenderer
         return $text;
     }
 
+    private function slugify(string $text): string
+    {
+        return self::slugifyHeading($text);
+    }
+
     /**
      * Heading slug: lowercase, strip punctuation, keep unicode letters/digits.
-     * Matches the old BlockRenderer behavior so existing deep-links still work.
+     * Public so the TOC component can compute matching anchor IDs without
+     * having to re-render the document.
      */
-    private function slugify(string $text): string
+    public static function slugifyHeading(string $text): string
     {
         $slug = mb_strtolower(trim($text));
         $slug = preg_replace('/\s+/u', '-', $slug) ?? '';

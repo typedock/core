@@ -1,0 +1,19 @@
+{layout '../../layouts/admin-base.latte'}
+
+{block page_title}{$plugin['name']} Docs{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <h1>{$plugin['name']} Docs</h1>
+        <p class="subtitle">Plugin documentation for <code>{$plugin['slug']}</code> {$plugin['version'] !== '—' ? '(' . $plugin['version'] . ')' : ''}</p>
+    </div>
+    <a href="/admin/settings/modules" class="btn btn-secondary">Back to Modules</a>
+</div>
+
+<div class="card max-w-3xl">
+    <div class="card-body prose">
+        {$html|noescape}
+    </div>
+</div>
+{/block}

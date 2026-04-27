@@ -19,10 +19,12 @@
                 {/if}
                 {if $page->author->name}
                     <span class="entry-meta-sep" aria-hidden="true">·</span>
-                    <span class="entry-author">{$page->author->name}</span>
+                    <span class="entry-author">
+                        {if $page->author->slug}<a href="/author/{$page->author->slug}">{$page->author->name}</a>{else}{$page->author->name}{/if}
+                    </span>
                 {/if}
             </div>
-            {if $page->excerpt}<p class="entry-lede">{$page->excerpt}</p>{/if}
+            {if $page->lede}<p class="entry-lede">{$page->lede}</p>{/if}
         </header>
 
         <div class="slot-before-content">

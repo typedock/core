@@ -31,6 +31,7 @@
                     <td class="text-slate-500">{$cat['description'] ?? ''}</td>
                     <td class="text-slate-500">{$cat['post_count'] ?? 0}</td>
                     <td class="actions">
+                        <a href="/category/{$cat['slug']}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">View</a>
                         <form method="post" action="/admin/categories/{$cat['id']}/delete" class="inline">
                             <input type="hidden" name="_csrf_token" value="{$csrf_token}">
                             <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this item?')">Delete</button>
@@ -46,15 +47,16 @@
     <aside>
         <div class="sidebar-panel">
             <h3>Add New Category</h3>
-            <form method="post" action="/admin/categories">
+            <form method="post" action="/admin/categories" data-slug-form>
                 <input type="hidden" name="_csrf_token" value="{$csrf_token}">
                 <div class="form-group">
                     <label>Name</label>
-                    <input type="text" name="name" required>
+                    <input type="text" name="name" required data-slug-name>
                 </div>
                 <div class="form-group">
                     <label>Slug</label>
-                    <input type="text" name="slug" placeholder="Auto-generated">
+                    <input type="text" name="slug" placeholder="Auto-generated" data-slug-input>
+                    <small class="form-hint">Preview: <code data-slug-preview></code></small>
                 </div>
                 <div class="form-group">
                     <label>Description</label>
@@ -74,4 +76,8 @@
         </div>
     </aside>
 </div>
+{/block}
+
+{block scripts}
+<script src="/admin/assets/js/term-slug-preview.js"></script>
 {/block}
