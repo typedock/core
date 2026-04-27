@@ -9,7 +9,7 @@ namespace TypeDock\Component;
  * value is an array is matched with OR semantics within the array.
  *
  * Supported keys (extensible — unknown keys are treated as "does not match"):
- *   - page_type         : ['post'] / ['page']
+ *   - post_type         : ['post'] / ['page']
  *   - category          : ['slug', ...]  (post must share at least one)
  *   - category_not      : ['slug', ...]  (post must not be in any)
  *   - is_home           : true
@@ -41,7 +41,7 @@ class SlotConditionEvaluator
     private function matchOne(string $key, mixed $expected, RenderContext $ctx): bool
     {
         return match ($key) {
-            'page_type'    => $this->anyMatches($expected, (string) ($ctx->pageType ?? '')),
+            'post_type'    => $this->anyMatches($expected, (string) ($ctx->postType ?? '')),
             'layout'       => $this->anyMatches($expected, (string) ($ctx->page['layout'] ?? '')),
             'route_type'   => $this->anyMatches($expected, (string) ($ctx->routeType ?? '')),
             'is_home'      => ((bool) $expected) === ($this->isHome($ctx)),
@@ -108,8 +108,8 @@ class SlotConditionEvaluator
             $pdo  = \Flight::db();
             $stmt = $pdo->prepare(
                 'SELECT c.slug FROM categories c
-                 JOIN page_categories pc ON pc.category_id = c.id
-                 WHERE pc.page_id = ?'
+                 JOIN post_categories pc ON pc.category_id = c.id
+                 WHERE pc.post_id = ?'
             );
             $stmt->execute([$pageId]);
             foreach ($stmt->fetchAll() as $row) {

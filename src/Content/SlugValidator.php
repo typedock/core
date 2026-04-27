@@ -104,7 +104,7 @@ class SlugValidator
         $counter   = 2;
 
         while (true) {
-            $sql    = 'SELECT id FROM pages WHERE slug = ?';
+            $sql    = 'SELECT id FROM posts WHERE slug = ?';
             $params = [$candidate];
             if ($excludeId !== null) {
                 $sql    .= ' AND id != ?';

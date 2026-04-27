@@ -23,9 +23,9 @@ class LikeSearchEngine implements SearchEngine
         $where  = ["p.status = 'published'"];
         $params = [];
 
-        if (!empty($options['page_type'])) {
-            $where[]  = 'p.page_type = ?';
-            $params[] = $options['page_type'];
+        if (!empty($options['post_type'])) {
+            $where[]  = 'p.post_type = ?';
+            $params[] = $options['post_type'];
         }
 
         if (!empty($options['locale'])) {
@@ -45,7 +45,7 @@ class LikeSearchEngine implements SearchEngine
 
         $whereStr = implode(' AND ', $where);
 
-        $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM pages p WHERE {$whereStr}");
+        $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM posts p WHERE {$whereStr}");
         $countStmt->execute($params);
         $total = (int) $countStmt->fetchColumn();
 
@@ -54,13 +54,13 @@ class LikeSearchEngine implements SearchEngine
         $offset  = ($page - 1) * $perPage;
 
         $stmt = $this->pdo->prepare(
-            "SELECT p.id, p.slug, p.title, p.excerpt, p.page_type, p.published_at, p.updated_at,
+            "SELECT p.id, p.slug, p.title, p.excerpt, p.post_type, p.published_at, p.updated_at,
                     COALESCE(NULLIF(u.display_name, ''), u.name) as author_name,
                     u.slug as author_slug,
                     sm.og_image_id
-             FROM pages p
+             FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
-             LEFT JOIN seo_meta sm ON sm.target_type = p.page_type AND sm.target_id = p.id
+             LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
              WHERE {$whereStr}
              ORDER BY p.published_at DESC
              LIMIT ? OFFSET ?"

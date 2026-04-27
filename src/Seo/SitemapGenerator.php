@@ -39,14 +39,14 @@ class SitemapGenerator
     /**
      * Generate pages sitemap.
      */
-    public function generatePages(string $pageType = 'page'): string
+    public function generatePages(string $postType = 'page'): string
     {
         $stmt = $this->pdo->prepare(
-            "SELECT slug, updated_at, published_at FROM pages
-             WHERE page_type = ? AND status = 'published'
+            "SELECT slug, updated_at, published_at FROM posts
+             WHERE post_type = ? AND status = 'published'
              ORDER BY updated_at DESC LIMIT 1000"
         );
-        $stmt->execute([$pageType]);
+        $stmt->execute([$postType]);
         $pages = $stmt->fetchAll();
 
         return $this->buildUrlset($pages, function (array $page): array {

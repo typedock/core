@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace TypeDock\Content;
 
-class PageService
+class PostService
 {
     public const STATUS_DRAFT     = 'draft';
     public const STATUS_REVIEW    = 'review';
@@ -37,9 +37,9 @@ class PageService
             $where[]  = 'p.status = ?';
             $params[] = $options['status'];
         }
-        if (isset($options['page_type'])) {
-            $where[]  = 'p.page_type = ?';
-            $params[] = $options['page_type'];
+        if (isset($options['post_type'])) {
+            $where[]  = 'p.post_type = ?';
+            $params[] = $options['post_type'];
         }
         if (isset($options['author_id'])) {
             $where[]  = 'p.author_id = ?';
@@ -58,7 +58,7 @@ class PageService
 
         $whereStr = implode(' AND ', $where);
 
-        $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM pages p WHERE {$whereStr}");
+        $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM posts p WHERE {$whereStr}");
         $countStmt->execute($params);
         $total = (int) $countStmt->fetchColumn();
 
@@ -70,13 +70,13 @@ class PageService
 
         $listParams   = array_merge($params, [$perPage, $offset]);
         $stmt = $this->pdo->prepare(
-            "SELECT p.id, p.slug, p.title, p.body, p.excerpt, p.page_type, p.status,
+            "SELECT p.id, p.slug, p.title, p.body, p.excerpt, p.post_type, p.status,
                     p.author_id, p.locale, p.published_at, p.created_at, p.updated_at,
                     COALESCE(NULLIF(u.display_name, ''), u.name) as author_name,
                     sm.og_image_id
-             FROM pages p
+             FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
-             LEFT JOIN seo_meta sm ON sm.target_type = p.page_type AND sm.target_id = p.id
+             LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
              WHERE {$whereStr}
              ORDER BY {$order}
              LIMIT ? OFFSET ?"
@@ -97,7 +97,7 @@ class PageService
     {
         $stmt = $this->pdo->prepare(
             'SELECT p.*, u.name as author_name
-             FROM pages p
+             FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
              WHERE p.id = ? LIMIT 1'
         );
@@ -113,7 +113,7 @@ class PageService
      */
     public function findBySlug(string $slug, string $locale = 'en', ?string $status = null): ?array
     {
-        $sql    = 'SELECT p.*, u.name as author_name FROM pages p LEFT JOIN users u ON u.id = p.author_id WHERE p.slug = ? AND p.locale = ?';
+        $sql    = 'SELECT p.*, u.name as author_name FROM posts p LEFT JOIN users u ON u.id = p.author_id WHERE p.slug = ? AND p.locale = ?';
         $params = [$slug, $locale];
 
         if ($status !== null) {
@@ -145,8 +145,8 @@ class PageService
             $this->slugValidator->validate($slug);
         }
 
-        $pageType = in_array($data['page_type'] ?? 'post', [self::TYPE_POST, self::TYPE_PAGE], true)
-            ? $data['page_type']
+        $postType = in_array($data['post_type'] ?? 'post', [self::TYPE_POST, self::TYPE_PAGE], true)
+            ? $data['post_type']
             : self::TYPE_POST;
 
         $status = $data['status'] ?? self::STATUS_DRAFT;
@@ -162,7 +162,7 @@ class PageService
         $bodyMarkdown = TiptapMarkdownRenderer::render($body);
 
         $stmt = $this->pdo->prepare(
-            'INSERT INTO pages (id, slug, title, body, body_markdown, excerpt, page_type, status, author_id, parent_id,
+            'INSERT INTO posts (id, slug, title, body, body_markdown, excerpt, post_type, status, author_id, parent_id,
                                 template, layout, locale, translation_group_id, published_at, scheduled_at,
                                 created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
@@ -174,7 +174,7 @@ class PageService
             $body,
             $bodyMarkdown !== '' ? $bodyMarkdown : null,
             $data['excerpt'] ?? null,
-            $pageType,
+            $postType,
             $status,
             $data['author_id'] ?? null,
             $data['parent_id'] ?? null,
@@ -232,7 +232,7 @@ class PageService
         $bodyMarkdown = TiptapMarkdownRenderer::render($body);
 
         $stmt = $this->pdo->prepare(
-            'UPDATE pages SET slug = ?, title = ?, body = ?, body_markdown = ?, excerpt = ?, page_type = ?,
+            'UPDATE posts SET slug = ?, title = ?, body = ?, body_markdown = ?, excerpt = ?, post_type = ?,
                               status = ?, author_id = ?, parent_id = ?, template = ?, layout = ?,
                               locale = ?, published_at = ?, scheduled_at = ?, updated_at = ?
              WHERE id = ?'
@@ -243,7 +243,7 @@ class PageService
             $body,
             $bodyMarkdown !== '' ? $bodyMarkdown : null,
             $data['excerpt'] ?? $page['excerpt'],
-            $data['page_type'] ?? $page['page_type'],
+            $data['post_type'] ?? $page['post_type'],
             $status,
             $data['author_id'] ?? $page['author_id'],
             $data['parent_id'] ?? $page['parent_id'],
@@ -272,7 +272,7 @@ class PageService
     public function trash(string $id): void
     {
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
-        $this->pdo->prepare('UPDATE pages SET status = ?, updated_at = ? WHERE id = ?')
+        $this->pdo->prepare('UPDATE posts SET status = ?, updated_at = ? WHERE id = ?')
             ->execute([self::STATUS_TRASH, $now, $id]);
     }
 
@@ -282,7 +282,7 @@ class PageService
     public function restore(string $id): void
     {
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
-        $this->pdo->prepare('UPDATE pages SET status = ?, updated_at = ? WHERE id = ?')
+        $this->pdo->prepare('UPDATE posts SET status = ?, updated_at = ? WHERE id = ?')
             ->execute([self::STATUS_DRAFT, $now, $id]);
     }
 
@@ -291,7 +291,7 @@ class PageService
      */
     public function delete(string $id): void
     {
-        $this->pdo->prepare('DELETE FROM pages WHERE id = ?')->execute([$id]);
+        $this->pdo->prepare('DELETE FROM posts WHERE id = ?')->execute([$id]);
     }
 
     /**
@@ -301,8 +301,8 @@ class PageService
     {
         $stmt = $this->pdo->prepare(
             'SELECT c.* FROM categories c
-             JOIN page_categories pc ON pc.category_id = c.id
-             WHERE pc.page_id = ?
+             JOIN post_categories pc ON pc.category_id = c.id
+             WHERE pc.post_id = ?
              ORDER BY c.sort_order, c.name'
         );
         $stmt->execute([$pageId]);
@@ -316,8 +316,8 @@ class PageService
     {
         $stmt = $this->pdo->prepare(
             'SELECT t.* FROM tags t
-             JOIN page_tags pt ON pt.tag_id = t.id
-             WHERE pt.page_id = ?
+             JOIN post_tags pt ON pt.tag_id = t.id
+             WHERE pt.post_id = ?
              ORDER BY t.name'
         );
         $stmt->execute([$pageId]);
@@ -329,8 +329,8 @@ class PageService
      */
     private function syncCategories(string $pageId, array $categoryIds): void
     {
-        $this->pdo->prepare('DELETE FROM page_categories WHERE page_id = ?')->execute([$pageId]);
-        $stmt = $this->pdo->prepare('INSERT INTO page_categories (page_id, category_id) VALUES (?, ?)');
+        $this->pdo->prepare('DELETE FROM post_categories WHERE post_id = ?')->execute([$pageId]);
+        $stmt = $this->pdo->prepare('INSERT INTO post_categories (post_id, category_id) VALUES (?, ?)');
         foreach (array_unique($categoryIds) as $catId) {
             $stmt->execute([$pageId, $catId]);
         }
@@ -341,8 +341,8 @@ class PageService
      */
     private function syncTags(string $pageId, array $tagIds): void
     {
-        $this->pdo->prepare('DELETE FROM page_tags WHERE page_id = ?')->execute([$pageId]);
-        $stmt = $this->pdo->prepare('INSERT INTO page_tags (page_id, tag_id) VALUES (?, ?)');
+        $this->pdo->prepare('DELETE FROM post_tags WHERE post_id = ?')->execute([$pageId]);
+        $stmt = $this->pdo->prepare('INSERT INTO post_tags (post_id, tag_id) VALUES (?, ?)');
         foreach (array_unique($tagIds) as $tagId) {
             $stmt->execute([$pageId, $tagId]);
         }
@@ -357,7 +357,7 @@ class PageService
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
         $this->pdo->prepare(
-            'INSERT INTO page_revisions (id, page_id, title, body, body_markdown, author_id, created_at)
+            'INSERT INTO post_revisions (id, post_id, title, body, body_markdown, author_id, created_at)
              VALUES (?, ?, ?, ?, ?, ?, ?)'
         )->execute([
             $id,

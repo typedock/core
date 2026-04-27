@@ -51,12 +51,12 @@ final class MigrationsTest extends TestCase
             'sessions',
             'password_resets',
             'api_keys',
-            'pages',
-            'page_revisions',
+            'posts',
+            'post_revisions',
             'categories',
             'tags',
-            'page_categories',
-            'page_tags',
+            'post_categories',
+            'post_tags',
             'media',
             'menus',
             'menu_items',
@@ -80,11 +80,11 @@ final class MigrationsTest extends TestCase
             );
         }
 
-        $pageColumns = $pdo->query("PRAGMA table_info('pages')")->fetchAll(\PDO::FETCH_ASSOC);
-        $pageColumnNames = array_map('strval', array_column($pageColumns, 'name'));
-        $this->assertContains('body_markdown', $pageColumnNames);
+        $postColumns = $pdo->query("PRAGMA table_info('posts')")->fetchAll(\PDO::FETCH_ASSOC);
+        $postColumnNames = array_map('strval', array_column($postColumns, 'name'));
+        $this->assertContains('body_markdown', $postColumnNames);
 
-        $revisionColumns = $pdo->query("PRAGMA table_info('page_revisions')")->fetchAll(\PDO::FETCH_ASSOC);
+        $revisionColumns = $pdo->query("PRAGMA table_info('post_revisions')")->fetchAll(\PDO::FETCH_ASSOC);
         $revisionColumnNames = array_map('strval', array_column($revisionColumns, 'name'));
         $this->assertContains('body_markdown', $revisionColumnNames);
     }

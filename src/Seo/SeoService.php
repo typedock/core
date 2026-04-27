@@ -184,12 +184,12 @@ class SeoService
      * without caring about DB shape.
      *
      * @param array<string, mixed> $page  Page/post row (must include id,
-     *     page_type, title, slug; excerpt/published_at/updated_at/author_name
+     *     post_type, title, slug; excerpt/published_at/updated_at/author_name
      *     are used when present)
      */
     public function resolveForPage(array $page): object
     {
-        $type = (string) ($page['page_type'] ?? 'page');
+        $type = (string) ($page['post_type'] ?? 'page');
         $id   = (string) ($page['id'] ?? '');
         $raw  = $this->findByTarget($type, $id) ?? [];
         $global = $this->findByTarget('global', null) ?? [];
@@ -207,7 +207,7 @@ class SeoService
         $description = $pick('meta_description')
             ?? (trim((string) ($page['excerpt'] ?? '')) !== ''
                 ? (string) $page['excerpt']
-                : \TypeDock\Content\PageService::excerptFromRow($page));
+                : \TypeDock\Content\PostService::excerptFromRow($page));
         $ogTitle     = $pick('og_title')         ?? $title;
         $ogDesc      = $pick('og_description')   ?? $description;
         $twitterCard = $pick('twitter_card')     ?? 'summary_large_image';
@@ -266,7 +266,7 @@ class SeoService
     {
         $base = rtrim((string) config('app.url', ''), '/');
         $slug = ltrim((string) ($page['slug'] ?? ''), '/');
-        $prefix = ($page['page_type'] ?? '') === 'post' ? post_path() . '/' : '/';
+        $prefix = ($page['post_type'] ?? '') === 'post' ? post_path() . '/' : '/';
         return $base . $prefix . $slug;
     }
 
@@ -324,8 +324,8 @@ class SeoService
         $siteUrl  = rtrim((string) config('app.url', ''), '/');
         $siteName = config('app.name', 'TypeDock');
 
-        $type = $schemaType ?: (($page['page_type'] ?? null) === 'post' ? 'BlogPosting' : 'WebPage');
-        $prefix = ($page['page_type'] ?? null) === 'post' ? post_path() . '/' : '/';
+        $type = $schemaType ?: (($page['post_type'] ?? null) === 'post' ? 'BlogPosting' : 'WebPage');
+        $prefix = ($page['post_type'] ?? null) === 'post' ? post_path() . '/' : '/';
 
         $data = [
             '@context' => 'https://schema.org',
@@ -340,7 +340,7 @@ class SeoService
 
         $excerpt = trim((string) ($page['excerpt'] ?? '')) !== ''
             ? (string) $page['excerpt']
-            : \TypeDock\Content\PageService::excerptFromRow($page);
+            : \TypeDock\Content\PostService::excerptFromRow($page);
         if ($excerpt !== '') {
             $data['description'] = $excerpt;
         }

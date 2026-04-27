@@ -115,7 +115,7 @@ class ParamOptionsResolver
     {
         try {
             $stmt = \Flight::db()->query(
-                "SELECT id, title FROM pages WHERE status = 'published' ORDER BY title ASC LIMIT 500"
+                "SELECT id, title FROM posts WHERE status = 'published' ORDER BY title ASC LIMIT 500"
             );
             $out = [];
             foreach ($stmt->fetchAll() as $row) {

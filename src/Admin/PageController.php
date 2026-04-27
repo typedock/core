@@ -4,20 +4,20 @@ declare(strict_types=1);
 namespace TypeDock\Admin;
 
 use TypeDock\Content\CategoryService;
-use TypeDock\Content\PageService;
+use TypeDock\Content\PostService;
 use TypeDock\Content\TagService;
 use TypeDock\Seo\SeoService;
 
 class PageController extends BaseAdminController
 {
-    private function service(): PageService
+    private function service(): PostService
     {
-        return new PageService(\Flight::db());
+        return new PostService(\Flight::db());
     }
 
     public function index(): void
     {
-        $result = $this->service()->list(['page_type' => 'page', 'per_page' => 50]);
+        $result = $this->service()->list(['post_type' => 'page', 'per_page' => 50]);
         $this->render('pages/pages/index.latte', [
             'pages'         => $result['items'],
             'flash_success' => $this->getFlash('success'),
@@ -36,7 +36,7 @@ class PageController extends BaseAdminController
             'form_action'         => '/admin/pages/create',
             'theme_layouts'       => $this->themeLayouts(),
             'component_defs'      => $this->editorComponentDefs(),
-            'page_type'           => 'page',
+            'post_type'           => 'page',
         ]);
     }
 
@@ -44,7 +44,7 @@ class PageController extends BaseAdminController
     {
         $user = \Flight::get('current_user');
         $data = $this->collectFormData();
-        $data['page_type'] = 'page';
+        $data['post_type'] = 'page';
         $data['author_id'] = $user['id'] ?? null;
         $data = $this->downgradeIfCannotPublish($data, 'pages:publish');
 
@@ -85,7 +85,7 @@ class PageController extends BaseAdminController
             'flash_success'       => $this->getFlash('success'),
             'theme_layouts'       => $this->themeLayouts(),
             'component_defs'      => $this->editorComponentDefs(),
-            'page_type'           => 'page',
+            'post_type'           => 'page',
         ]);
     }
 

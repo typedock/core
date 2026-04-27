@@ -32,7 +32,7 @@ class PostView
      * fallback in a single batch so callers don't fan out N+1 queries.
      *
      * Rows must include at minimum `id`, `slug`, `title`, `published_at`,
-     * `page_type`, plus the joined `author_name`, `author_slug`, and
+     * `post_type`, plus the joined `author_name`, `author_slug`, and
      * `og_image_id` columns.
      *
      * @param  array<array<string, mixed>> $rows
@@ -146,7 +146,7 @@ class PostView
         ?object $primaryCategory
     ): object {
         $base   = rtrim((string) config('app.url', ''), '/');
-        $prefix = (($row['page_type'] ?? '') === 'post') ? post_path() . '/' : '/';
+        $prefix = (($row['post_type'] ?? '') === 'post') ? post_path() . '/' : '/';
 
         $perRowOgImageId = !empty($row['og_image_id']) ? (string) $row['og_image_id'] : null;
         $image = $perRowOgImageId !== null
@@ -157,7 +157,7 @@ class PostView
 
         $excerpt = isset($row['excerpt']) && $row['excerpt'] !== ''
             ? (string) $row['excerpt']
-            : PageService::excerptFromRow($row);
+            : PostService::excerptFromRow($row);
 
         return (object) [
             'id'           => (string) ($row['id'] ?? ''),
@@ -167,7 +167,7 @@ class PostView
             'excerpt'      => $excerpt,
             'publishedAt'  => $row['published_at'] ?? null,
             'updatedAt'    => $row['updated_at'] ?? null,
-            'pageType'     => $row['page_type'] ?? null,
+            'postType'     => $row['post_type'] ?? null,
             'thumbnail'    => $thumbnail,
             'heroImage'    => $thumbnail,
             'thumbnailAlt' => $thumbnailAlt,
@@ -182,10 +182,10 @@ class PostView
     /**
      * Batch-resolve the primary category for a list of page ids. The
      * primary category is the one with the lowest sort_order (then name)
-     * — matching the order PageService::getCategories() uses.
+     * — matching the order PostService::getCategories() uses.
      *
      * @param  array<string>          $pageIds
-     * @return array<string, object>  keyed by page_id, value = (object){ name, slug }
+     * @return array<string, object>  keyed by post_id, value = (object){ name, slug }
      */
     private static function primaryCategoryByPageId(array $pageIds): array
     {
@@ -196,17 +196,17 @@ class PostView
 
         $placeholders = implode(',', array_fill(0, count($pageIds), '?'));
         $stmt = \Flight::db()->prepare(
-            "SELECT pc.page_id, c.name, c.slug, c.sort_order
-             FROM page_categories pc
+            "SELECT pc.post_id, c.name, c.slug, c.sort_order
+             FROM post_categories pc
              JOIN categories c ON c.id = pc.category_id
-             WHERE pc.page_id IN ($placeholders)
+             WHERE pc.post_id IN ($placeholders)
              ORDER BY c.sort_order, c.name"
         );
         $stmt->execute($pageIds);
 
         $out = [];
         foreach ($stmt->fetchAll() as $r) {
-            $pid = (string) $r['page_id'];
+            $pid = (string) $r['post_id'];
             if (!isset($out[$pid])) {
                 $out[$pid] = (object) ['name' => (string) $r['name'], 'slug' => (string) $r['slug']];
             }

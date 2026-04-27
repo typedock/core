@@ -5,7 +5,7 @@ namespace TypeDock\Frontend;
 
 use TypeDock\Content\BlockRenderer;
 use TypeDock\Component\ComponentRenderer;
-use TypeDock\Content\PageService;
+use TypeDock\Content\PostService;
 use TypeDock\Content\CategoryService;
 use TypeDock\Content\PostView;
 use TypeDock\Content\TagService;
@@ -60,7 +60,7 @@ class FrontendController
         if (str_ends_with($slug, '.md')) {
             $slug = substr($slug, 0, -3);
             $page = $this->getPageBySlug($slug);
-            if ($page === null || ($page['page_type'] ?? '') !== 'page') {
+            if ($page === null || ($page['post_type'] ?? '') !== 'page') {
                 throw new \TypeDock\Exception\NotFoundException("Page not found: {$slug}");
             }
             $this->renderMarkdown($page);
@@ -79,10 +79,10 @@ class FrontendController
     {
         $pdo  = \Flight::db();
         $stmt = $pdo->prepare(
-            "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM pages p
+            "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
-             LEFT JOIN seo_meta sm ON sm.target_type = p.page_type AND sm.target_id = p.id
-             WHERE p.slug = ? AND p.page_type = 'post' AND p.status = 'published' LIMIT 1"
+             LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
+             WHERE p.slug = ? AND p.post_type = 'post' AND p.status = 'published' LIMIT 1"
         );
         $stmt->execute([$slug]);
         $page = $stmt->fetch();
@@ -96,9 +96,9 @@ class FrontendController
 
     public function blogIndex(int $page = 1, bool $isHome = false): void
     {
-        $pageService = new PageService(\Flight::db());
+        $pageService = new PostService(\Flight::db());
         $result      = $pageService->list([
-            'page_type' => 'post',
+            'post_type' => 'post',
             'status'    => 'published',
             'page'      => $page,
             'per_page'  => self::POSTS_PER_PAGE,
@@ -136,10 +136,10 @@ class FrontendController
     {
         $pdo  = \Flight::db();
         $stmt = $pdo->prepare(
-            "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM pages p
+            "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
-             LEFT JOIN seo_meta sm ON sm.target_type = p.page_type AND sm.target_id = p.id
-             WHERE p.slug = ? AND p.page_type = 'post' AND p.status = 'published' LIMIT 1"
+             LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
+             WHERE p.slug = ? AND p.post_type = 'post' AND p.status = 'published' LIMIT 1"
         );
         $stmt->execute([$slug]);
         $page = $stmt->fetch();
@@ -165,18 +165,18 @@ class FrontendController
 
         $pdo  = \Flight::db();
         $stmt = $pdo->prepare(
-            "SELECT COUNT(*) FROM pages p
-             JOIN page_categories pc ON pc.page_id = p.id
+            "SELECT COUNT(*) FROM posts p
+             JOIN post_categories pc ON pc.post_id = p.id
              WHERE pc.category_id = ? AND p.status = 'published'"
         );
         $stmt->execute([$category['id']]);
         $total = (int) $stmt->fetchColumn();
 
         $stmt = $pdo->prepare(
-            "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM pages p
+            "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
-             LEFT JOIN seo_meta sm ON sm.target_type = p.page_type AND sm.target_id = p.id
-             JOIN page_categories pc ON pc.page_id = p.id
+             LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
+             JOIN post_categories pc ON pc.post_id = p.id
              WHERE pc.category_id = ? AND p.status = 'published'
              ORDER BY p.published_at DESC LIMIT ? OFFSET ?"
         );
@@ -214,18 +214,18 @@ class FrontendController
 
         $pdo  = \Flight::db();
         $stmt = $pdo->prepare(
-            "SELECT COUNT(*) FROM pages p
-             JOIN page_tags pt ON pt.page_id = p.id
+            "SELECT COUNT(*) FROM posts p
+             JOIN post_tags pt ON pt.post_id = p.id
              WHERE pt.tag_id = ? AND p.status = 'published'"
         );
         $stmt->execute([$tag['id']]);
         $total = (int) $stmt->fetchColumn();
 
         $stmt = $pdo->prepare(
-            "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM pages p
+            "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
-             LEFT JOIN seo_meta sm ON sm.target_type = p.page_type AND sm.target_id = p.id
-             JOIN page_tags pt ON pt.page_id = p.id
+             LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
+             JOIN post_tags pt ON pt.post_id = p.id
              WHERE pt.tag_id = ? AND p.status = 'published'
              ORDER BY p.published_at DESC LIMIT ? OFFSET ?"
         );
@@ -292,18 +292,18 @@ class FrontendController
         $pdo     = \Flight::db();
 
         $stmt = $pdo->prepare(
-            "SELECT COUNT(*) FROM pages
-             WHERE author_id = ? AND page_type = 'post' AND status = 'published'"
+            "SELECT COUNT(*) FROM posts
+             WHERE author_id = ? AND post_type = 'post' AND status = 'published'"
         );
         $stmt->execute([$author['id']]);
         $total = (int) $stmt->fetchColumn();
 
         $stmt = $pdo->prepare(
             "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id
-             FROM pages p
+             FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
-             LEFT JOIN seo_meta sm ON sm.target_type = p.page_type AND sm.target_id = p.id
-             WHERE p.author_id = ? AND p.page_type = 'post' AND p.status = 'published'
+             LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
+             WHERE p.author_id = ? AND p.post_type = 'post' AND p.status = 'published'
              ORDER BY p.published_at DESC LIMIT ? OFFSET ?"
         );
         $stmt->execute([$author['id'], $perPage, $offset]);
@@ -332,33 +332,33 @@ class FrontendController
         // PostView can distinguish operator-set lede from auto-generated
         // archive fallback. SeoService computes its own body fallback for
         // <meta description>.
-        $pageType   = (string) ($page['page_type'] ?? 'page');
-        $this->setPageContext($page, $pageType, null, $isHome ? 'home' : 'single');
+        $postType   = (string) ($page['post_type'] ?? 'page');
+        $this->setPageContext($page, $postType, null, $isHome ? 'home' : 'single');
         $bodyContext = new \TypeDock\Component\RenderContext(
             locale: (string) config('app.locale', 'en'),
             page: $page,
             currentUrl: (string) ($_SERVER['REQUEST_URI'] ?? '/'),
-            contextType: $pageType,
-            pageType: $pageType !== '' ? $pageType : null,
+            contextType: $postType,
+            postType: $postType !== '' ? $postType : null,
             routeType: $isHome ? 'home' : 'single',
         );
         $blockRenderer = new BlockRenderer(\Flight::component_renderer());
         $renderedBody  = $blockRenderer->render($page['body'], $bodyContext);
 
         $resolver   = new TemplateResolver(TYPEDOCK_ROOT . '/themes', \Flight::latte()->getActiveTheme());
-        $service    = new PageService(\Flight::db());
+        $service    = new PostService(\Flight::db());
         // Categories/tags are part of the documented `$page` shape now, so
         // load them up-front for every single render — used both for
         // template selection (post) and for the projected view model.
-        $categories = $pageType === 'post' ? $service->getCategories((string) $page['id']) : [];
-        $tags       = $pageType === 'post' ? $service->getTags((string) $page['id']) : [];
+        $categories = $postType === 'post' ? $service->getCategories((string) $page['id']) : [];
+        $tags       = $postType === 'post' ? $service->getTags((string) $page['id']) : [];
 
         if (!empty($page['template'])) {
             // Explicit per-page template override still wins.
             $layout = (string) $page['template'];
         } elseif ($isHome) {
             $layout = $resolver->resolveHome($page);
-        } elseif ($pageType === 'post') {
+        } elseif ($postType === 'post') {
             $layout = $resolver->resolvePost($page, $categories);
         } else {
             $layout = $resolver->resolvePage($page);
@@ -367,7 +367,7 @@ class FrontendController
         $breadcrumbBuilder = new BreadcrumbBuilder(\Flight::db());
         if ($isHome) {
             $breadcrumbs = [];
-        } elseif ($pageType === 'post') {
+        } elseif ($postType === 'post') {
             $breadcrumbs = $breadcrumbBuilder->forPost($page);
         } else {
             $breadcrumbs = $breadcrumbBuilder->forPage($page);
@@ -378,8 +378,8 @@ class FrontendController
             'seo'         => (new SeoService(\Flight::db()))->resolveForPage($page),
             'breadcrumbs' => $breadcrumbs,
             'body_class'  => $isHome
-                ? 'home ' . ($pageType === 'post' ? 'single-post' : 'page')
-                : ($pageType === 'post' ? 'single single-post' : 'page'),
+                ? 'home ' . ($postType === 'post' ? 'single-post' : 'page')
+                : ($postType === 'post' ? 'single single-post' : 'page'),
         ]);
     }
 
@@ -453,12 +453,12 @@ class FrontendController
         ?array $term = null,
         ?string $routeType = null
     ): void {
-        $pageType = $page !== null ? (string) ($page['page_type'] ?? '') : '';
+        $postType = $page !== null ? (string) ($page['post_type'] ?? '') : '';
         \Flight::set('typedock.page_context', [
             'page'         => $page,
             'context_type' => $contextType,
             'term'         => $term,
-            'page_type'    => $pageType !== '' ? $pageType : null,
+            'post_type'    => $postType !== '' ? $postType : null,
             'route_type'   => $routeType,
         ]);
     }
@@ -515,7 +515,7 @@ class FrontendController
                             currentUrl: (string) ($_SERVER['REQUEST_URI'] ?? '/'),
                             contextType: (string) ($stash['context_type'] ?? ''),
                             term: is_array($stash['term'] ?? null) ? $stash['term'] : null,
-                            pageType: is_string($stash['page_type'] ?? null) ? $stash['page_type'] : null,
+                            postType: is_string($stash['post_type'] ?? null) ? $stash['post_type'] : null,
                             routeType: is_string($stash['route_type'] ?? null) ? $stash['route_type'] : null,
                         );
                         return (new \TypeDock\Component\FetchResolver())->resolve($def['fetch'], [], $ctx);
@@ -592,9 +592,9 @@ HTML;
     {
         $pdo  = \Flight::db();
         $stmt = $pdo->prepare(
-            "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM pages p
+            "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
-             LEFT JOIN seo_meta sm ON sm.target_type = p.page_type AND sm.target_id = p.id
+             LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
              WHERE p.slug = ? AND p.status = 'published' LIMIT 1"
         );
         $stmt->execute([$slug]);
@@ -613,9 +613,9 @@ HTML;
     {
         $pdo  = \Flight::db();
         $stmt = $pdo->prepare(
-            "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM pages p
+            "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
-             LEFT JOIN seo_meta sm ON sm.target_type = p.page_type AND sm.target_id = p.id
+             LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
              WHERE p.id = ? AND p.status = 'published' LIMIT 1"
         );
         $stmt->execute([$id]);

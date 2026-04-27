@@ -3,16 +3,16 @@ declare(strict_types=1);
 
 namespace TypeDock\Admin;
 
-use TypeDock\Content\PageService;
+use TypeDock\Content\PostService;
 use TypeDock\Content\CategoryService;
 use TypeDock\Content\TagService;
 use TypeDock\Seo\SeoService;
 
 class PostController extends BaseAdminController
 {
-    private function service(): PageService
+    private function service(): PostService
     {
-        return new PageService(\Flight::db());
+        return new PostService(\Flight::db());
     }
 
     public function index(): void
@@ -23,7 +23,7 @@ class PostController extends BaseAdminController
         ];
 
         $options = [
-            'page_type' => 'post',
+            'post_type' => 'post',
             'page'      => max(1, (int) ($_GET['page'] ?? 1)),
             'per_page'  => 20,
         ];
@@ -59,7 +59,7 @@ class PostController extends BaseAdminController
             'form_action'         => '/admin/posts/create',
             'theme_layouts'       => $this->themeLayouts(),
             'component_defs'      => $this->editorComponentDefs(),
-            'page_type'           => 'post',
+            'post_type'           => 'post',
         ]);
     }
 
@@ -68,7 +68,7 @@ class PostController extends BaseAdminController
         $user = \Flight::get('current_user');
         $data = $this->getPostData();
         $data['author_id'] = $user['id'] ?? null;
-        $data['page_type'] = 'post';
+        $data['post_type'] = 'post';
         $data = $this->downgradeIfCannotPublish($data, 'posts:publish');
 
         $tagService = new TagService(\Flight::db());
@@ -115,7 +115,7 @@ class PostController extends BaseAdminController
             'flash_success'       => $this->getFlash('success'),
             'theme_layouts'       => $this->themeLayouts(),
             'component_defs'      => $this->editorComponentDefs(),
-            'page_type'           => 'post',
+            'post_type'           => 'post',
         ]);
     }
 
@@ -171,8 +171,8 @@ class PostController extends BaseAdminController
             return;
         }
         // The autosave endpoint is shared between post and page editors; use
-        // the row's own page_type to pick the correct permission namespace.
-        $prefix = ($existing['page_type'] ?? 'post') === 'page' ? 'pages' : 'posts';
+        // the row's own post_type to pick the correct permission namespace.
+        $prefix = ($existing['post_type'] ?? 'post') === 'page' ? 'pages' : 'posts';
         try {
             $this->authorizeOwnerOrAny($existing, "{$prefix}:edit_own", "{$prefix}:edit_any");
         } catch (\TypeDock\Exception\ForbiddenException $e) {
@@ -209,7 +209,7 @@ class PostController extends BaseAdminController
             'body'         => $_POST['body'] ?? null,
             'excerpt'      => trim($_POST['excerpt'] ?? '') ?: null,
             'status'       => $_POST['status'] ?? 'draft',
-            'page_type'    => $_POST['page_type'] ?? 'post',
+            'post_type'    => $_POST['post_type'] ?? 'post',
             'published_at' => !empty($_POST['published_at']) ? $_POST['published_at'] : null,
             'category_ids' => $_POST['category_ids'] ?? [],
             'layout'       => trim((string) ($_POST['layout'] ?? '')) ?: null,
@@ -234,7 +234,7 @@ class PostController extends BaseAdminController
             'errors'              => $errors,
             'theme_layouts'       => $this->themeLayouts(),
             'component_defs'      => $this->editorComponentDefs(),
-            'page_type'           => 'post',
+            'post_type'           => 'post',
         ]);
     }
 }

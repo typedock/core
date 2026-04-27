@@ -102,7 +102,7 @@ final class DemoSeeder
         ];
 
         foreach ($postSpecs as $spec) {
-            $existing = $this->findIdBySlug('pages', $spec['slug']);
+            $existing = $this->findIdBySlug('posts', $spec['slug']);
             if ($existing !== null) {
                 continue;
             }
@@ -114,19 +114,19 @@ final class DemoSeeder
             ]);
             $bodyMarkdown = TiptapMarkdownRenderer::render($body);
             $this->pdo->prepare(
-                'INSERT INTO pages (id, slug, title, body, body_markdown, excerpt, page_type, status, locale, author_id, published_at, created_at, updated_at)
+                'INSERT INTO posts (id, slug, title, body, body_markdown, excerpt, post_type, status, locale, author_id, published_at, created_at, updated_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
             )->execute([$id, $spec['slug'], $spec['title'], $body, $bodyMarkdown, $spec['lede'], 'post', 'published', 'en', $authorId, $pub, $pub, $pub]);
 
             foreach ($spec['cats'] as $catSlug) {
                 if (isset($categoryIds[$catSlug])) {
-                    $this->pdo->prepare('INSERT INTO page_categories (page_id, category_id) VALUES (?, ?)')
+                    $this->pdo->prepare('INSERT INTO post_categories (post_id, category_id) VALUES (?, ?)')
                         ->execute([$id, $categoryIds[$catSlug]]);
                 }
             }
             foreach ($spec['tags'] as $tagSlug) {
                 if (isset($tagIds[$tagSlug])) {
-                    $this->pdo->prepare('INSERT INTO page_tags (page_id, tag_id) VALUES (?, ?)')
+                    $this->pdo->prepare('INSERT INTO post_tags (post_id, tag_id) VALUES (?, ?)')
                         ->execute([$id, $tagIds[$tagSlug]]);
                 }
             }
@@ -156,7 +156,7 @@ final class DemoSeeder
         ];
         $pageIds = [];
         foreach ($pageSpecs as $spec) {
-            $existing = $this->findIdBySlug('pages', $spec['slug']);
+            $existing = $this->findIdBySlug('posts', $spec['slug']);
             if ($existing !== null) {
                 $pageIds[$spec['slug']] = $existing;
                 continue;
@@ -165,7 +165,7 @@ final class DemoSeeder
             $body = $this->tiptapBody($spec['paras']);
             $bodyMarkdown = TiptapMarkdownRenderer::render($body);
             $this->pdo->prepare(
-                'INSERT INTO pages (id, slug, title, body, body_markdown, excerpt, page_type, status, locale, author_id, published_at, created_at, updated_at)
+                'INSERT INTO posts (id, slug, title, body, body_markdown, excerpt, post_type, status, locale, author_id, published_at, created_at, updated_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
             )->execute([$id, $spec['slug'], $spec['title'], $body, $bodyMarkdown, $spec['excerpt'], 'page', 'published', 'en', $authorId, $now, $now, $now]);
             $pageIds[$spec['slug']] = $id;

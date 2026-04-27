@@ -11,7 +11,7 @@ class DashboardController extends BaseAdminController
 
         $stats = [];
         foreach (['post' => 'posts', 'page' => 'pages'] as $type => $key) {
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM pages WHERE page_type = ? AND status != 'trash'");
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM posts WHERE post_type = ? AND status != 'trash'");
             $stmt->execute([$type]);
             $stats[$key] = (int) $stmt->fetchColumn();
         }
@@ -24,8 +24,8 @@ class DashboardController extends BaseAdminController
 
         $stmt = $pdo->prepare(
             "SELECT p.id, p.slug, p.title, p.status, p.updated_at, u.name as author_name
-             FROM pages p LEFT JOIN users u ON u.id = p.author_id
-             WHERE p.page_type = 'post' AND p.status != 'trash'
+             FROM posts p LEFT JOIN users u ON u.id = p.author_id
+             WHERE p.post_type = 'post' AND p.status != 'trash'
              ORDER BY p.updated_at DESC LIMIT 10"
         );
         $stmt->execute();

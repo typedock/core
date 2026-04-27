@@ -20,11 +20,11 @@ class RssGenerator
     public function generate(int $limit = 20): string
     {
         $stmt = $this->pdo->prepare(
-            "SELECT p.id, p.slug, p.title, p.excerpt, p.page_type, p.published_at, p.updated_at,
+            "SELECT p.id, p.slug, p.title, p.excerpt, p.post_type, p.published_at, p.updated_at,
                     u.name as author_name
-             FROM pages p
+             FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
-             WHERE p.page_type = 'post' AND p.status = 'published'
+             WHERE p.post_type = 'post' AND p.status = 'published'
              ORDER BY p.published_at DESC
              LIMIT ?"
         );

@@ -154,7 +154,7 @@ signals are:
 | Signal                  | When useful                                 |
 |-------------------------|---------------------------------------------|
 | `$body_class`           | String of route classes (`single single-post`, `archive category-news`, `home archive blog-archive`). Branch with `str_contains()` for ad-hoc cases. |
-| `$page->pageType`       | `'post'` vs `'page'` inside `single.latte` / `page.latte`. |
+| `$page->postType`       | `'post'` vs `'page'` inside `single.latte` / `page.latte`. |
 | `$page->category`       | Primary category on a single post (or null). |
 | `isset($category)`      | Inside `archive.latte`, true on category archive (vs tag/blog). |
 | `isset($tag)`           | Inside `archive.latte`, true on tag archive. |

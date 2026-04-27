@@ -1,7 +1,7 @@
 {layout '../../layouts/admin-base.latte'}
 
-{var $pageType = $page_type ?? ($post['page_type'] ?? 'post')}
-{var $noun = $pageType === 'page' ? 'Page' : 'Post'}
+{var $postType = $post_type ?? ($post['post_type'] ?? 'post')}
+{var $noun = $postType === 'page' ? 'Page' : 'Post'}
 
 {block page_title}{$post['id'] ?? '' ? 'Edit ' . $noun : 'New ' . $noun}{/block}
 
@@ -12,7 +12,7 @@
 {block content}
 <form method="post" action="{$form_action}" id="post-form">
     <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-    <input type="hidden" name="page_type" value="{$pageType}">
+    <input type="hidden" name="post_type" value="{$postType}">
     {* Hidden textarea: receives serialized Tiptap JSON on submit. Source of truth on POST. *}
     <textarea name="body" id="body-field" hidden>{$post['body'] ?? ''}</textarea>
 

@@ -20,10 +20,10 @@ class RenderContext
         /** @var array<string, mixed>|null */
         public readonly ?array $term = null,
         /**
-         * Value of pages.page_type for the current page, if any
+         * Value of pages.post_type for the current page, if any
          * ('post' | 'page' | null).
          */
-        public readonly ?string $pageType = null,
+        public readonly ?string $postType = null,
         /**
          * Which route family is rendering: 'single' | 'archive' | 'search' |
          * 'home' | null. Useful for fetch interpolation ({{context.route_type}}).

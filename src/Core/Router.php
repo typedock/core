@@ -316,7 +316,7 @@ class Router
             $auth->requireAuthJson();
             (new MediaController())->browse();
         });
-        \Flight::route('POST /admin/api/pages/@id/autosave', function (string $id) use ($auth, $csrf) {
+        \Flight::route('POST /admin/api/posts/@id/autosave', function (string $id) use ($auth, $csrf) {
             $auth->requireAuthJson();
             $csrf->verifyOrFail();
             (new PostController())->autosave($id);
@@ -355,11 +355,11 @@ class Router
         }
 
         // External REST API (APIKey auth)
-        \Flight::route('GET /api/v1/pages', function () {
-            (new ApiController())->listPages();
+        \Flight::route('GET /api/v1/posts', function () {
+            (new ApiController())->listPosts();
         });
-        \Flight::route('GET /api/v1/pages/@id', function (string $id) {
-            (new ApiController())->getPage($id);
+        \Flight::route('GET /api/v1/posts/@id', function (string $id) {
+            (new ApiController())->getPost($id);
         });
         \Flight::route('GET /api/v1/media', function () {
             (new ApiController())->listMedia();

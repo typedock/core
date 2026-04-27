@@ -34,19 +34,19 @@ final class CreateCategoriesTags extends Migration
             $t->unique(['slug', 'locale']);
         });
 
-        $schema->create('page_categories', function (Blueprint $t) {
-            $t->string('page_id', 36);
+        $schema->create('post_categories', function (Blueprint $t) {
+            $t->string('post_id', 36);
             $t->string('category_id', 36);
-            $t->primary(['page_id', 'category_id']);
-            $t->foreign('page_id', 'pages', 'id')->cascadeOnDelete();
+            $t->primary(['post_id', 'category_id']);
+            $t->foreign('post_id', 'posts', 'id')->cascadeOnDelete();
             $t->foreign('category_id', 'categories', 'id')->cascadeOnDelete();
         });
 
-        $schema->create('page_tags', function (Blueprint $t) {
-            $t->string('page_id', 36);
+        $schema->create('post_tags', function (Blueprint $t) {
+            $t->string('post_id', 36);
             $t->string('tag_id', 36);
-            $t->primary(['page_id', 'tag_id']);
-            $t->foreign('page_id', 'pages', 'id')->cascadeOnDelete();
+            $t->primary(['post_id', 'tag_id']);
+            $t->foreign('post_id', 'posts', 'id')->cascadeOnDelete();
             $t->foreign('tag_id', 'tags', 'id')->cascadeOnDelete();
         });
     }

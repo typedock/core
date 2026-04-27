@@ -123,8 +123,8 @@ class BreadcrumbBuilder
         try {
             $stmt = $this->pdo->prepare(
                 "SELECT c.id, c.slug, c.name FROM categories c
-                 JOIN page_categories pc ON pc.category_id = c.id
-                 WHERE pc.page_id = ? ORDER BY c.name ASC LIMIT 1"
+                 JOIN post_categories pc ON pc.category_id = c.id
+                 WHERE pc.post_id = ? ORDER BY c.name ASC LIMIT 1"
             );
             $stmt->execute([$pageId]);
             $row = $stmt->fetch();
@@ -150,7 +150,7 @@ class BreadcrumbBuilder
             $seen[$parentId] = true;
             try {
                 $stmt = $this->pdo->prepare(
-                    'SELECT id, title, slug, parent_id FROM pages WHERE id = ? LIMIT 1'
+                    'SELECT id, title, slug, parent_id FROM posts WHERE id = ? LIMIT 1'
                 );
                 $stmt->execute([$parentId]);
                 $row = $stmt->fetch();

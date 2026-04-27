@@ -52,10 +52,10 @@ class MenuController extends BaseAdminController
         $items = $stmt->fetchAll();
 
         $pages = $pdo->query(
-            "SELECT id, title, slug FROM pages WHERE page_type = 'page' AND status = 'published' ORDER BY title"
+            "SELECT id, title, slug FROM posts WHERE post_type = 'page' AND status = 'published' ORDER BY title"
         )->fetchAll();
         $posts = $pdo->query(
-            "SELECT id, title, slug FROM pages WHERE page_type = 'post' AND status = 'published' ORDER BY title"
+            "SELECT id, title, slug FROM posts WHERE post_type = 'post' AND status = 'published' ORDER BY title"
         )->fetchAll();
         $categories = $pdo->query('SELECT id, name, slug FROM categories ORDER BY name')->fetchAll();
 

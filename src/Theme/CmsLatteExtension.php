@@ -123,7 +123,7 @@ class CmsLatteExtension extends Extension
             ?? ($stash['context_type'] ?? '')
         );
         $term     = $override['term'] ?? ($stash['term'] ?? null);
-        $pageType = $override['page_type'] ?? ($stash['page_type'] ?? null);
+        $postType = $override['post_type'] ?? ($stash['post_type'] ?? null);
         $routeType = $override['route_type'] ?? ($stash['route_type'] ?? null);
 
         return new RenderContext(
@@ -132,7 +132,7 @@ class CmsLatteExtension extends Extension
             currentUrl: (string) ($_SERVER['REQUEST_URI'] ?? '/'),
             contextType: $contextType,
             term: is_array($term) ? $term : null,
-            pageType: is_string($pageType) && $pageType !== '' ? $pageType : null,
+            postType: is_string($postType) && $postType !== '' ? $postType : null,
             routeType: is_string($routeType) && $routeType !== '' ? $routeType : null,
         );
     }

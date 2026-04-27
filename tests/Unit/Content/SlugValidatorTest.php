@@ -65,8 +65,8 @@ final class SlugValidatorTest extends TestCase
     {
         $pdo = new \PDO('sqlite::memory:');
         $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-        $pdo->exec('CREATE TABLE pages (id TEXT PRIMARY KEY, slug TEXT NOT NULL UNIQUE)');
-        $pdo->exec("INSERT INTO pages (id, slug) VALUES ('1', 'hello-world')");
+        $pdo->exec('CREATE TABLE posts (id TEXT PRIMARY KEY, slug TEXT NOT NULL UNIQUE)');
+        $pdo->exec("INSERT INTO posts (id, slug) VALUES ('1', 'hello-world')");
 
         $slug = $this->validator->generateUnique('Hello World', $pdo);
         $this->assertSame('hello-world-2', $slug);
@@ -76,7 +76,7 @@ final class SlugValidatorTest extends TestCase
     {
         $pdo = new \PDO('sqlite::memory:');
         $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-        $pdo->exec('CREATE TABLE pages (id TEXT PRIMARY KEY, slug TEXT NOT NULL UNIQUE)');
+        $pdo->exec('CREATE TABLE posts (id TEXT PRIMARY KEY, slug TEXT NOT NULL UNIQUE)');
 
         // "admin" is reserved → generator must prefix with "p-".
         $slug = $this->validator->generateUnique('admin', $pdo);

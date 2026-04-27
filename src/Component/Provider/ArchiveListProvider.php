@@ -16,8 +16,8 @@ class ArchiveListProvider implements DataProvider
         try {
             $stmt = $pdo->prepare(
                 "SELECT SUBSTR(published_at, 1, 7) as month, COUNT(*) as count
-                 FROM pages
-                 WHERE page_type = 'post' AND status = 'published'
+                 FROM posts
+                 WHERE post_type = 'post' AND status = 'published'
                  GROUP BY SUBSTR(published_at, 1, 7)
                  ORDER BY month DESC LIMIT 24"
             );

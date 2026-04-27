@@ -4,15 +4,15 @@ declare(strict_types=1);
 namespace TypeDock\Tests\Unit\Content;
 
 use PHPUnit\Framework\TestCase;
-use TypeDock\Content\PageService;
+use TypeDock\Content\PostService;
 
-final class PageServiceExcerptTest extends TestCase
+final class PostServiceExcerptTest extends TestCase
 {
     public function testExplicitExcerptWins(): void
     {
         $this->assertSame(
             'Manual excerpt',
-            PageService::excerptFromRow([
+            PostService::excerptFromRow([
                 'excerpt' => ' Manual excerpt ',
                 'body' => $this->doc('Body text'),
             ]),
@@ -23,7 +23,7 @@ final class PageServiceExcerptTest extends TestCase
     {
         $this->assertSame(
             '本文から preview を作ります',
-            PageService::excerptFromRow([
+            PostService::excerptFromRow([
                 'excerpt' => '',
                 'body' => $this->doc('本文から preview を作ります'),
             ]),
@@ -34,7 +34,7 @@ final class PageServiceExcerptTest extends TestCase
     {
         $this->assertSame(
             'あいう…',
-            PageService::excerptFromRow([
+            PostService::excerptFromRow([
                 'excerpt' => '',
                 'body' => $this->doc('あいうえお'),
             ], 3),
@@ -43,7 +43,7 @@ final class PageServiceExcerptTest extends TestCase
 
     public function testImageOnlyBodyReturnsEmptyExcerpt(): void
     {
-        $this->assertSame('', PageService::excerptFromRow([
+        $this->assertSame('', PostService::excerptFromRow([
             'excerpt' => '',
             'body' => json_encode([
                 'type' => 'doc',

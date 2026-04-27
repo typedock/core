@@ -50,14 +50,14 @@ class MenuTreeResolver
         }
 
         $slugMap = ['page' => [], 'post' => [], 'category' => []];
-        foreach (['page' => 'pages', 'post' => 'pages', 'category' => 'categories'] as $type => $table) {
+        foreach (['page' => 'posts', 'post' => 'posts', 'category' => 'categories'] as $type => $table) {
             $ids = array_values(array_unique($idsByType[$type]));
             if ($ids === []) {
                 continue;
             }
             $placeholders = implode(',', array_fill(0, count($ids), '?'));
-            if ($table === 'pages') {
-                $sql  = "SELECT id, slug FROM pages WHERE page_type = ? AND status = 'published' AND id IN ($placeholders)";
+            if ($table === 'posts') {
+                $sql  = "SELECT id, slug FROM posts WHERE post_type = ? AND status = 'published' AND id IN ($placeholders)";
                 $args = array_merge([$type], $ids);
             } else {
                 $sql  = "SELECT id, slug FROM categories WHERE id IN ($placeholders)";

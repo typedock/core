@@ -121,7 +121,7 @@ abstract class BaseAdminController
         if ($slug === '') {
             return null;
         }
-        return match ($page['page_type'] ?? null) {
+        return match ($page['post_type'] ?? null) {
             'post' => post_path($slug),
             'page' => '/' . $slug,
             default => null,

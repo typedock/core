@@ -18,7 +18,7 @@ class TemplateResolver
     ) {}
 
     /**
-     * Resolve for a single post (page_type = 'post').
+     * Resolve for a single post (post_type = 'post').
      *
      * @param array<array<string, mixed>> $categories  Category rows attached
      *                                                 to the post (ordered as
@@ -50,7 +50,7 @@ class TemplateResolver
     }
 
     /**
-     * Resolve for a static page (page_type = 'page').
+     * Resolve for a static page (post_type = 'page').
      *
      * @param array<string, mixed> $page Page row.
      */

@@ -62,7 +62,7 @@ mode is `page`. `PageView` is a strict superset of `PostView` (§3).
 | `$page->excerpt`        | string              | Auto-derived from body if not authored. |
 | `$page->publishedAt`    | ?string (ISO8601)   | `null` for never-published rows. |
 | `$page->updatedAt`      | ?string (ISO8601)   | |
-| `$page->pageType`       | `'post'` \| `'page'` | |
+| `$page->postType`       | `'post'` \| `'page'` | |
 | `$page->status`         | string              | `'published'` for any rendered page. |
 | `$page->thumbnail`      | ?string (URL)       | The page's image (per-page `og_image`, falling back to the site-wide default). Use for cards / list-view contexts. |
 | `$page->heroImage`      | ?string (URL)       | Same value as `$page->thumbnail`. Use this name in single/hero contexts so the template intent reads correctly — both fields share one underlying media id today. |
@@ -102,7 +102,7 @@ and as the elements of any `theme.json` `fetch` declaration whose
 | `$post->excerpt`        | string              | Authored excerpt, or auto-derived. |
 | `$post->publishedAt`    | ?string (ISO8601)   | |
 | `$post->updatedAt`      | ?string (ISO8601)   | |
-| `$post->pageType`       | `'post'` \| `'page'` | |
+| `$post->postType`       | `'post'` \| `'page'` | |
 | `$post->thumbnail`      | ?string (URL)       | The post's image (per-row `og_image`, falling back to the site-wide default). |
 | `$post->heroImage`      | ?string (URL)       | Same value as `$post->thumbnail` — kept as a separate name so list-view templates can read `thumbnail` and feature/hero templates can read `heroImage`. |
 | `$post->thumbnailAlt`   | string              | Alt text from `media.alt_text`. Empty string when no image / no alt set. Always pair with the image: `<img src="{$post->thumbnail}" alt="{$post->thumbnailAlt}">`. |

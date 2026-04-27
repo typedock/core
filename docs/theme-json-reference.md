@@ -231,7 +231,7 @@ template's `$fetch` global without writing PHP.
     "home": {
       "file": "layouts/home.latte",
       "fetch": {
-        "home_posts": { "source": "posts", "params": { "limit": 12, "page_type": "post" }, "sort": "-published_at" },
+        "home_posts": { "source": "posts", "params": { "limit": 12, "post_type": "post" }, "sort": "-published_at" },
         "home_categories": { "source": "categories", "params": { "show_empty": true }, "sort": "sort_order" }
       }
     },
@@ -253,7 +253,7 @@ value of `$fetch->{key}` in the template — see
 [theme-template-reference.md](theme-template-reference.md) §1.1.
 
 `params` may interpolate `{{context.category}}` / `{{context.tag}}` /
-`{{context.page_id}}` etc. for archive / single contexts.
+`{{context.post_id}}` etc. for archive / single contexts.
 
 ---
 

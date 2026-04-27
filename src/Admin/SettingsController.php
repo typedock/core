@@ -11,7 +11,7 @@ class SettingsController extends BaseAdminController
     {
         $pdo  = \Flight::db();
         $stmt = $pdo->query(
-            "SELECT id, title FROM pages WHERE page_type = 'page' AND status = 'published' ORDER BY title ASC"
+            "SELECT id, title FROM posts WHERE post_type = 'page' AND status = 'published' ORDER BY title ASC"
         );
         $pages = $stmt !== false ? $stmt->fetchAll() : [];
 

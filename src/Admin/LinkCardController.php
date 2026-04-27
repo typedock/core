@@ -18,7 +18,7 @@ class LinkCardController
         $slug = ltrim($url, '/');
         $pdo  = \Flight::db();
         $stmt = $pdo->prepare(
-            "SELECT title, excerpt, slug FROM pages WHERE slug = ? AND status = 'published' LIMIT 1"
+            "SELECT title, excerpt, slug FROM posts WHERE slug = ? AND status = 'published' LIMIT 1"
         );
         $stmt->execute([$slug]);
         $page = $stmt->fetch();

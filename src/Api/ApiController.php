@@ -12,7 +12,7 @@ class ApiController
         (new AuthMiddleware())->requireApiKey();
     }
 
-    public function listPages(): void
+    public function listPosts(): void
     {
         $this->authenticate();
 
@@ -22,30 +22,30 @@ class ApiController
         $offset = (int) ($_GET['offset'] ?? 0);
 
         $stmt = $pdo->prepare(
-            "SELECT id, slug, title, excerpt, page_type, status, published_at, created_at, updated_at
-             FROM pages WHERE status = ? ORDER BY updated_at DESC LIMIT ? OFFSET ?"
+            "SELECT id, slug, title, excerpt, post_type, status, published_at, created_at, updated_at
+             FROM posts WHERE status = ? ORDER BY updated_at DESC LIMIT ? OFFSET ?"
         );
         $stmt->execute([$status, $limit, $offset]);
-        $pages = $stmt->fetchAll();
+        $posts = $stmt->fetchAll();
 
-        $this->json(['data' => $pages]);
+        $this->json(['data' => $posts]);
     }
 
-    public function getPage(string $id): void
+    public function getPost(string $id): void
     {
         $this->authenticate();
 
         $pdo  = \Flight::db();
-        $stmt = $pdo->prepare('SELECT * FROM pages WHERE id = ? LIMIT 1');
+        $stmt = $pdo->prepare('SELECT * FROM posts WHERE id = ? LIMIT 1');
         $stmt->execute([$id]);
-        $page = $stmt->fetch();
+        $post = $stmt->fetch();
 
-        if ($page === false) {
+        if ($post === false) {
             $this->json(['error' => 'Not found'], 404);
             return;
         }
 
-        $this->json(['data' => $page]);
+        $this->json(['data' => $post]);
     }
 
     public function listMedia(): void
