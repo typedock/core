@@ -45,6 +45,9 @@ class PermissionChecker
         // Slots
         'slots:manage'      => ['admin', 'editor'],
 
+        // External Sources
+        'external_sources:manage' => ['admin'],
+
         // Role check shortcut
         'role:admin'        => ['admin'],
         'role:editor'       => ['admin', 'editor'],

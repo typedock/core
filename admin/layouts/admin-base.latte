@@ -54,6 +54,11 @@
             <a href="/admin/tags" class="menu-item {if str_starts_with($path, '/admin/tags')}is-active{/if}">
                 {include 'icon-tag'}<span>Tags</span>
             </a>
+            {if $current_user['role'] === 'admin'}
+            <a href="/admin/external-sources" class="menu-item {if str_starts_with($path, '/admin/external-sources')}is-active{/if}">
+                {include 'icon-collection'}<span>External Sources</span>
+            </a>
+            {/if}
 
             <div class="admin-menu-section">Appearance</div>
             {if $current_user['role'] === 'admin'}

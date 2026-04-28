@@ -1,0 +1,54 @@
+{layout '../../layouts/admin-base.latte'}
+
+{block page_title}External Sources{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <h1>External Sources</h1>
+        <p class="subtitle">Read-only content pulled from a headless CMS and rendered by TypeDock.</p>
+    </div>
+    <a href="/admin/external-sources/create" class="btn btn-primary">New Source</a>
+</div>
+
+{if empty($sources)}
+    <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M3 12h18"/><path d="M5 5h14v14H5Z"/></svg>
+        <h3>No external sources yet</h3>
+        <p>Connect Contentful, GitHub Issues, or another read-only source to publish a routed section such as jobs, docs, or events.</p>
+        <a href="/admin/external-sources/create" class="btn btn-primary">Create Source</a>
+    </div>
+{else}
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Provider</th>
+            <th>Route</th>
+            <th>Status</th>
+            <th class="text-right">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {foreach $sources as $source}
+        <tr>
+            <td class="font-medium">{$source['name']}</td>
+            <td>{$adapters_by_id[$source['provider'] ?? 'contentful']['label'] ?? 'External Source'}</td>
+            <td><code>/{$source['slug']}</code></td>
+            <td><span class="badge">{$source['status']}</span></td>
+            <td class="actions">
+                {if $source['status'] === 'active'}
+                    <a href="/{$source['slug']}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">View</a>
+                {/if}
+                <a href="/admin/external-sources/{$source['id']}/edit" class="btn btn-secondary btn-sm">Edit</a>
+                <form method="post" action="/admin/external-sources/{$source['id']}/delete" class="inline">
+                    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this External Source?')">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {/foreach}
+    </tbody>
+</table>
+{/if}
+{/block}

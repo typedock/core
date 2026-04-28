@@ -42,8 +42,9 @@
                     <select id="home_mode" name="home_mode">
                         <option value="archive" {$homeMode === 'archive' ? 'selected' : ''}>Latest posts (archive)</option>
                         <option value="page" {$homeMode === 'page' ? 'selected' : ''}>A static page</option>
+                        <option value="source" {$homeMode === 'source' ? 'selected' : ''}>An External Source</option>
                     </select>
-                    <small class="form-hint">When set to <strong>A static page</strong>, pick which page below. Themes can still differentiate the two <code>/</code> and <code>/{$options['site.posts_archive_slug'] ?? 'blog'}</code> pages via a <code>home.latte</code> template.</small>
+                    <small class="form-hint">When set to <strong>A static page</strong> or <strong>An External Source</strong>, pick the matching item below. Themes can still differentiate <code>/</code> and <code>/{$options['site.posts_archive_slug'] ?? 'blog'}</code> via a <code>home.latte</code> template.</small>
                 </div>
 
                 <div class="form-group">
@@ -53,6 +54,17 @@
                         <option value="">— select a page —</option>
                         {foreach $pages as $p}
                             <option value="{$p['id']}" {$homePageId === $p['id'] ? 'selected' : ''}>{$p['title']}</option>
+                        {/foreach}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="home_source_id">Home External Source</label>
+                    {var $homeSourceId = $options['site.home_source_id'] ?? ''}
+                    <select id="home_source_id" name="home_source_id">
+                        <option value="">— select a source —</option>
+                        {foreach $external_sources as $source}
+                            <option value="{$source['id']}" {$homeSourceId === $source['id'] ? 'selected' : ''}>{$source['name']} (/{$source['slug']})</option>
                         {/foreach}
                     </select>
                 </div>

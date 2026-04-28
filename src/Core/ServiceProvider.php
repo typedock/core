@@ -24,6 +24,7 @@ use TypeDock\Core\ProviderRegistry;
 use TypeDock\Locale\LocaleService;
 use TypeDock\Mail\MailService;
 use TypeDock\Media\MediaService;
+use TypeDock\ExternalSource\ExternalSourceService;
 use flight\database\SimplePdo;
 
 class ServiceProvider
@@ -39,6 +40,7 @@ class ServiceProvider
         $this->registerThemeSettings();
         $this->registerMedia();
         $this->registerMail();
+        $this->registerExternalSources();
     }
 
     private function registerMail(): void
@@ -275,6 +277,18 @@ class ServiceProvider
             }
             $renderer = new ThemeStyleRenderer(\Flight::theme_settings());
             return $renderer;
+        });
+    }
+
+    private function registerExternalSources(): void
+    {
+        \Flight::map('external_sources', function (): ExternalSourceService {
+            static $service = null;
+            if ($service !== null) {
+                return $service;
+            }
+            $service = new ExternalSourceService(\Flight::db());
+            return $service;
         });
     }
 }

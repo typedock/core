@@ -145,8 +145,27 @@ class FetchResolver
             'menu'          => $this->fetchMenu($params, $ctx),
             'related_posts' => $this->fetchRelatedPosts($params, $ctx),
             'site_options'  => $this->fetchSiteOptions($params),
-            default         => null,
+            default         => $this->fetchExternalSource($source, $params),
         };
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     * @return array<object>|null
+     */
+    private function fetchExternalSource(string $slug, array $params): ?array
+    {
+        try {
+            $source = \Flight::external_sources()->findActiveBySlug($slug);
+            if ($source === null) {
+                return null;
+            }
+            $limit = max(1, min(100, (int) ($params['limit'] ?? 10)));
+            $page = max(1, (int) ($params['page'] ?? 1));
+            return \Flight::external_sources()->fetchList($source, $limit, $page)['items'];
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**

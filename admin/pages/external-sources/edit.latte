@@ -1,0 +1,268 @@
+{layout '../../layouts/admin-base.latte'}
+
+{block page_title}{if $is_new}New External Source{else}Edit External Source{/if}{/block}
+
+{define field_error, $name}
+    {if !empty($errors[$name])}
+        <small class="form-error">{$errors[$name][0]}</small>
+    {/if}
+{/define}
+
+{block content}
+{var $provider = $source['provider'] ?? 'contentful'}
+{var $current_adapter = $adapters_by_id[$provider] ?? ($adapters[0] ?? [])}
+<div class="page-header">
+    <div>
+        <h1>{if $is_new}New External Source{else}{$source['name']}{/if}</h1>
+        <p class="subtitle">{if $is_new}Connect an adapter first, then configure mapping and templates.{else}Built-in adapters use encrypted credentials and read-only API access.{/if}</p>
+    </div>
+    <a href="/admin/external-sources" class="btn btn-secondary">Back</a>
+</div>
+
+{if !empty($errors)}
+    <div class="alert alert-error mb-4">
+        <div>
+            <strong>Could not save this External Source.</strong>
+            <ul class="mt-2">
+                {foreach $errors as $messages}
+                    {foreach $messages as $message}
+                        <li>{$message}</li>
+                    {/foreach}
+                {/foreach}
+            </ul>
+        </div>
+    </div>
+{/if}
+
+<form method="post" action="{$form_action}">
+    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+
+    <div class="columns-main-sidebar">
+        <div>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2>Source</h2>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="provider">Adapter</label>
+                        <select id="provider" name="provider" data-provider-select {if !$is_new}disabled{/if}>
+                            {foreach $adapters as $adapter}
+                                <option value="{$adapter['id']}" {$provider === $adapter['id'] ? 'selected' : ''}>{$adapter['label']}</option>
+                            {/foreach}
+                        </select>
+                        {if !$is_new}<input type="hidden" name="provider" value="{$provider}">{/if}
+                        <small class="form-hint">{$current_adapter['description'] ?? 'Read-only external source adapter.'}</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="name">Name</label>
+                        <input type="text" id="name" name="name" value="{$source['name']}" required>
+                        {include field_error, name: 'name'}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="slug">URL prefix</label>
+                        <input type="text" id="slug" name="slug" value="{$source['slug']}" placeholder="jobs" required>
+                        <small class="form-hint">Owns the public route, e.g. <code>jobs</code> creates <code>/jobs</code> and item detail URLs such as <code>/jobs/frontend-engineer</code>. Existing pages and reserved routes are rejected.</small>
+                        {include field_error, name: 'slug'}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="status">Status</label>
+                        <select id="status" name="status">
+                            <option value="active" {$source['status'] === 'active' ? 'selected' : ''}>Active</option>
+                            <option value="draft" {$source['status'] === 'draft' ? 'selected' : ''}>Draft</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2>Connection</h2>
+                </div>
+                <div class="card-body">
+                    {if !empty($errors['connection'])}
+                        <div class="alert alert-error mb-4">
+                            <span>{$errors['connection'][0]}</span>
+                        </div>
+                    {/if}
+
+                    {foreach $adapters as $adapter}
+                        <div class="form-grid" data-provider-panel="{$adapter['id']}" {if $provider !== $adapter['id']}hidden{/if}>
+                            {foreach $adapter['config_fields'] as $field}
+                                {var $field_name = (string) $field['name']}
+                                <div class="form-group">
+                                    <label for="{$field_name}">{$field['label']}</label>
+                                    {if ($field['type'] ?? 'text') === 'select'}
+                                        <select id="{$field_name}" name="{$field_name}">
+                                            {foreach ($field['options'] ?? []) as $option}
+                                                <option value="{$option['value']}" {($source['config'][$field_name] ?? $adapter['default_config'][$field_name] ?? '') === $option['value'] ? 'selected' : ''}>{$option['label']}</option>
+                                            {/foreach}
+                                        </select>
+                                    {else}
+                                        <input type="text" id="{$field_name}" name="{$field_name}" value="{$source['config'][$field_name] ?? $adapter['default_config'][$field_name] ?? ''}" placeholder="{$field['placeholder'] ?? ''}">
+                                    {/if}
+                                    {if !empty($field['hint'])}
+                                        <small class="form-hint">{$field['hint']}</small>
+                                    {/if}
+                                    {include field_error, name: $field_name}
+                                </div>
+                            {/foreach}
+                        </div>
+                    {/foreach}
+
+                    <div class="form-group">
+                        <label for="delivery_token">API token</label>
+                        <input type="password" id="delivery_token" name="delivery_token" value="" autocomplete="new-password">
+                        <small class="form-hint">
+                            {if !$is_new && !empty($diagnostics['has_delivery_token'])}
+                                A token is already stored. Leave blank to keep it.
+                            {else}
+                                Stored encrypted with APP_KEY.
+                            {/if}
+                            {foreach $adapters as $adapter}
+                                <span data-token-help="{$adapter['id']}" {if $provider !== $adapter['id']}hidden{/if}>{$adapter['token_help']}</span>
+                            {/foreach}
+                            {$diagnostics['rotation_note'] ?? 'APP_KEY rotation requires re-entering External Source credentials.'}
+                        </small>
+                        {include field_error, name: 'delivery_token'}
+                    </div>
+                </div>
+            </div>
+
+            {if !$is_new}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2>Field mapping</h2>
+                    <button type="submit" formaction="/admin/external-sources/{$source['id']}/discover-fields" formmethod="post" class="btn btn-secondary btn-sm">Fetch fields</button>
+                </div>
+                <div class="card-body">
+                    <p class="form-hint mb-4">Use adapter field IDs such as <code>title</code>, <code>featuredImage</code>, <code>number</code>, or dotted paths such as <code>user.login</code>.</p>
+                    {if !empty($field_discovery['fields'])}
+                        <datalist id="external-field-options">
+                            {foreach $field_discovery['fields'] as $field}
+                                <option value="{$field['id']}">{$field['name']} ({$field['type']})</option>
+                            {/foreach}
+                        </datalist>
+
+                        <table class="data-table mb-4">
+                            <thead>
+                                <tr>
+                                    <th>Field ID</th>
+                                    <th>Name</th>
+                                    <th>Type</th>
+                                    <th>Hint</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {foreach $field_discovery['fields'] as $field}
+                                <tr>
+                                    <td><code>{$field['id']}</code></td>
+                                    <td>{$field['name']}</td>
+                                    <td>
+                                        {$field['type']}
+                                        {if !empty($field['link_type'])}
+                                            <span class="badge badge-muted">{$field['link_type']}</span>
+                                        {/if}
+                                        {if !empty($field['items_type'])}
+                                            <span class="badge badge-muted">{$field['items_type']}</span>
+                                        {/if}
+                                    </td>
+                                    <td>
+                                        {if !empty($field['suggested_mapping'])}
+                                            Try <code>{$field['suggested_mapping']}</code>
+                                        {else}
+                                            <span class="text-slate-500">Optional</span>
+                                        {/if}
+                                        {if !empty($field['localized'])}
+                                            <span class="badge badge-info">localized</span>
+                                        {/if}
+                                        {if !empty($field['required'])}
+                                            <span class="badge badge-muted">required</span>
+                                        {/if}
+                                    </td>
+                                </tr>
+                                {/foreach}
+                            </tbody>
+                        </table>
+                    {/if}
+                    <div class="form-grid">
+                        {foreach ['slug', 'title', 'excerpt', 'thumbnail', 'date', 'category', 'tags'] as $field}
+                        <div class="form-group">
+                            <label for="field_{$field}">{$field}</label>
+                            <input type="text" id="field_{$field}" name="field_{$field}" value="{$source['field_mapping'][$field] ?? ''}" list="external-field-options">
+                        </div>
+                        {/foreach}
+                        <div class="form-group">
+                            <label for="field_content">content</label>
+                            <input type="text" id="field_content" name="field_content" value="{$source['field_mapping']['content'] ?? ''}" list="external-field-options">
+                            <small class="form-hint">Use <code>|richText</code> for Contentful Rich Text and <code>|markdown</code> for GitHub issue bodies.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2>Detail template</h2>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="detail_template">Template</label>
+                        <textarea id="detail_template" name="detail_template" rows="8" class="font-mono text-xs">{$source['detail_template'] ?? ''}</textarea>
+                        <small class="form-hint">Examples: <code>[resource.title]</code>, <code>[resource.content|richText]</code>, <code>[resource.content|markdown]</code>, <code>[resource.thumbnail|image]</code>, <code>[resource.date|date:"Y-m-d"]</code>. Raw HTML from fields is not accepted.</small>
+                    </div>
+                </div>
+            </div>
+            {/if}
+        </div>
+
+        <aside>
+            <div class="sidebar-panel">
+                <h3>{if $is_new}Connect{else}Publish{/if}</h3>
+                {if $is_new}
+                    <p class="form-hint mb-4">TypeDock will call the selected adapter before saving. Mapping appears after the connection is verified.</p>
+                {/if}
+                {if !$is_new}
+                <div class="form-group">
+                    <label for="cache_ttl_seconds">Cache TTL</label>
+                    <input type="number" id="cache_ttl_seconds" name="cache_ttl_seconds" value="{$source['cache_ttl_seconds'] ?? 600}" min="0" max="86400">
+                    <small class="form-hint">Seconds. If the API fails, TypeDock serves stale cache when available.</small>
+                </div>
+                {/if}
+                <button type="submit" class="btn btn-primary btn-block">{if $is_new}Test connection and continue{else}Save Source{/if}</button>
+                {if !$is_new}
+                    <a href="/{$source['slug']}" target="_blank" rel="noopener" class="btn btn-secondary btn-block mt-2">View public list</a>
+                {/if}
+            </div>
+
+            {if !$is_new}
+            <div class="sidebar-panel mt-4">
+                <h3>Cache</h3>
+                <button type="submit" formaction="/admin/external-sources/{$source['id']}/clear-cache" formmethod="post" class="btn btn-secondary btn-block">Clear cache</button>
+            </div>
+            {/if}
+        </aside>
+    </div>
+</form>
+<script n:syntax="off">
+document.addEventListener('DOMContentLoaded', () => {
+    const select = document.querySelector('[data-provider-select]');
+    const panels = Array.from(document.querySelectorAll('[data-provider-panel]'));
+    const tokenHelp = Array.from(document.querySelectorAll('[data-token-help]'));
+    if (!select) return;
+    const sync = () => {
+        panels.forEach((panel) => {
+            panel.hidden = panel.dataset.providerPanel !== select.value;
+        });
+        tokenHelp.forEach((help) => {
+            help.hidden = help.dataset.tokenHelp !== select.value;
+        });
+    };
+    select.addEventListener('change', sync);
+    sync();
+});
+</script>
+{/block}

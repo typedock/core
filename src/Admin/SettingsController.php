@@ -14,10 +14,16 @@ class SettingsController extends BaseAdminController
             "SELECT id, title FROM posts WHERE post_type = 'page' AND status = 'published' ORDER BY title ASC"
         );
         $pages = $stmt !== false ? $stmt->fetchAll() : [];
+        try {
+            $sources = \Flight::external_sources()->activeSources();
+        } catch (\Throwable) {
+            $sources = [];
+        }
 
         $this->render('pages/settings/general.latte', [
             'options'       => $this->getOptions('general'),
             'pages'         => $pages,
+            'external_sources' => $sources,
             'flash_success' => $this->getFlash('success'),
             'flash_error'   => $this->getFlash('error'),
         ]);
@@ -32,10 +38,14 @@ class SettingsController extends BaseAdminController
 
         // Home page + posts archive settings.
         $homeMode   = $_POST['home_mode'] ?? 'archive';
-        $homeMode   = in_array($homeMode, ['archive', 'page'], true) ? $homeMode : 'archive';
+        $homeMode   = in_array($homeMode, ['archive', 'page', 'source'], true) ? $homeMode : 'archive';
         $homePageId = trim((string) ($_POST['home_page_id'] ?? ''));
+        $homeSourceId = trim((string) ($_POST['home_source_id'] ?? ''));
         if ($homeMode !== 'page') {
             $homePageId = '';
+        }
+        if ($homeMode !== 'source') {
+            $homeSourceId = '';
         }
 
         // Sanitise the posts archive slug: strip slashes, whitespace and any
@@ -59,6 +69,7 @@ class SettingsController extends BaseAdminController
 
         $this->setOption('site.home_mode', $homeMode, 'general');
         $this->setOption('site.home_page_id', $homePageId !== '' ? $homePageId : null, 'general');
+        $this->setOption('site.home_source_id', $homeSourceId !== '' ? $homeSourceId : null, 'general');
         $this->setOption('site.posts_archive_slug', $postsSlug, 'general');
         $this->setOption('site.posts_archive_label', $postsLabel, 'general');
 

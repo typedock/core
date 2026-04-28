@@ -110,6 +110,52 @@ class TemplateResolver
     }
 
     /**
+     * Resolve for an External Source latest-list route.
+     *
+     * @param array<string, mixed> $source
+     */
+    public function resolveExternalSourceList(array $source, bool $isHome = false): string
+    {
+        $slug = $this->sanitize((string) ($source['slug'] ?? ''));
+        $candidates = [];
+        if ($isHome) {
+            $candidates[] = 'home.latte';
+            $candidates[] = 'layouts/home.latte';
+        }
+        if ($slug !== '') {
+            $candidates[] = 'source-' . $slug . '.latte';
+            $candidates[] = 'layouts/source-' . $slug . '.latte';
+        }
+        $candidates[] = 'source-list.latte';
+        $candidates[] = 'layouts/source-list.latte';
+        $candidates[] = 'archive.latte';
+        $candidates[] = 'layouts/archive.latte';
+
+        return $this->firstExisting($candidates, 'layouts/archive.latte');
+    }
+
+    /**
+     * Resolve for an External Source detail route.
+     *
+     * @param array<string, mixed> $source
+     */
+    public function resolveExternalSourceDetail(array $source): string
+    {
+        $slug = $this->sanitize((string) ($source['slug'] ?? ''));
+        $candidates = [];
+        if ($slug !== '') {
+            $candidates[] = 'source-' . $slug . '-single.latte';
+            $candidates[] = 'layouts/source-' . $slug . '-single.latte';
+        }
+        $candidates[] = 'source-detail.latte';
+        $candidates[] = 'layouts/source-detail.latte';
+        $candidates[] = 'single.latte';
+        $candidates[] = 'layouts/single.latte';
+
+        return $this->firstExisting($candidates, 'layouts/single.latte');
+    }
+
+    /**
      * Resolve for the site root when home_mode is 'page'. A theme can ship a
      * `home.latte` to get a hero / featured layout; otherwise we fall back to
      * the same chain as `resolvePage()` so an operator-picked static page

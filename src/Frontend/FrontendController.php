@@ -28,6 +28,15 @@ class FrontendController
     {
         $mode = (string) site_option('site.home_mode', 'archive');
 
+        if ($mode === 'source') {
+            $sourceId = (string) site_option('site.home_source_id', '');
+            $source = $sourceId !== '' ? \Flight::external_sources()->find($sourceId) : null;
+            if ($source !== null && ($source['status'] ?? '') === 'active') {
+                (new ExternalSourceFrontendController())->renderList($source, $page, isHome: true);
+                return;
+            }
+        }
+
         if ($mode === 'page') {
             $pageId  = (string) site_option('site.home_page_id', '');
             $pageRow = $pageId !== '' ? $this->getPageById($pageId) : null;
@@ -69,6 +78,9 @@ class FrontendController
 
         $page = $this->getPageBySlug($slug);
         if ($page === null) {
+            if ((new ExternalSourceFrontendController())->tryRenderPath($slug)) {
+                return;
+            }
             throw new \TypeDock\Exception\NotFoundException("Page not found: {$slug}");
         }
 
@@ -595,7 +607,7 @@ HTML;
             "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
-             WHERE p.slug = ? AND p.status = 'published' LIMIT 1"
+             WHERE p.slug = ? AND p.post_type = 'page' AND p.status = 'published' LIMIT 1"
         );
         $stmt->execute([$slug]);
         $row = $stmt->fetch();
@@ -616,7 +628,7 @@ HTML;
             "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
-             WHERE p.id = ? AND p.status = 'published' LIMIT 1"
+             WHERE p.id = ? AND p.post_type = 'page' AND p.status = 'published' LIMIT 1"
         );
         $stmt->execute([$id]);
         $row = $stmt->fetch();

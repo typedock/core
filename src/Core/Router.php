@@ -16,6 +16,7 @@ use TypeDock\Admin\SettingsController;
 use TypeDock\Admin\SlotController;
 use TypeDock\Admin\ThemeController;
 use TypeDock\Admin\ThemeSettingsController;
+use TypeDock\Admin\ExternalSourceController;
 use TypeDock\Frontend\FrontendController;
 use TypeDock\Api\ApiController;
 use TypeDock\Middleware\AuthMiddleware;
@@ -269,6 +270,40 @@ class Router
             \Flight::route('POST /slots', function () use ($auth) {
                 $auth->requirePermission('slots:manage');
                 (new SlotController())->update();
+            });
+
+            // External Sources
+            \Flight::route('GET /external-sources', function () use ($auth) {
+                $auth->requirePermission('external_sources:manage');
+                (new ExternalSourceController())->index();
+            });
+            \Flight::route('GET /external-sources/create', function () use ($auth) {
+                $auth->requirePermission('external_sources:manage');
+                (new ExternalSourceController())->create();
+            });
+            \Flight::route('POST /external-sources/create', function () use ($auth) {
+                $auth->requirePermission('external_sources:manage');
+                (new ExternalSourceController())->store();
+            });
+            \Flight::route('GET /external-sources/@id/edit', function (string $id) use ($auth) {
+                $auth->requirePermission('external_sources:manage');
+                (new ExternalSourceController())->edit($id);
+            });
+            \Flight::route('POST /external-sources/@id/edit', function (string $id) use ($auth) {
+                $auth->requirePermission('external_sources:manage');
+                (new ExternalSourceController())->update($id);
+            });
+            \Flight::route('POST /external-sources/@id/delete', function (string $id) use ($auth) {
+                $auth->requirePermission('external_sources:manage');
+                (new ExternalSourceController())->destroy($id);
+            });
+            \Flight::route('POST /external-sources/@id/clear-cache', function (string $id) use ($auth) {
+                $auth->requirePermission('external_sources:manage');
+                (new ExternalSourceController())->clearCache($id);
+            });
+            \Flight::route('POST /external-sources/@id/discover-fields', function (string $id) use ($auth) {
+                $auth->requirePermission('external_sources:manage');
+                (new ExternalSourceController())->discoverFields($id);
             });
 
             // Themes
