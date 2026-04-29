@@ -17,6 +17,10 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
 
   - package-ecosystem: "npm"
     directory: "/"
@@ -46,3 +50,7 @@ updates:
     open-pull-requests-limit: 3
     commit-message:
       prefix: "deps(actions)"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
