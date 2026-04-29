@@ -1,0 +1,115 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: PHPUnit (${{ matrix.driver }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - driver: sqlite
+          - driver: mysql
+            db_host: 127.0.0.1
+            db_port: 3306
+            db_user: root
+            db_password: typedock
+          - driver: pgsql
+            db_host: 127.0.0.1
+            db_port: 5432
+            db_user: postgres
+            db_password: typedock
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: typedock
+          MYSQL_DATABASE: typedock
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=20
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_PASSWORD: typedock
+          POSTGRES_DB: typedock
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=20
+
+    env:
+      APP_ENV: testing
+      APP_DEBUG: "true"
+      # Deterministic 32-byte key for CI. Generated via:
+      #   php -r 'echo "base64:" . base64_encode(str_repeat("a", 32)) . PHP_EOL;'
+      # Never reused outside CI — production sites generate their own.
+      APP_KEY: base64:YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=
+      DB_DRIVER: ${{ matrix.driver }}
+      DB_HOST: ${{ matrix.db_host }}
+      DB_PORT: ${{ matrix.db_port }}
+      DB_DATABASE: typedock
+      DB_USERNAME: ${{ matrix.db_user }}
+      DB_PASSWORD: ${{ matrix.db_password }}
+      DB_SQLITE_PATH: ${{ github.workspace }}/storage/database.sqlite
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo, pdo_sqlite, pdo_mysql, pdo_pgsql, zip, gd, mbstring, intl, json
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Prepare storage directories
+        run: mkdir -p storage/{cache,logs,sessions,tmp,uploads,backups}
+
+      - name: Run migrations
+        run: php cli/migrate.php
+
+      - name: PHPUnit
+        run: vendor/bin/phpunit --testdox
+
+  static-analysis:
+    name: PHP syntax check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+      # Belt-and-braces: catch syntax errors that would otherwise only surface
+      # when Composer's autoloader actually tries to require the file. Quick;
+      # complements the PHPUnit matrix above without needing a full DB.
+      - name: php -l on src + plugins + tests
+        run: |
+          set -e
+          find src plugins tests cli -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
