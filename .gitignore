@@ -17,6 +17,10 @@ docker.env
 /storage/uploads/
 /storage/backups/
 /storage/zap-reports/
+/storage/database.sqlite
+/storage/database.sqlite-journal
+/storage/.installed
+/storage/.installing
 
 # Public assets (runtime-generated)
 /public/uploads/
@@ -39,9 +43,8 @@ Thumbs.db
 # Composer
 composer.phar
 
-# Build artifacts
+# Build artifacts (output) — the build/ scripts themselves are tracked
 /dist/
-/build/
 
 # Test coverage
 /coverage/

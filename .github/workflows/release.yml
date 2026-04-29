@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Required so softprops/action-gh-release can create the release and upload
+# the artifact.
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build typedock-shared.zip
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo, pdo_sqlite, zip, gd, mbstring, intl, json
+          coverage: none
+          tools: composer:v2
+
+      - name: Install build prerequisites
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rsync zip
+
+      # Editor bundle (admin/dist/editor.bundle.*) and Tailwind admin CSS are
+      # already committed under public/admin/ — make-shared-zip.sh treats them
+      # as pre-built, so no Node setup is required here.
+      - name: Build distribution zip
+        run: bash build/make-shared-zip.sh
+        env:
+          OUT_DIR: ${{ github.workspace }}/dist
+
+      - name: Compute archive paths
+        id: artifact
+        run: |
+          set -e
+          ZIP="$(ls dist/typedock-shared.zip)"
+          test -f "$ZIP"
+          # Tag without the leading "v" — `v1.0.0-rc1` -> `1.0.0-rc1`.
+          VERSION="${GITHUB_REF_NAME#v}"
+          NAMED="dist/typedock-shared-${VERSION}.zip"
+          cp "$ZIP" "$NAMED"
+          {
+            echo "zip_path=$ZIP"
+            echo "named_zip=$NAMED"
+            echo "version=$VERSION"
+            echo "sha256=$(sha256sum "$ZIP" | awk '{print $1}')"
+            echo "bytes=$(stat -c %s "$ZIP")"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Generate checksum file
+        run: |
+          (cd dist && sha256sum "typedock-shared.zip" "typedock-shared-${{ steps.artifact.outputs.version }}.zip") > dist/SHA256SUMS
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: TypeDock ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          # Mark RC / pre-release tags as prerelease automatically.
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: |
+            ${{ steps.artifact.outputs.zip_path }}
+            ${{ steps.artifact.outputs.named_zip }}
+            dist/SHA256SUMS
+          body: |
+            **TypeDock ${{ github.ref_name }}** — shared-hosting distribution
+
+            - File: `typedock-shared-${{ steps.artifact.outputs.version }}.zip`
+            - Size: ${{ steps.artifact.outputs.bytes }} bytes
+            - SHA-256: `${{ steps.artifact.outputs.sha256 }}`
+
+            See `SHA256SUMS` for verification. Unzip into your hosting account so
+            `public_html/` lands at the webroot and `typedock/` sits as its
+            sibling. Open the site in a browser to launch the installer.
