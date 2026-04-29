@@ -6,6 +6,10 @@
 # Optional databases via profiles:
 #   docker compose --profile mysql    up -d
 #   docker compose --profile postgres up -d
+#
+# Security scanning via profile (one-shot, see bin/security-scan.sh):
+#   docker compose --profile zap run --rm zap            # baseline (passive only)
+#   docker compose --profile zap run --rm zap-full       # spider + active scan
 
 services:
   app:
@@ -92,6 +96,72 @@ services:
     volumes:
       - pg-data:/var/lib/postgresql/data
     restart: unless-stopped
+
+  # OWASP ZAP — baseline (passive only) scan via Automation Framework.
+  # Safe to run against any environment. Reports land directly on the host at
+  # ./storage/zap-reports/ via bind mount. The host directory must be
+  # world-writable (chmod 777) because the ZAP container runs as uid 1000;
+  # bin/security-scan.sh handles that. This is zaproxy's own recommended
+  # workaround.
+  #
+  # NOTE: we drive baseline through the Automation Framework rather than the
+  # `zap-baseline.py` wrapper, because the wrapper writes a generated YAML to
+  # /zap/wrk/zap.yaml and our /zap/wrk/conf is mounted read-only.
+  zap:
+    image: zaproxy/zap-stable:latest
+    profiles: ["zap"]
+    depends_on:
+      - nginx
+    volumes:
+      - ./docker/zap:/zap/wrk/conf:ro
+      - ./storage/zap-reports:/zap/wrk/reports
+    restart: "no"
+    command:
+      - zap.sh
+      - -cmd
+      - -autorun
+      - /zap/wrk/conf/baseline.yaml
+
+  # OWASP ZAP — full scan via Automation Framework (spider + passive + active).
+  # Runs the YAML at docker/zap/full.yaml. Active scanning sends real exploit
+  # payloads, so do NOT point this at production.
+  zap-full:
+    image: zaproxy/zap-stable:latest
+    profiles: ["zap"]
+    depends_on:
+      - nginx
+    volumes:
+      - ./docker/zap:/zap/wrk/conf:ro
+      - ./storage/zap-reports:/zap/wrk/reports
+    restart: "no"
+    command:
+      - zap.sh
+      - -cmd
+      - -autorun
+      - /zap/wrk/conf/full.yaml
+
+  # OWASP ZAP — authenticated active scan against /admin/*. Requires the app
+  # to be started with APP_DEBUG=true + SECURITY_SCAN_MODE=true so the CSRF
+  # middleware lets ZAP through. See docker/zap/admin.yaml for the full
+  # contract and bin/security-scan.sh for the orchestration. ZAP_ADMIN_USER /
+  # ZAP_ADMIN_PASS are read from docker.env at scan time.
+  zap-admin:
+    image: zaproxy/zap-stable:latest
+    profiles: ["zap"]
+    depends_on:
+      - nginx
+    env_file:
+      - path: docker.env
+        required: false
+    volumes:
+      - ./docker/zap:/zap/wrk/conf:ro
+      - ./storage/zap-reports:/zap/wrk/reports
+    restart: "no"
+    command:
+      - zap.sh
+      - -cmd
+      - -autorun
+      - /zap/wrk/conf/admin.yaml
 
 volumes:
   app-storage:

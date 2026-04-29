@@ -128,7 +128,6 @@ final class ExternalSourceFrontendController
             'site' => new \TypeDock\Content\SiteService(\Flight::db()),
             'theme' => $this->themeObject(),
             'themeStyle' => \Flight::theme_style(),
-            'cms' => $this->cmsObject(),
             'currentUrl' => (string) ($_SERVER['REQUEST_URI'] ?? '/'),
             'fetch' => new \stdClass(),
         ], $vars);
@@ -146,16 +145,4 @@ final class ExternalSourceFrontendController
         );
     }
 
-    private function cmsObject(): object
-    {
-        return new class {
-            public function hasModule(string $name): bool
-            {
-                return match ($name) {
-                    'Collection' => (bool) env('MODULE_COLLECTION', false),
-                    default => false,
-                };
-            }
-        };
-    }
 }

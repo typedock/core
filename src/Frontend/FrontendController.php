@@ -485,7 +485,6 @@ class FrontendController
             'site'       => $siteData,
             'theme'      => $this->buildThemeObject(),
             'themeStyle' => \Flight::theme_style(),
-            'cms'        => $this->buildCmsObject(),
             'currentUrl' => (string) ($_SERVER['REQUEST_URI'] ?? '/'),
         ], $vars);
 
@@ -583,18 +582,6 @@ HTML;
         );
     }
 
-    private function buildCmsObject(): object
-    {
-        return new class {
-            public function hasModule(string $name): bool
-            {
-                return match ($name) {
-                    'Collection' => (bool) env('MODULE_COLLECTION', false),
-                    default      => false,
-                };
-            }
-        };
-    }
 
     /**
      * @return array<string, mixed>|null

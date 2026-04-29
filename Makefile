@@ -3,7 +3,7 @@
 
 COMPOSE ?= docker compose
 
-.PHONY: help dev dev-mysql dev-postgres down shell install migrate test dist assets assets-watch
+.PHONY: help dev dev-mysql dev-postgres down shell install migrate test dist assets assets-watch security-scan security-scan-full security-scan-admin
 
 help: ## Show available targets
 	@echo "TypeDock make targets:"
@@ -18,6 +18,9 @@ help: ## Show available targets
 	@echo "  make assets        - Build admin CSS (Tailwind 4) + editor bundle (esbuild)"
 	@echo "  make assets-watch  - Rebuild admin CSS on change"
 	@echo "  make dist          - Build the shared-hosting distribution zip"
+	@echo "  make security-scan       - OWASP ZAP baseline (passive) scan via docker compose"
+	@echo "  make security-scan-full  - OWASP ZAP Automation Framework (active) scan, public surface"
+	@echo "  make security-scan-admin - OWASP ZAP authenticated active scan against /admin (CSRF bypass; see docker.env.example)"
 
 dev: ## Start app + nginx (default, SQLite)
 	$(COMPOSE) up -d app nginx
@@ -60,3 +63,12 @@ assets-watch: ## Rebuild admin CSS on change (editor bundle: run `npm run watch:
 
 dist: ## Build the shared-hosting distribution zip
 	bash build/make-shared-zip.sh
+
+security-scan: ## OWASP ZAP baseline (passive) scan against the compose stack
+	bash bin/security-scan.sh baseline
+
+security-scan-full: ## OWASP ZAP Automation Framework (active) scan — do NOT point at production
+	bash bin/security-scan.sh full
+
+security-scan-admin: ## Authenticated active scan against /admin/* — requires CSRF bypass env vars in docker.env
+	bash bin/security-scan.sh admin

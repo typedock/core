@@ -16,6 +16,7 @@ docker.env
 /storage/tmp/
 /storage/uploads/
 /storage/backups/
+/storage/zap-reports/
 
 # Public assets (runtime-generated)
 /public/uploads/

@@ -201,8 +201,10 @@ class SettingsController extends BaseAdminController
 
     public function modules(): void
     {
+        // Route is still `/admin/settings/modules` for URL stability, but the
+        // page is plugins-only now that the Module concept has been retired.
         $this->render('pages/settings/modules.latte', [
-            'modules'        => $this->visibleModules(),
+            'modules'        => [],
             'plugins'        => $this->discoverAllPlugins(),
             'plugin_issues'  => \Flight::plugin_diagnostics()->all(),
             'flash_success'  => $this->getFlash('success'),
@@ -329,19 +331,6 @@ class SettingsController extends BaseAdminController
 
         ksort($rows);
         return array_values($rows);
-    }
-
-    /**
-     * Modules are being retired. Backup moved to the drop-in `backup` plugin;
-     * Collection remains parked in code for a future redesign around external
-     * data/feed imports. Returning an empty list keeps the admin "Modules"
-     * panel out of the way until something needs to land back here.
-     *
-     * @return array<string, bool>
-     */
-    private function visibleModules(): array
-    {
-        return [];
     }
 
     private function resolveEnabled(string $slug, ?string $envKey = null, bool $defaultEnabled = false): bool

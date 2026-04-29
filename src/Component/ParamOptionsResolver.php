@@ -69,7 +69,6 @@ class ParamOptionsResolver
             'select_page'           => $this->pages(),
             'select_form'           => $this->forms(),
             'select_menu_location'  => $this->menuLocations(),
-            'select_collection'     => $this->collections(),
             default                 => null,
         };
     }
@@ -169,22 +168,4 @@ class ParamOptionsResolver
         }
     }
 
-    /**
-     * @return array<string, string>
-     */
-    private function collections(): array
-    {
-        try {
-            // The Collection module's table may not exist on installs where
-            // the module is disabled — fall back to an empty list if so.
-            $stmt = \Flight::db()->query('SELECT handle, name FROM collections ORDER BY name ASC');
-            $out  = [];
-            foreach ($stmt->fetchAll() as $row) {
-                $out[(string) $row['handle']] = (string) $row['name'];
-            }
-            return $out;
-        } catch (\Throwable) {
-            return [];
-        }
-    }
 }

@@ -30,6 +30,11 @@ if ($debug) {
     error_reporting(E_ALL);
 }
 
+// Apply HttpOnly / SameSite=Lax / Secure cookie defaults BEFORE any
+// session_start() so the whole app inherits them. Done in PHP rather than
+// php.ini for shared-hosting compatibility.
+typedock_configure_session_cookie();
+
 // Serve theme and plugin static assets via PHP fallback (for php -S dev server).
 // In production, the web server should serve public/themes/ and public/plugins/ directly.
 $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';

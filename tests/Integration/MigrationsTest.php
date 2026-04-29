@@ -65,8 +65,6 @@ final class MigrationsTest extends TestCase
             'slot_placements',
             'change_log',
             'snapshots',
-            'collections',
-            'collection_items',
             'backups',
             'locales',
             'migrations',

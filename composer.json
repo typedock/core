@@ -2,7 +2,7 @@
     "name": "typedock/typedock",
     "description": "TypeDock CMS - A modern PHP CMS",
     "type": "project",
-    "license": "MIT",
+    "license": "Apache-2.0",
     "require": {
         "php": ">=8.2",
         "ext-zip": "*",

@@ -37,7 +37,10 @@ RUN install-php-extensions \
         mbstring
 
 # Production-leaning php.ini defaults.
-RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
+    # Strip the `X-Powered-By: PHP/x.y.z` header. SecurityHeadersMiddleware
+    # also `header_remove`s it at runtime as a belt-and-suspenders.
+    && echo "expose_php = Off" > "$PHP_INI_DIR/conf.d/zz-typedock-hardening.ini"
 
 WORKDIR /app
 

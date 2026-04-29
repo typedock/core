@@ -127,6 +127,65 @@ if (!function_exists('public_path')) {
     }
 }
 
+if (!function_exists('typedock_is_https')) {
+    /**
+     * True when the current request is being served over HTTPS, including
+     * the case where TLS is terminated at an upstream proxy (Cloudflare,
+     * nginx, etc.) and forwarded as plain HTTP via `X-Forwarded-Proto`.
+     */
+    function typedock_is_https(): bool
+    {
+        $https = $_SERVER['HTTPS'] ?? '';
+        if ($https !== '' && strtolower((string) $https) !== 'off') {
+            return true;
+        }
+        if (((int) ($_SERVER['SERVER_PORT'] ?? 0)) === 443) {
+            return true;
+        }
+        if (strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https') {
+            return true;
+        }
+        return false;
+    }
+}
+
+if (!function_exists('typedock_configure_session_cookie')) {
+    /**
+     * Apply hardened session cookie defaults at runtime. Called once from
+     * public/index.php before any session_start() so the entire app inherits
+     * these params — important for shared-hosting deploys where editing
+     * php.ini isn't an option.
+     *
+     *   - HttpOnly: blocks JS access to the session cookie (XSS mitigation).
+     *   - SameSite=Lax: blocks cross-site POSTs while allowing top-level GET
+     *     navigation (works with admin login redirect chains).
+     *   - Secure: only over real HTTPS, including TLS-terminating proxies.
+     *
+     * Idempotent — safe to call multiple times. No-op if a session has
+     * already been started (PHP cannot change the params after that point).
+     */
+    function typedock_configure_session_cookie(): void
+    {
+        if (session_status() !== PHP_SESSION_NONE) {
+            return;
+        }
+
+        $lifetime = (int) ($_ENV['SESSION_LIFETIME'] ?? getenv('SESSION_LIFETIME') ?: 0);
+        if ($lifetime < 0) {
+            $lifetime = 0;
+        }
+
+        session_set_cookie_params([
+            'lifetime' => $lifetime,
+            'path'     => '/',
+            'domain'   => '',
+            'secure'   => typedock_is_https(),
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+    }
+}
+
 if (!function_exists('site_option')) {
     /**
      * Read a site_options row, decoded from JSON. Cached for the lifetime of

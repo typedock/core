@@ -1,6 +1,8 @@
 # VCS
 .git/
 .gitignore
+.gitattributes
+.github/
 
 # Dependencies (installed inside the image)
 vendor/
@@ -13,23 +15,65 @@ storage/sessions/
 storage/tmp/
 storage/uploads/*
 !storage/uploads/.gitkeep
+storage/backups/
+storage/zap-reports/
 storage/.installed
+storage/.installing
 storage/database.sqlite
 
-# Tests & internal docs are not needed at runtime
+# Tests, static analysis, and design memos — not needed at runtime
 tests/
+phpunit.xml.dist
+.phpunit.cache/
+.phpunit.result.cache
+phpstan/
+phpstan.neon.dist
+phpstan.neon
+schema/
 docs-internal/
+
+# Build / dev tooling not needed inside the image
+bin/
+build/
+dist/
+docker/
+docker-compose.yml
+docker.env
+docker.env.example
+Makefile
+package.json
+package-lock.json
+esbuild.config.mjs
+resources/
+
+# Internal contributor docs (not part of the runtime distribution)
+AGENTS.md
+CLAUDE.md
+MAINTAINERS.md
 
 # Local env / logs
 .env
-docker.env
 *.log
 build.log
+
+# Sourcemaps — debug aids, not for production
+*.map
+
+# Theme documentation / marketing images. Runtime screenshots live under
+# themes/<name>/assets/ (see ThemeLoader::screenshotUrl()); anything at the
+# theme root is docs only.
+themes/*/*.png
+themes/*/*.jpg
+themes/*/*.jpeg
+themes/*/*.gif
+themes/*/*.webp
 
 # Editor / OS cruft
 .idea/
 .vscode/
+.claude/
+.codex/
 .DS_Store
 
-# Devcontainer / Docker meta (not needed inside the image itself)
+# Devcontainer (not needed inside the image itself)
 .devcontainer/

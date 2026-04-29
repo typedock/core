@@ -7,6 +7,7 @@ use TypeDock\Middleware\AuthMiddleware;
 use TypeDock\Middleware\CsrfMiddleware;
 use TypeDock\Middleware\CacheMiddleware;
 use TypeDock\Middleware\RedirectMiddleware;
+use TypeDock\Middleware\SecurityHeadersMiddleware;
 
 class App
 {
@@ -15,7 +16,7 @@ class App
         $this->configure();
         $this->registerServices();
         $this->bootTheme();
-        $this->loadModulesAndPlugins();
+        $this->loadPlugins();
         $this->registerMiddleware();
         $this->registerRoutes();
 
@@ -94,14 +95,19 @@ class App
         (new ServiceProvider())->register();
     }
 
-    private function loadModulesAndPlugins(): void
+    private function loadPlugins(): void
     {
-        (new ModuleLoader())->load();
         (new PluginLoader())->load();
     }
 
     private function registerMiddleware(): void
     {
+        // Security headers first so every response — including redirects and
+        // error pages emitted by later middleware — carries them.
+        \Flight::before('start', function (): void {
+            (new SecurityHeadersMiddleware())->handle();
+        });
+
         // Locale resolution: off by default, opt in via config/app.php
         // (`locale.routing_enabled` = true). When enabled, URL prefixes like
         // /ja/about are stripped before dispatch so existing routes keep

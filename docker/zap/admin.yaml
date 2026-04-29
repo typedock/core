@@ -1,0 +1,117 @@
+# OWASP ZAP Automation Framework — TypeDock authenticated admin scan.
+#
+# Run via:   bin/security-scan.sh admin
+# Reports:   storage/zap-reports/admin.{html,json,md}
+#
+# REQUIREMENTS — set the following in docker.env BEFORE running, then
+# `docker compose up -d app nginx` to apply:
+#
+#   APP_DEBUG=true                  # gate for the CSRF bypass below
+#   SECURITY_SCAN_MODE=true         # CsrfMiddleware honours both flags only
+#                                   # together AND only for private-IP clients
+#   ZAP_ADMIN_USER=<email>          # admin user with NO 2FA enabled
+#   ZAP_ADMIN_PASS=<password>
+#
+# DANGER:
+#   - Active scan WILL exercise mutating endpoints. Run against a throwaway
+#     DB only — this WILL create / edit / potentially delete content as the
+#     authenticated user.
+#   - The CSRF bypass flag MUST NOT be left enabled in any environment that
+#     handles real data. Reset docker.env after the scan.
+#
+# Why bypass CSRF: ZAP's built-in form-auth doesn't extract per-request CSRF
+# tokens. The alternative is an HTTP Sender script that pulls _csrf_token out
+# of every prior response — non-trivial to maintain. The env-gated bypass is
+# the simplest path that keeps prod safe.
+
+env:
+  contexts:
+    - name: typedock-admin
+      urls:
+        - http://nginx
+      includePaths:
+        - "http://nginx/admin.*"
+      excludePaths:
+        # Side-effect endpoints we do NOT want the spider/scanner to hit.
+        - "http://nginx/admin/logout.*"
+        - "http://nginx/admin/users/.*/delete.*"
+        - "http://nginx/admin/posts/.*/delete.*"
+        - "http://nginx/admin/pages/.*/delete.*"
+        - "http://nginx/admin/media/.*/delete.*"
+        - "http://nginx/admin/plugins/.*/(?:uninstall|delete).*"
+        - "http://nginx/admin/settings/2fa.*"
+        - "http://nginx/admin/account/password.*"
+        # Don't follow asset URLs — wastes time, not a security surface.
+        - ".*\\.(?:css|js|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|eot|map)(?:\\?.*)?$"
+      authentication:
+        method: form
+        parameters:
+          loginPageUrl: http://nginx/admin/login
+          loginRequestUrl: http://nginx/admin/login
+          loginRequestBody: "email={%username%}&password={%password%}"
+        verification:
+          method: poll
+          loggedInRegex: "(?i)(?:Logout|Dashboard)"
+          loggedOutRegex: "(?i)<form[^>]*/admin/login"
+          pollFrequency: 60
+          pollUnits: requests
+          pollUrl: http://nginx/admin
+      sessionManagement:
+        method: cookie
+      users:
+        - name: scan-admin
+          credentials:
+            username: ${ZAP_ADMIN_USER}
+            password: ${ZAP_ADMIN_PASS}
+  parameters:
+    failOnError: true
+    failOnWarning: false
+    progressToStdout: true
+
+jobs:
+  - type: passiveScan-config
+    parameters:
+      maxAlertsPerRule: 10
+      scanOnlyInScope: true
+
+  - type: spider
+    parameters:
+      context: typedock-admin
+      user: scan-admin
+      maxDuration: 5
+      maxDepth: 5
+      acceptCookies: true
+
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 5
+
+  - type: activeScan
+    parameters:
+      context: typedock-admin
+      user: scan-admin
+      maxRuleDurationInMins: 2
+      maxScanDurationInMins: 30
+      policy: "Default Policy"
+
+  - type: report
+    parameters:
+      template: traditional-html
+      reportDir: /zap/wrk/reports
+      reportFile: admin
+      reportTitle: "TypeDock OWASP ZAP Scan (admin, authenticated)"
+      reportDescription: "Authenticated active scan against /admin/* with CSRF bypass via SECURITY_SCAN_MODE."
+
+  - type: report
+    parameters:
+      template: traditional-json
+      reportDir: /zap/wrk/reports
+      reportFile: admin
+      reportTitle: "TypeDock OWASP ZAP Scan (admin, authenticated)"
+
+  - type: report
+    parameters:
+      template: traditional-md
+      reportDir: /zap/wrk/reports
+      reportFile: admin
+      reportTitle: "TypeDock OWASP ZAP Scan (admin, authenticated)"

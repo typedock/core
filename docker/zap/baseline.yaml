@@ -1,0 +1,64 @@
+# OWASP ZAP Automation Framework — TypeDock baseline (passive only) scan.
+#
+# Run via:   docker compose --profile zap run --rm zap
+# Reports:   storage/zap-reports/baseline.{html,json,md}
+#
+# Passive only: spider crawls the public surface, passiveScan inspects each
+# response for misconfigurations (security headers, cookie flags, info leaks,
+# etc.). No active probes — safe to point at any environment, including
+# production. For a full active scan, see full.yaml.
+
+env:
+  contexts:
+    - name: typedock
+      urls:
+        - http://nginx
+      includePaths:
+        - "http://nginx.*"
+      excludePaths:
+        - "http://nginx/admin/.*"
+        - ".*\\.(?:css|js|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|eot|map)(?:\\?.*)?$"
+        - "http://nginx/logout.*"
+  parameters:
+    failOnError: true
+    failOnWarning: false
+    progressToStdout: true
+
+jobs:
+  - type: passiveScan-config
+    parameters:
+      maxAlertsPerRule: 10
+      scanOnlyInScope: true
+
+  - type: spider
+    parameters:
+      context: typedock
+      maxDuration: 5
+      maxDepth: 5
+      acceptCookies: true
+
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 5
+
+  - type: report
+    parameters:
+      template: traditional-html
+      reportDir: /zap/wrk/reports
+      reportFile: baseline
+      reportTitle: "TypeDock OWASP ZAP Scan (baseline)"
+      reportDescription: "Automation Framework passive baseline scan against compose-internal nginx."
+
+  - type: report
+    parameters:
+      template: traditional-json
+      reportDir: /zap/wrk/reports
+      reportFile: baseline
+      reportTitle: "TypeDock OWASP ZAP Scan (baseline)"
+
+  - type: report
+    parameters:
+      template: traditional-md
+      reportDir: /zap/wrk/reports
+      reportFile: baseline
+      reportTitle: "TypeDock OWASP ZAP Scan (baseline)"

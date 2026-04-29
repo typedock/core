@@ -1,0 +1,9 @@
+TypeDock
+Copyright 2026 Yusuke Kawabata and TypeDock contributors
+
+Licensed under the Apache License, Version 2.0; see LICENSE for the
+full terms.
+
+Third-party dependencies bundled in vendor/ retain their own licenses;
+see the LICENSE / COPYING file inside each package directory for the
+applicable terms.

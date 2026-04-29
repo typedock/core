@@ -32,6 +32,13 @@ class CsrfMiddleware
 
     public function verify(): bool
     {
+        if (self::isScanModeBypass()) {
+            // Visible breadcrumb in case this slips into a non-dev environment;
+            // also surfaces in `docker compose logs app`.
+            error_log('[security] CSRF check bypassed — SECURITY_SCAN_MODE active');
+            return true;
+        }
+
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
@@ -43,6 +50,45 @@ class CsrfMiddleware
         }
 
         return hash_equals($sessionToken, $requestToken);
+    }
+
+    /**
+     * Returns true when the request should bypass CSRF verification because a
+     * security scanner (e.g. OWASP ZAP) is exercising authenticated routes.
+     *
+     * Defense in depth — must satisfy ALL of:
+     *   1. SECURITY_SCAN_MODE=true env var
+     *   2. APP_DEBUG=true env var
+     *   3. Request originates from a private/loopback address
+     *
+     * Designed so that flipping a single flag in production still won't open
+     * the bypass: a prod box typically has APP_DEBUG=false, and even if both
+     * env vars leak in, requests from public IPs still fail the check.
+     */
+    private static function isScanModeBypass(): bool
+    {
+        $scanMode = (string) env('SECURITY_SCAN_MODE', '');
+        if ($scanMode !== 'true' && $scanMode !== '1') {
+            return false;
+        }
+        if (!(bool) env('APP_DEBUG', false)) {
+            return false;
+        }
+        return self::isLoopbackOrPrivate((string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+    }
+
+    private static function isLoopbackOrPrivate(string $ip): bool
+    {
+        if ($ip === '') {
+            return false;
+        }
+        // Reject anything that looks public; FILTER_FLAG_NO_PRIV_RANGE +
+        // FILTER_FLAG_NO_RES_RANGE returns false for private/reserved space.
+        return filter_var(
+            $ip,
+            FILTER_VALIDATE_IP,
+            FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+        ) === false;
     }
 
     public static function generate(): string

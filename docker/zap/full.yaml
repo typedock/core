@@ -1,0 +1,81 @@
+# OWASP ZAP Automation Framework — TypeDock full scan.
+#
+# Run via:   docker compose --profile zap run --rm zap-full
+# Reports:   storage/zap-reports/automation.{html,json,md}
+#
+# Scope: this default config scans only the public, unauthenticated surface
+# (pages, posts, login form, sitemap, feed, oEmbed/OGP proxy). The admin area
+# is excluded because TypeDock issues a per-request `_csrf_token` that ZAP's
+# built-in form authentication can't extract on its own — covering it requires
+# an HTTP Sender script that pulls the token out of the prior login-page
+# response. To extend coverage:
+#   1. Move /admin/.* out of `excludePaths` and into a new `users:` block.
+#   2. Add an `authentication:` section (method: form) plus an HTTP Sender
+#      script under `env.parameters.scripts` for CSRF.
+#   3. Rerun against a throwaway DB — active scan WILL create/edit/delete
+#      content as the logged-in user.
+
+env:
+  contexts:
+    - name: typedock
+      urls:
+        - http://nginx
+      includePaths:
+        - "http://nginx.*"
+      excludePaths:
+        # Admin requires CSRF-aware auth — out of scope for this config.
+        - "http://nginx/admin/.*"
+        # Don't follow asset URLs; they're not a security surface and waste time.
+        - ".*\\.(?:css|js|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|eot|map)(?:\\?.*)?$"
+        # Side-effect endpoints the spider should never trigger.
+        - "http://nginx/logout.*"
+  parameters:
+    failOnError: true
+    failOnWarning: false
+    progressToStdout: true
+
+jobs:
+  - type: passiveScan-config
+    parameters:
+      maxAlertsPerRule: 10
+      scanOnlyInScope: true
+
+  - type: spider
+    parameters:
+      context: typedock
+      maxDuration: 5
+      maxDepth: 5
+      acceptCookies: true
+
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 5
+
+  - type: activeScan
+    parameters:
+      context: typedock
+      maxRuleDurationInMins: 2
+      maxScanDurationInMins: 20
+      policy: "Default Policy"
+
+  - type: report
+    parameters:
+      template: traditional-html
+      reportDir: /zap/wrk/reports
+      reportFile: full
+      reportTitle: "TypeDock OWASP ZAP Scan (full)"
+      reportDescription: "Automation Framework full scan against compose-internal nginx."
+
+  - type: report
+    parameters:
+      template: traditional-json
+      reportDir: /zap/wrk/reports
+      reportFile: full
+      reportTitle: "TypeDock OWASP ZAP Scan (full)"
+
+  - type: report
+    parameters:
+      template: traditional-md
+      reportDir: /zap/wrk/reports
+      reportFile: full
+      reportTitle: "TypeDock OWASP ZAP Scan (full)"
