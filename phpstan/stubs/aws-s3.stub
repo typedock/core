@@ -1,0 +1,56 @@
+<?php
+
+namespace Aws\S3;
+
+class S3Client
+{
+    /**
+     * @param array<string, mixed> $args
+     */
+    public function __construct(array $args = [])
+    {
+    }
+
+    /**
+     * @param array<string, mixed> $args
+     */
+    public function putObject(array $args): mixed
+    {
+    }
+
+    /**
+     * @param array<string, mixed> $args
+     */
+    public function getObject(array $args): mixed
+    {
+    }
+
+    /**
+     * @param array<string, mixed> $args
+     */
+    public function deleteObject(array $args): mixed
+    {
+    }
+
+    public function doesObjectExist(string $bucket, string $key): bool
+    {
+    }
+
+    /**
+     * @param array<string, mixed> $options
+     */
+    public function doesObjectExistV2(string $bucket, string $key, bool $includeDeleteMarkers = false, array $options = []): bool
+    {
+    }
+
+    public function getObjectUrl(string $bucket, string $key): string
+    {
+    }
+
+    /**
+     * @param array<string, mixed> $args
+     */
+    public function listObjectsV2(array $args): mixed
+    {
+    }
+}

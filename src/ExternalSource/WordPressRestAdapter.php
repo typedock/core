@@ -443,7 +443,7 @@ final class WordPressRestAdapter implements ExternalSourceAdapterInterface
             ],
         ]);
         $body = @file_get_contents($url, false, $context);
-        $status = $this->statusCodeFromHeaders($http_response_header ?? []);
+        $status = $this->statusCodeFromHeaders($http_response_header);
         if ($body === false) {
             if ($status > 0) {
                 throw new WordPressRequestException($status);

@@ -34,7 +34,9 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
+          extensions: zip
           coverage: none
+          tools: composer:v2
           tools: composer:v2
 
       - name: Composer audit
@@ -156,3 +158,9 @@ jobs:
         run: |
           set -e
           find src plugins tests cli -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: PHPStan
+        run: composer analyse
