@@ -119,7 +119,22 @@ class AuthController
         $mailer    = new \TypeDock\Mail\PhpMailer();
         $tfService = new \TypeDock\Auth\TwoFactorService(\Flight::db(), $mailer);
 
-        if (!$tfService->verifyCode((string) $userId, $code)) {
+        try {
+            $verified = $tfService->verifyCode((string) $userId, $code);
+        } catch (\TypeDock\Exception\TypeDockException $e) {
+            // Account locked from too many bad codes — drop the pending 2FA
+            // session and send the user back to the login screen so the
+            // lockout window is actually enforced (otherwise they could keep
+            // submitting on /admin/login/2fa).
+            unset($_SESSION['pending_2fa_user_id']);
+            $this->renderLogin([
+                'error'     => 'Your account is locked. Please try again later.',
+                'old_email' => '',
+            ]);
+            return;
+        }
+
+        if (!$verified) {
             \Flight::latte()->render('pages/login-2fa.latte', [
                 'site'       => $this->getSiteData(),
                 'csrf_token' => CsrfMiddleware::generate(),

@@ -60,7 +60,8 @@ class UserController extends BaseAdminController
     {
         $stmt = \Flight::db()->prepare(
             'SELECT u.id, u.email, u.name, u.display_name, u.slug, u.bio, u.avatar_media_id,
-                    u.website_url, u.social_links, u.role, m.path AS avatar_path_current
+                    u.website_url, u.social_links, u.role, u.two_factor_enabled,
+                    m.path AS avatar_path_current
              FROM users u
              LEFT JOIN media m ON m.id = u.avatar_media_id
              WHERE u.id = ? LIMIT 1'
@@ -97,6 +98,7 @@ class UserController extends BaseAdminController
             'website_url' => $this->normalizeUrl((string) ($_POST['website_url'] ?? '')),
             'social_links' => $this->normalizeSocialLinks((string) ($_POST['social_links'] ?? '')),
             'role'       => $_POST['role'] ?? 'contributor',
+            'two_factor_enabled' => !empty($_POST['two_factor_enabled']) ? 1 : 0,
             'updated_at' => $now,
         ];
 

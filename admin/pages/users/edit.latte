@@ -51,6 +51,21 @@
                 </select>
             </div>
 
+            {if isset($user['id'])}
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="two_factor_enabled" value="1"
+                           {!empty($user['two_factor_enabled']) ? 'checked' : ''}>
+                    Require two-factor authentication at sign-in
+                </label>
+                <small class="form-hint">
+                    A 6-digit verification code is emailed to this user on every login.
+                    Make sure <a href="/admin/settings/mail">Mail settings</a> work before
+                    enabling — without delivery the user will be locked out.
+                </small>
+            </div>
+            {/if}
+
             <fieldset>
                 <legend>Public Profile</legend>
 
