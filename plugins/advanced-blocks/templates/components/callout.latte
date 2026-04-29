@@ -1,0 +1,14 @@
+{*
+    Callout block. The renderer wraps this in `.td-component-block--callout`,
+    so themes can target either the wrapper or the inner element.
+    Theme authors can override at themes/<slug>/components/callout.latte.
+*}
+{var $variant = in_array(($params['variant'] ?? 'info'), ['info','success','warning','danger'], true) ? $params['variant'] : 'info'}
+<aside class="td-callout td-callout--{$variant}" role="note">
+    {if !empty($params['title'])}
+        <p class="td-callout-title">{$params['title']}</p>
+    {/if}
+    {if !empty($params['body'])}
+        <div class="td-callout-body">{$params['body']|breakLines}</div>
+    {/if}
+</aside>

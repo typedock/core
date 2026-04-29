@@ -24,6 +24,7 @@ use TypeDock\Core\ProviderRegistry;
 use TypeDock\Locale\LocaleService;
 use TypeDock\Mail\MailService;
 use TypeDock\Media\MediaService;
+use TypeDock\ExternalSource\ExternalSourceAdapterRegistry;
 use TypeDock\ExternalSource\ExternalSourceService;
 use flight\database\SimplePdo;
 
@@ -282,12 +283,21 @@ class ServiceProvider
 
     private function registerExternalSources(): void
     {
+        \Flight::map('external_source_adapters', function (): ExternalSourceAdapterRegistry {
+            static $registry = null;
+            if ($registry !== null) {
+                return $registry;
+            }
+            $registry = ExternalSourceAdapterRegistry::withBuiltIns();
+            return $registry;
+        });
+
         \Flight::map('external_sources', function (): ExternalSourceService {
             static $service = null;
             if ($service !== null) {
                 return $service;
             }
-            $service = new ExternalSourceService(\Flight::db());
+            $service = new ExternalSourceService(\Flight::db(), adapterRegistry: \Flight::external_source_adapters());
             return $service;
         });
     }

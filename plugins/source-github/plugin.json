@@ -1,0 +1,15 @@
+{
+    "slug": "source-github",
+    "name": "GitHub Issues Source Adapter",
+    "description": "Adds GitHub Issues as an External Source adapter.",
+    "version": "1.0.0",
+    "min_core_version": "0.1.0",
+    "default_enabled": true,
+    "main_class": "TypeDock\\Plugin\\SourceGitHub\\SourceGitHubPlugin",
+    "provides": ["external-source-adapter:github_issues"],
+    "autoload": {
+        "psr-4": {
+            "TypeDock\\Plugin\\SourceGitHub\\": "src/"
+        }
+    }
+}

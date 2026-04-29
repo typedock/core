@@ -44,6 +44,9 @@ Other built-ins follow the same pattern:
 - `category_list` → `<ul class="category-list">…</ul>`
 - `menu` → `<ul class="menu-list">…</ul>`
 - `link_list` → `<nav class="link-list">…</nav>`
+- Source list cards such as `post-card`, `job-card`, or
+  `property-card` → one semantic item root with stable child classes
+  for title, excerpt, media, meta, and tags
 
 Each component carries a stable class on its root element so themes can
 target it. Beyond that, nothing.
@@ -59,6 +62,11 @@ Common bundled plugin component classes:
 |--------|---------------------------------------|
 | Form | `.td-form`, `.td-form-field`, `.td-form-success`, `.td-form-error`, `.td-form-required`, `.td-form-submit`, `.td-form-thanks` |
 | Social | `.td-social-share`, `.td-social-share-list`, `.td-social-share-item`, `.td-social-share-copy`, `.td-social-follow`, `.td-social-follow-list`, `.td-social-follow-item` |
+
+External Source list components opt into the Source mapping UI through
+`theme.json` (`source_list.compatible: true`). Their frontend output
+still follows the same bare-component rule; the declaration only tells
+the admin which fields can be mapped into the component.
 
 ---
 

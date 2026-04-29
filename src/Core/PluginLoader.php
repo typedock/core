@@ -6,60 +6,21 @@ namespace TypeDock\Core;
 use TypeDock\Contract\PluginInterface;
 
 /**
- * Discovers and boots plugins.
- *
- * Two classes of plugin sit side by side:
- *   1. Legacy bundled plugins under `src/Plugin/<Name>/` — declared via the
- *      $builtInPlugins array below.
- *   2. Drop-in plugins under `plugins/<slug>/` — discovered from their
- *      plugin.json manifest.
- *
- * Both use the same enable rule: DB admin toggle first, then `PLUGIN_*` env.
- * Manifest fields: slug, main_class, version, provides[], min_core_version,
- * autoload.psr-4. Drop-ins carry their own source code and templates alongside
- * the manifest and do NOT live inside `src/`.
- *
- * All plugins go through the same boot pipeline: autoload setup → class
- * instantiation → provides() conflict check → register().
+ * Discovers and boots drop-in plugins under `plugins/<slug>/` from their
+ * `plugin.json` manifest. Manifest fields: slug, main_class, version,
+ * provides[], min_core_version, autoload.psr-4. Plugins carry their own
+ * source code and templates alongside the manifest and do NOT live inside
+ * `src/`. Enable rule: DB admin toggle first, then `PLUGIN_<SLUG_UPPER>`
+ * env. Boot pipeline: autoload setup → class instantiation → provides()
+ * conflict check → register().
  */
 class PluginLoader
 {
     private const SLUG_REGEX = '/^[a-z][a-z0-9_-]{1,63}$/';
 
-    /**
-     * Bundled plugins that still live inside src/Plugin/. Each entry is
-     * [slug => metadata]. New plugins should prefer the plugins/<slug>/
-     * drop-in layout instead.
-     */
-    private array $builtInPlugins = [
-        'advancedblocks' => [
-            'class' => \TypeDock\Plugin\AdvancedBlocks\AdvancedBlocksPlugin::class,
-            'env'   => 'PLUGIN_ADVANCED_BLOCKS',
-        ],
-    ];
-
     public function load(): void
     {
-        $this->loadBuiltInPlugins();
         $this->loadDropInPlugins();
-    }
-
-    private function loadBuiltInPlugins(): void
-    {
-        foreach ($this->builtInPlugins as $slug => $plugin) {
-            $class = $plugin['class'];
-            if (!$this->isPluginEnabled($slug, $plugin['env'])) {
-                continue;
-            }
-            if (!class_exists($class)) {
-                continue;
-            }
-            $plugin = new $class();
-            if (!$plugin instanceof PluginInterface) {
-                continue;
-            }
-            $this->bootPlugin($slug, $plugin);
-        }
     }
 
     /**
@@ -79,10 +40,15 @@ class PluginLoader
             if (preg_match(self::SLUG_REGEX, $slug) !== 1) {
                 continue;
             }
-            if (!$this->isPluginEnabled($slug)) {
+            $manifest = $this->readManifest($manifestPath);
+            if ($manifest === null) {
+                \Flight::plugin_diagnostics()->error($slug, 'Invalid manifest JSON.');
                 continue;
             }
-            $this->loadDropInPlugin($slug, $manifestPath);
+            if (!$this->isPluginEnabled($slug, defaultEnabled: (bool) ($manifest['default_enabled'] ?? false))) {
+                continue;
+            }
+            $this->loadDropInPlugin($slug, $manifestPath, $manifest);
         }
     }
 
@@ -94,14 +60,14 @@ class PluginLoader
      *   2. `PLUGIN_<UPPER>` env
      *   3. default false
      */
-    private function isPluginEnabled(string $slug, ?string $envKey = null): bool
+    private function isPluginEnabled(string $slug, ?string $envKey = null, bool $defaultEnabled = false): bool
     {
         $dbState = $this->readDbEnabledFlag($slug);
         if ($dbState !== null) {
             return $dbState;
         }
         $envKey ??= $this->envKeyForSlug($slug);
-        return (bool) env($envKey, false);
+        return (bool) env($envKey, $defaultEnabled);
     }
 
     private function readDbEnabledFlag(string $slug): ?bool
@@ -120,12 +86,24 @@ class PluginLoader
         }
     }
 
-    private function loadDropInPlugin(string $slug, string $manifestPath): void
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function readManifest(string $manifestPath): ?array
+    {
+        $raw = @file_get_contents($manifestPath);
+        $manifest = $raw === false ? null : json_decode($raw, true);
+        return is_array($manifest) ? $manifest : null;
+    }
+
+    /**
+     * @param array<string, mixed>|null $manifest
+     */
+    private function loadDropInPlugin(string $slug, string $manifestPath, ?array $manifest = null): void
     {
         $diag = \Flight::plugin_diagnostics();
 
-        $raw      = @file_get_contents($manifestPath);
-        $manifest = $raw === false ? null : json_decode($raw, true);
+        $manifest ??= $this->readManifest($manifestPath);
         if (!is_array($manifest)) {
             $diag->error($slug, 'Invalid manifest JSON.');
             return;
@@ -181,7 +159,12 @@ class PluginLoader
             ));
         }
 
-        $context = $this->bootPlugin($slug, $plugin, $pluginDir);
+        try {
+            $context = $this->bootPlugin($slug, $plugin, $pluginDir);
+        } catch (\Throwable $e) {
+            $diag->error($slug, 'Plugin registration failed: ' . $e->getMessage());
+            return;
+        }
         if (!$context->hasAdminSurface() && $this->resolveReadmePath($manifest, $pluginDir) === null) {
             $diag->warn($slug, 'Plugin has no admin UI and no README.md; add plugin.json readme or a root README.md so admins know how to use it.');
         }

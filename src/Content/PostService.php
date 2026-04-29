@@ -231,6 +231,12 @@ class PostService
             : $page['body'];
         $bodyMarkdown = TiptapMarkdownRenderer::render($body);
 
+        // Defense in depth (doc24 #1): immutable identity columns. Even if a
+        // crafted POST manages to slip `author_id` / `post_type` / `locale`
+        // into $data, the service refuses to reassign them — those decisions
+        // were made at create() time and changing them through edit would
+        // bypass the controller's ownership / role checks (e.g. flipping a
+        // page into a post would let an author publish "page-only" content).
         $stmt = $this->pdo->prepare(
             'UPDATE posts SET slug = ?, title = ?, body = ?, body_markdown = ?, excerpt = ?, post_type = ?,
                               status = ?, author_id = ?, parent_id = ?, template = ?, layout = ?,
@@ -243,13 +249,13 @@ class PostService
             $body,
             $bodyMarkdown !== '' ? $bodyMarkdown : null,
             $data['excerpt'] ?? $page['excerpt'],
-            $data['post_type'] ?? $page['post_type'],
+            $page['post_type'],
             $status,
-            $data['author_id'] ?? $page['author_id'],
+            $page['author_id'],
             $data['parent_id'] ?? $page['parent_id'],
             $data['template'] ?? $page['template'],
             array_key_exists('layout', $data) ? $data['layout'] : ($page['layout'] ?? null),
-            $data['locale'] ?? $page['locale'],
+            $page['locale'],
             $publishedAt,
             $data['scheduled_at'] ?? $page['scheduled_at'],
             $now,

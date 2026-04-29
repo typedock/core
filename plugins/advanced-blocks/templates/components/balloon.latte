@@ -1,0 +1,25 @@
+{*
+    Balloon (speech bubble) block. Useful for tutorial / interview-style
+    content. Theme override: themes/<slug>/components/balloon.latte.
+*}
+{var $side = ($params['side'] ?? 'left') === 'right' ? 'right' : 'left'}
+{var $speaker = (string) ($params['speaker'] ?? '')}
+<div class="td-balloon td-balloon--{$side}">
+    <div class="td-balloon-avatar">
+        {if !empty($params['avatar_url'])}
+            <img src="{$params['avatar_url']}" alt="{$speaker}" loading="lazy">
+        {else}
+            <span class="td-balloon-avatar-fallback" aria-hidden="true">
+                {if $speaker !== ''}{$speaker|substr:0,1}{else}?{/if}
+            </span>
+        {/if}
+        {if $speaker !== ''}
+            <span class="td-balloon-speaker">{$speaker}</span>
+        {/if}
+    </div>
+    <div class="td-balloon-bubble">
+        {if !empty($params['body'])}
+            {$params['body']|breakLines}
+        {/if}
+    </div>
+</div>

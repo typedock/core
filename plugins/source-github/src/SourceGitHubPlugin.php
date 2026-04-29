@@ -1,21 +1,21 @@
 <?php
 declare(strict_types=1);
 
-namespace TypeDock\Plugin\AdvancedBlocks;
+namespace TypeDock\Plugin\SourceGitHub;
 
 use TypeDock\Contract\PluginInterface;
 use TypeDock\Core\PluginContext;
 
-class AdvancedBlocksPlugin implements PluginInterface
+final class SourceGitHubPlugin implements PluginInterface
 {
     public function register(PluginContext $context): void
     {
-        // TODO: Register callout, balloon, table blocks
+        $context->registerExternalSourceAdapter(new GitHubIssuesAdapter());
     }
 
     public function getName(): string
     {
-        return 'AdvancedBlocks';
+        return 'GitHub Issues Source Adapter';
     }
 
     public function getVersion(): string
@@ -25,6 +25,6 @@ class AdvancedBlocksPlugin implements PluginInterface
 
     public function provides(): array
     {
-        return [];
+        return ['external-source-adapter:github_issues'];
     }
 }

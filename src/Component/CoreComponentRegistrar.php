@@ -123,7 +123,8 @@ class CoreComponentRegistrar
                 name: 'Custom HTML',
                 params: [['name' => 'html', 'label' => 'HTML', 'type' => 'textarea', 'default' => '', 'hint' => 'Rendered as-is. Do not paste untrusted markup.']],
                 template: 'themes/default/components/custom-html.latte',
-                dataProvider: null
+                dataProvider: null,
+                requiresCapability: 'content:unfiltered_html'
             ),
             new ComponentDefinition(
                 type: 'link_list',

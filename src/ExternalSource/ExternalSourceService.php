@@ -10,13 +10,15 @@ use TypeDock\Exception\ValidationException;
 
 final class ExternalSourceService
 {
-    /** @var array<string, ExternalSourceAdapterInterface>|null */
-    private ?array $adapters = null;
+    private readonly ExternalSourceAdapterRegistry $adapterRegistry;
 
     public function __construct(
         private readonly \PDO $pdo,
         private readonly SourceCredentialCipher $cipher = new SourceCredentialCipher(),
-    ) {}
+        ?ExternalSourceAdapterRegistry $adapterRegistry = null,
+    ) {
+        $this->adapterRegistry = $adapterRegistry ?? ExternalSourceAdapterRegistry::withBuiltIns();
+    }
 
     /**
      * @return array<int, array<string, mixed>>
@@ -65,7 +67,7 @@ final class ExternalSourceService
     {
         return array_values(array_map(
             fn (ExternalSourceAdapterInterface $adapter): array => $adapter->metadata()->toArray(),
-            $this->adapters()
+            $this->adapterRegistry->all()
         ));
     }
 
@@ -387,24 +389,9 @@ final class ExternalSourceService
         return storage_path('cache/external-sources/' . preg_replace('/[^A-Za-z0-9_-]/', '-', $id));
     }
 
-    /**
-     * @return array<string, ExternalSourceAdapterInterface>
-     */
-    private function adapters(): array
-    {
-        if ($this->adapters === null) {
-            $this->adapters = [
-                'contentful' => new ContentfulAdapter(),
-                'github_issues' => new GitHubIssuesAdapter(),
-                'wordpress_rest' => new WordPressRestAdapter(),
-            ];
-        }
-        return $this->adapters;
-    }
-
     private function adapterByProvider(string $provider): ExternalSourceAdapterInterface
     {
-        return $this->adapters()[$provider] ?? $this->adapters()['contentful'];
+        return $this->adapterRegistry->get($provider) ?? $this->adapterRegistry->first();
     }
 
     /**
@@ -413,11 +400,7 @@ final class ExternalSourceService
     private function adapter(array $source): ExternalSourceAdapterInterface
     {
         $provider = (string) ($source['provider'] ?? 'contentful');
-        $adapter = $this->adapters()[$provider] ?? null;
-        if ($adapter === null) {
-            throw new \RuntimeException('Unsupported External Source provider: ' . $provider);
-        }
-        return $adapter;
+        return $this->adapterRegistry->require($provider);
     }
 
     /**
@@ -439,28 +422,30 @@ final class ExternalSourceService
     {
         $message = 'Could not connect to the external source. Check the connection settings.';
 
-        if ($e instanceof ContentfulRequestException) {
-            $message = match ($e->statusCode()) {
+        if (str_ends_with($e::class, '\\ContentfulRequestException')) {
+            $statusCode = $this->httpStatusFromException($e);
+            $message = match ($statusCode) {
                 401, 403 => 'Contentful rejected the token. Use a Content Delivery API token for this Space.',
                 404 => 'Contentful could not find the Space, Environment, or Content type. Check the API identifiers, not display names.',
                 429 => 'Contentful rate limited this request. Wait a moment and try again.',
-                default => 'Contentful returned HTTP ' . $e->statusCode() . '. Check the connection settings.',
+                default => 'Contentful returned HTTP ' . $statusCode . '. Check the connection settings.',
             };
-            $details = $e->contentfulMessage();
+            $details = method_exists($e, 'contentfulMessage') ? (string) $e->contentfulMessage() : '';
             if ($details !== '') {
                 $message .= ' ' . $details;
             }
         } elseif (str_contains($e->getMessage(), 'delivery token is missing')) {
             $message = 'Contentful delivery token is required.';
-        } elseif ($e instanceof GitHubRequestException) {
-            $message = match ($e->statusCode()) {
+        } elseif (str_ends_with($e::class, '\\GitHubRequestException')) {
+            $statusCode = $this->httpStatusFromException($e);
+            $message = match ($statusCode) {
                 401, 403 => 'GitHub rejected the request. Check the token, repository permissions, or API rate limit.',
                 404 => 'GitHub could not find the repository. Check owner, repository name, and private repository access.',
                 422 => 'GitHub rejected the query parameters. Check state and labels.',
                 429 => 'GitHub rate limited this request. Wait a moment and try again.',
-                default => 'GitHub returned HTTP ' . $e->statusCode() . '. Check the connection settings.',
+                default => 'GitHub returned HTTP ' . $statusCode . '. Check the connection settings.',
             };
-            $details = $e->githubMessage();
+            $details = method_exists($e, 'githubMessage') ? (string) $e->githubMessage() : '';
             if ($details !== '') {
                 $message .= ' ' . $details;
             }
@@ -480,6 +465,21 @@ final class ExternalSourceService
             if ($details !== '') {
                 $message .= ' ' . $details;
             }
+        } elseif (str_contains($e->getMessage(), 'Generic JSON Bearer auth requires')) {
+            $message = 'Generic JSON Bearer auth requires an API token.';
+        } elseif (str_contains($e->getMessage(), 'Generic JSON Basic auth requires')) {
+            $message = 'Generic JSON Basic auth requires both a username and an API token.';
+        } elseif ($e instanceof GenericJsonRequestException) {
+            $message = match ($e->statusCode()) {
+                401, 403 => 'Generic JSON endpoint rejected the request. Check the token and endpoint permissions.',
+                404 => 'Generic JSON endpoint was not found. Check the list or detail endpoint URL.',
+                429 => 'Generic JSON endpoint rate limited this request. Wait a moment and try again.',
+                default => 'Generic JSON endpoint returned HTTP ' . $e->statusCode() . '. Check the connection settings.',
+            };
+            $details = $e->jsonMessage();
+            if ($details !== '') {
+                $message .= ' ' . $details;
+            }
         }
 
         return new ValidationException(
@@ -490,6 +490,11 @@ final class ExternalSourceService
         );
     }
 
+    private function httpStatusFromException(\Throwable $e): int
+    {
+        return method_exists($e, 'statusCode') ? (int) $e->statusCode() : (int) $e->getCode();
+    }
+
     /**
      * @param array<string, mixed> $source
      * @param array<string, mixed> $credentials
@@ -497,24 +502,34 @@ final class ExternalSourceService
     private function validateProviderCredentialFields(array $source, array $credentials): void
     {
         $provider = (string) ($source['provider'] ?? '');
-        if ($provider !== 'wordpress_rest') {
-            return;
-        }
-
         $config = is_array($source['config'] ?? null) ? $source['config'] : [];
-        $authMode = (string) ($config['wp_auth_mode'] ?? 'none');
         $token = preg_replace('/\s+/', '', (string) ($credentials['delivery_token'] ?? '')) ?? '';
         $errors = [];
 
-        if ($authMode === 'basic') {
-            if (trim((string) ($config['wp_username'] ?? '')) === '') {
-                $errors['wp_username'][] = 'Username is required for WordPress Basic auth.';
+        if ($provider === 'wordpress_rest') {
+            $authMode = (string) ($config['wp_auth_mode'] ?? 'none');
+            if ($authMode === 'basic') {
+                if (trim((string) ($config['wp_username'] ?? '')) === '') {
+                    $errors['wp_username'][] = 'Username is required for WordPress Basic auth.';
+                }
+                if ($token === '') {
+                    $errors['delivery_token'][] = 'Application password is required for WordPress Basic auth.';
+                }
+            } elseif ($authMode === 'bearer' && $token === '') {
+                $errors['delivery_token'][] = 'Bearer token is required for WordPress Bearer auth.';
             }
-            if ($token === '') {
-                $errors['delivery_token'][] = 'Application password is required for WordPress Basic auth.';
+        } elseif ($provider === 'generic_json') {
+            $authMode = (string) ($config['json_auth_mode'] ?? 'none');
+            if ($authMode === 'basic') {
+                if (trim((string) ($config['json_basic_username'] ?? '')) === '') {
+                    $errors['json_basic_username'][] = 'Username is required for Generic JSON Basic auth.';
+                }
+                if ($token === '') {
+                    $errors['delivery_token'][] = 'API token is required for Generic JSON Basic auth.';
+                }
+            } elseif ($authMode === 'bearer' && $token === '') {
+                $errors['delivery_token'][] = 'API token is required for Generic JSON Bearer auth.';
             }
-        } elseif ($authMode === 'bearer' && $token === '') {
-            $errors['delivery_token'][] = 'Bearer token is required for WordPress Bearer auth.';
         }
 
         if ($errors !== []) {
@@ -800,7 +815,7 @@ final class ExternalSourceService
             'category' => $this->stringValue($this->mapped($item, $mapping['category'] ?? 'category')),
             'tags' => $tags,
             'content' => $content,
-            'contentHtml' => (new ContentfulRichTextRenderer())->render($content),
+            'contentHtml' => (new StructuredRichTextRenderer())->render($content),
             'fields' => $fields,
             'sys' => $sys,
             'raw' => $item,

@@ -4,7 +4,10 @@ declare(strict_types=1);
 namespace TypeDock\Tests\Unit\ExternalSource;
 
 use PHPUnit\Framework\TestCase;
-use TypeDock\ExternalSource\GitHubIssuesAdapter;
+use TypeDock\Plugin\SourceGitHub\GitHubIssuesAdapter;
+
+require_once TYPEDOCK_ROOT . '/plugins/source-github/src/GitHubRequestException.php';
+require_once TYPEDOCK_ROOT . '/plugins/source-github/src/GitHubIssuesAdapter.php';
 
 final class GitHubIssuesAdapterTest extends TestCase
 {

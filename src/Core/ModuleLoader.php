@@ -12,17 +12,13 @@ class ModuleLoader
 
     public function load(): void
     {
-        // Mail, Multilang → Core; Redirect → Plugin; Antispam → Form Plugin.
-        // Collection and Backup remain modules until their own migrations
-        // to Core / Plugin land.
+        // Mail, Multilang → Core; Redirect, Backup → Plugin; Antispam → Form
+        // Plugin. Collection is the last remaining module until its redesign
+        // around external data/feed imports lands.
         $modules = [
             'Collection' => [
                 'class' => \TypeDock\Module\Collection\CollectionModule::class,
                 'env'   => 'MODULE_COLLECTION',
-            ],
-            'Backup' => [
-                'class' => \TypeDock\Module\Backup\BackupModule::class,
-                'env'   => 'MODULE_BACKUP',
             ],
         ];
 

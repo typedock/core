@@ -1,0 +1,38 @@
+{*
+    CTA button block. Theme override: themes/<slug>/components/cta-button.latte.
+
+    Markup contract:
+    - `.td-cta` is the wrapper that controls alignment.
+    - `.td-cta-button` is the clickable element; variant + size are emitted as
+      `--{variant}` / `--size-{size}` modifiers so themes can override per
+      design token without re-templating.
+    - When `url` is empty we render a disabled `<span>` so a half-finished
+      block is visually obvious in preview without 404'ing.
+*}
+{var $label   = trim((string) ($params['label']   ?? ''))}
+{var $url     = trim((string) ($params['url']     ?? ''))}
+{var $variant = (string) ($params['variant'] ?? 'primary')}
+{var $size    = (string) ($params['size']    ?? 'medium')}
+{var $align   = (string) ($params['align']   ?? 'center')}
+{var $newTab  = !empty($params['new_tab'])}
+{var $caption = trim((string) ($params['caption'] ?? ''))}
+{var $variant = in_array($variant, ['primary','secondary','outline'], true) ? $variant : 'primary'}
+{var $size    = in_array($size,    ['small','medium','large'],         true) ? $size    : 'medium'}
+{var $align   = in_array($align,   ['left','center','right'],          true) ? $align   : 'center'}
+{var $btnClass = "td-cta-button td-cta-button--{$variant} td-cta-button--size-{$size}"}
+
+<div class="td-cta td-cta--align-{$align}">
+    {if $url !== '' && $label !== ''}
+        <a class="{$btnClass}" href="{$url}"
+           {if $newTab}target="_blank" rel="noopener noreferrer"{/if}>
+            {$label}
+        </a>
+    {else}
+        <span class="{$btnClass} td-cta-button--disabled" aria-disabled="true">
+            {$label !== '' ? $label : 'Set a label and URL'}
+        </span>
+    {/if}
+    {if $caption !== ''}
+        <p class="td-cta-caption">{$caption}</p>
+    {/if}
+</div>

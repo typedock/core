@@ -158,6 +158,8 @@ TypeDock theme repository:
 - [ ] Common plugin component classes your users are likely to enable
       are styled or intentionally left bare, especially `.td-form` and
       `.td-social-*`
+- [ ] Components intended for External Source list views declare
+      `source_list.compatible` and their mappable inputs in `theme.json`
 - [ ] Switching between `font-style--sans` / `--serif` etc. does not
       leave stray `var(--font-serif)` references unset
 - [ ] `screenshot.svg` (or .png/.jpg/.webp) is present under `assets/`

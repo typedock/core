@@ -1,0 +1,72 @@
+{layout $plugin_ui_layout}
+
+{block page_title}Backups{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <h1>Backups</h1>
+        <p class="text-slate-500">
+            Create tar.gz archives that bundle a database dump and the
+            <code>storage/uploads/</code> tree. Use these to migrate the site
+            to another host or to roll back a destructive change.
+        </p>
+    </div>
+</div>
+
+<form method="post" action="{$admin_url()}" class="card">
+    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+    <div class="form-group">
+        <label for="note">Note (optional)</label>
+        <input id="note" type="text" name="note" placeholder="e.g. before plugin upgrade">
+    </div>
+    <button type="submit" class="btn btn-primary">Create backup now</button>
+    <p class="form-hint">
+        Runs in this request — large sites may want a long PHP <code>max_execution_time</code> or to run the CLI equivalent instead.
+    </p>
+</form>
+
+{if empty($backups)}
+    <div class="card">
+        <h2>No backups yet</h2>
+        <p class="text-slate-500">Click <em>Create backup now</em> to make the first one.</p>
+    </div>
+{else}
+<div class="card">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Filename</th>
+                <th>Size</th>
+                <th>Note</th>
+                <th>Created</th>
+                <th class="text-right">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {foreach $backups as $b}
+            <tr>
+                <td><code>{$b['filename']}</code></td>
+                <td>{($b['size_bytes'] ?? 0)|bytes}</td>
+                <td class="text-slate-500">{$b['note'] ?? ''}</td>
+                <td class="text-slate-500">{$b['created_at']}</td>
+                <td class="text-right">
+                    <a href="{$admin_url($b['id'] . '/download')}" class="btn btn-secondary btn-sm">Download</a>
+                    <form method="post" action="{$admin_url($b['id'] . '/restore')}" class="inline">
+                        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                        <button type="submit" class="btn btn-secondary btn-sm"
+                                onclick="return confirm('Restore from this backup? Current data will be replaced.')">Restore</button>
+                    </form>
+                    <form method="post" action="{$admin_url($b['id'] . '/delete')}" class="inline">
+                        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                        <button type="submit" class="btn btn-danger btn-sm"
+                                onclick="return confirm('Delete this backup file?')">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {/foreach}
+        </tbody>
+    </table>
+</div>
+{/if}
+{/block}

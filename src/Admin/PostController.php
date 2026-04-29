@@ -184,13 +184,27 @@ class PostController extends BaseAdminController
 
         $data = json_decode(file_get_contents('php://input') ?: '{}', true) ?? [];
 
+        // Use the registry+filter directly so we can return the removed-block
+        // list in the JSON response instead of pushing a flash message that
+        // would only surface on the next full page render.
+        $registry = \Flight::components();
+        $filter   = new \TypeDock\Content\UnsafeBlockFilter(
+            $registry,
+            fn(string $perm): bool => $this->can($perm),
+        );
+        $body = $filter->filter($data['body'] ?? null);
+
         try {
             $this->service()->update($id, [
                 'title' => $data['title'] ?? null,
-                'body'  => $data['body'] ?? null,
+                'body'  => $body,
             ]);
             header('Content-Type: application/json');
-            echo json_encode(['ok' => true, 'saved_at' => date('H:i:s')]);
+            echo json_encode([
+                'ok'       => true,
+                'saved_at' => date('H:i:s'),
+                'removed_blocks' => $filter->getRemoved(),
+            ]);
         } catch (\Throwable $e) {
             http_response_code(422);
             header('Content-Type: application/json');
@@ -206,7 +220,7 @@ class PostController extends BaseAdminController
         return [
             'title'        => trim($_POST['title'] ?? ''),
             'slug'         => trim($_POST['slug'] ?? ''),
-            'body'         => $_POST['body'] ?? null,
+            'body'         => $this->filterUnsafeBlocks($_POST['body'] ?? null),
             'excerpt'      => trim($_POST['excerpt'] ?? '') ?: null,
             'status'       => $_POST['status'] ?? 'draft',
             'post_type'    => $_POST['post_type'] ?? 'post',

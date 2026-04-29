@@ -254,6 +254,10 @@ class Router
                 $auth->requireAuth('admin');
                 (new SettingsController())->togglePlugin();
             });
+            \Flight::route('POST /settings/modules/plugins/upload', function () use ($auth) {
+                $auth->requireAuth('admin');
+                (new SettingsController())->uploadPlugin();
+            });
             \Flight::route('GET /plugins/@slug/docs', function (string $slug) use ($auth) {
                 $auth->requireAuth('admin');
                 (new SettingsController())->pluginDocs($slug);

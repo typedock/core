@@ -4,9 +4,9 @@ declare(strict_types=1);
 namespace TypeDock\Tests\Unit\ExternalSource;
 
 use PHPUnit\Framework\TestCase;
-use TypeDock\ExternalSource\ContentfulRichTextRenderer;
+use TypeDock\ExternalSource\StructuredRichTextRenderer;
 
-final class ContentfulRichTextRendererTest extends TestCase
+final class StructuredRichTextRendererTest extends TestCase
 {
     public function testRendersBasicRichTextSafely(): void
     {
@@ -29,7 +29,7 @@ final class ContentfulRichTextRendererTest extends TestCase
             ],
         ];
 
-        $html = (new ContentfulRichTextRenderer())->render($doc);
+        $html = (new StructuredRichTextRenderer())->render($doc);
 
         $this->assertSame('<h2>Intro</h2><p>Hello <strong>&lt;world&gt;</strong></p>', $html);
     }
@@ -51,7 +51,7 @@ final class ContentfulRichTextRendererTest extends TestCase
             ],
         ];
 
-        $html = (new ContentfulRichTextRenderer())->render($doc);
+        $html = (new StructuredRichTextRenderer())->render($doc);
 
         $this->assertSame('<figure><img src="https://images.ctfassets.net/example.png" alt="Hero" loading="lazy"></figure>', $html);
     }

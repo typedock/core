@@ -36,6 +36,39 @@ abstract class BaseAdminController
     }
 
     /**
+     * Strip component blocks from a Tiptap body that the current user is not
+     * authorised to insert (e.g. `custom_html` for non-editor roles). Sets a
+     * flash warning when something was removed so the saver isn't silently
+     * surprised. Returns the filtered body in the same shape it came in.
+     */
+    protected function filterUnsafeBlocks(string|array|null $body): string|array|null
+    {
+        try {
+            $registry = \Flight::components();
+        } catch (\Throwable) {
+            return $body;
+        }
+        $filter = new \TypeDock\Content\UnsafeBlockFilter(
+            $registry,
+            fn(string $perm): bool => $this->can($perm),
+        );
+        $out = $filter->filter($body);
+        $removed = $filter->getRemoved();
+        if ($removed !== []) {
+            if (session_status() === PHP_SESSION_NONE) {
+                session_start();
+            }
+            $_SESSION['flash_error'] = sprintf(
+                'Removed %d block(s) you are not allowed to publish: %s. '
+                . 'Ask an editor to add raw HTML on your behalf.',
+                count($removed),
+                implode(', ', $removed),
+            );
+        }
+        return $out;
+    }
+
+    /**
      * Authorize access to an owned row. Grants when the caller is the owner
      * and has $ownPermission, or has $anyPermission regardless of ownership.
      * Throws ForbiddenException otherwise.
@@ -191,6 +224,13 @@ abstract class BaseAdminController
             $defs     = [];
             foreach ($registry->list() as $type => $def) {
                 if (!empty($def->placeable) && !in_array('block', $def->placeable, true)) {
+                    continue;
+                }
+                // Hide capability-gated components (e.g. custom_html) from the
+                // slash menu when the caller can't use them. This is a UX
+                // courtesy — the server-side UnsafeBlockFilter is what actually
+                // enforces the rule on save.
+                if ($def->requiresCapability !== null && !$this->can($def->requiresCapability)) {
                     continue;
                 }
                 $def = $optionsResolver->enrich($def);

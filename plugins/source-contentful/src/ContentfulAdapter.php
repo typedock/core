@@ -1,7 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace TypeDock\ExternalSource;
+namespace TypeDock\Plugin\SourceContentful;
+
+use TypeDock\ExternalSource\ExternalSourceAdapterInterface;
+use TypeDock\ExternalSource\ExternalSourceAdapterMetadata;
 
 final class ContentfulAdapter implements ExternalSourceAdapterInterface
 {

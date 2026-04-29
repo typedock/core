@@ -1,7 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace TypeDock\ExternalSource;
+namespace TypeDock\Plugin\SourceGitHub;
+
+use TypeDock\ExternalSource\ExternalSourceAdapterInterface;
+use TypeDock\ExternalSource\ExternalSourceAdapterMetadata;
 
 final class GitHubIssuesAdapter implements ExternalSourceAdapterInterface
 {

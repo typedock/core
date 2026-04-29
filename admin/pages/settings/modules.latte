@@ -20,25 +20,50 @@
 {if isset($flash_success) && $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
 {if isset($flash_error) && $flash_error}<div class="alert alert-danger">{$flash_error}</div>{/if}
 
-{if !empty($plugin_issues)}
-<div class="card">
-    <div class="card-header"><h2>Plugin load diagnostics</h2></div>
-    <table class="data-table border-0 rounded-none shadow-none">
-        <thead><tr><th>Plugin</th><th>Level</th><th>Message</th></tr></thead>
-        <tbody>
-            {foreach $plugin_issues as $issue}
-                <tr>
-                    <td class="font-medium">{$issue['slug']}</td>
-                    <td><span class="badge {$issue['level'] === 'error' ? 'badge-danger' : 'badge-warning'}">{$issue['level']}</span></td>
-                    <td>{$issue['message']}</td>
-                </tr>
-            {/foreach}
-        </tbody>
-    </table>
-</div>
-{/if}
+<div class="space-y-6">
+    <div class="card">
+        <div class="card-header"><h2>Install plugin from zip</h2></div>
+        <div class="card-body">
+            <p class="form-hint" style="margin-top:0">
+                Drop a zip exported from another TypeDock site or a plugin repo. The archive must contain a <code>plugin.json</code> at its root (or inside a single wrapper folder, like the <em>Download ZIP</em> button on GitHub produces).
+            </p>
+            <form method="post" action="/admin/settings/modules/plugins/upload" enctype="multipart/form-data">
+                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                <div class="form-group">
+                    <label for="plugin_zip">Plugin archive (.zip)</label>
+                    <input type="file" id="plugin_zip" name="plugin_zip" accept=".zip,application/zip" required>
+                    <small class="form-hint">Plugins land disabled — flip the toggle below after install to activate.</small>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="overwrite" value="1">
+                        Overwrite if a plugin with the same slug already exists
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-primary">Install</button>
+            </form>
+        </div>
+    </div>
 
-<div class="grid gap-6 lg:grid-cols-2">
+    {if !empty($plugin_issues)}
+    <div class="card">
+        <div class="card-header"><h2>Plugin load diagnostics</h2></div>
+        <table class="data-table border-0 rounded-none shadow-none">
+            <thead><tr><th>Plugin</th><th>Level</th><th>Message</th></tr></thead>
+            <tbody>
+                {foreach $plugin_issues as $issue}
+                    <tr>
+                        <td class="font-medium">{$issue['slug']}</td>
+                        <td><span class="badge {$issue['level'] === 'error' ? 'badge-danger' : 'badge-warning'}">{$issue['level']}</span></td>
+                        <td>{$issue['message']}</td>
+                    </tr>
+                {/foreach}
+            </tbody>
+        </table>
+    </div>
+    {/if}
+
+    {if !empty($modules)}
     <div class="card">
         <div class="card-header">
             <h2>Modules</h2>
@@ -56,6 +81,7 @@
             </tbody>
         </table>
     </div>
+    {/if}
 
     <div class="card">
         <div class="card-header">

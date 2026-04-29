@@ -1,0 +1,41 @@
+{layout 'base.latte'}
+
+{block title}{$source->name} - {$site->name}{/block}
+{block description}{$source->name}{/block}
+
+{block content}
+<div class="container">
+    <div class="content-area">
+        {include '../partials/breadcrumb.latte'}
+        <h1 class="archive-title">{$source->name}</h1>
+
+        {if $source_stale ?? false}
+            <p class="td-source-notice">Showing cached content because the upstream source is temporarily unavailable.</p>
+        {/if}
+
+        {if empty($items)}
+            <p class="no-posts">No items found.</p>
+        {else}
+            <div class="post-list">
+                {foreach $items as $item}
+                <article class="post-card">
+                    {if $item->thumbnail}
+                        <a class="post-card-thumb" href="{$item->url}" aria-label="Read {$item->title}">
+                            <img src="{$item->thumbnail}" alt="{$item->thumbnailAlt}" loading="lazy">
+                        </a>
+                    {/if}
+                    <h2 class="post-card-title"><a href="{$item->url}">{$item->title}</a></h2>
+                    {if $item->excerpt}<p class="post-card-excerpt">{$item->excerpt}</p>{/if}
+                    {if $item->publishedAt}<time class="post-card-date" datetime="{$item->publishedAt}">{$item->publishedAt|date:'F j, Y'}</time>{/if}
+                </article>
+                {/foreach}
+            </div>
+            {include '../partials/pagination.latte'}
+        {/if}
+    </div>
+
+    <aside class="sidebar">
+        {=slot('sidebar')|noescape}
+    </aside>
+</div>
+{/block}

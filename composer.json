@@ -5,6 +5,7 @@
     "license": "MIT",
     "require": {
         "php": ">=8.2",
+        "ext-zip": "*",
         "flightphp/core": "^3.17",
         "flightphp/active-record": "^0.7",
         "latte/latte": "^3.1",

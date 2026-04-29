@@ -45,6 +45,12 @@ class PermissionChecker
         // Slots
         'slots:manage'      => ['admin', 'editor'],
 
+        // Content capabilities. `content:unfiltered_html` gates components
+        // that emit caller-supplied raw HTML (e.g. the Custom HTML block).
+        // Authors and contributors must not be able to introduce <script>
+        // through the body editor — only trusted roles get this.
+        'content:unfiltered_html' => ['admin', 'editor'],
+
         // External Sources
         'external_sources:manage' => ['admin'],
 

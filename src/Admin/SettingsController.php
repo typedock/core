@@ -229,6 +229,40 @@ class SettingsController extends BaseAdminController
     }
 
     /**
+     * Install a plugin from an uploaded zip. The installer validates the
+     * manifest (slug regex, main_class), rejects path traversal and any
+     * PHP placed under `public/`, and overwrites only when the admin opts
+     * in. Plugins are NEVER auto-enabled — admin still has to flip the
+     * toggle on /admin/settings/modules.
+     */
+    public function uploadPlugin(): void
+    {
+        $file = $_FILES['plugin_zip'] ?? null;
+        if (!is_array($file) || ($file['error'] ?? \UPLOAD_ERR_NO_FILE) !== \UPLOAD_ERR_OK) {
+            $this->redirect('/admin/settings/modules', 'No file uploaded or upload failed.', 'error');
+            return;
+        }
+        if (!is_uploaded_file((string) $file['tmp_name'])) {
+            $this->redirect('/admin/settings/modules', 'Invalid upload.', 'error');
+            return;
+        }
+
+        $installer = new \TypeDock\Core\PluginInstaller(TYPEDOCK_ROOT . '/plugins');
+        try {
+            $result = $installer->install(
+                (string) $file['tmp_name'],
+                overwrite: !empty($_POST['overwrite']),
+            );
+            $message = $result['replaced']
+                ? "Plugin '{$result['slug']}' was replaced. Enable it from the list below."
+                : "Plugin '{$result['slug']}' was installed. Enable it from the list below.";
+            $this->redirect('/admin/settings/modules', $message);
+        } catch (\Throwable $e) {
+            $this->redirect('/admin/settings/modules', 'Install failed: ' . $e->getMessage(), 'error');
+        }
+    }
+
+    /**
      * Toggle a plugin's enabled flag in site_options. DB state overrides the
      * env fallback in PluginLoader.
      */
@@ -273,26 +307,6 @@ class SettingsController extends BaseAdminController
     {
         $rows = [];
 
-        // Legacy built-in plugins (hardcoded in PluginLoader::$builtInPlugins).
-        $builtIns = [
-            'advancedblocks' => [
-                'class' => \TypeDock\Plugin\AdvancedBlocks\AdvancedBlocksPlugin::class,
-                'env'   => 'PLUGIN_ADVANCED_BLOCKS',
-            ],
-        ];
-        foreach ($builtIns as $slug => $plugin) {
-            $class = $plugin['class'];
-            $rows[$slug] = [
-                'slug'         => $slug,
-                'name'         => class_exists($class) ? (new $class())->getName() : $slug,
-                'version'      => class_exists($class) ? (new $class())->getVersion() : '—',
-                'source'       => 'built-in',
-                'enabled'      => $this->resolveEnabled($slug, $plugin['env']),
-                'state_source' => $this->stateSource($slug),
-                'docs_url'     => null,
-            ];
-        }
-
         // Drop-in plugins under plugins/<slug>/.
         foreach (glob(TYPEDOCK_ROOT . '/plugins/*/plugin.json') ?: [] as $manifestPath) {
             $slug     = basename(dirname($manifestPath));
@@ -305,7 +319,7 @@ class SettingsController extends BaseAdminController
                 'name'         => (string) ($manifest['name'] ?? ucfirst($slug)),
                 'version'      => (string) ($manifest['version'] ?? '—'),
                 'source'       => 'drop-in',
-                'enabled'      => $this->resolveEnabled($slug),
+                'enabled'      => $this->resolveEnabled($slug, defaultEnabled: (bool) ($manifest['default_enabled'] ?? false)),
                 'state_source' => $this->stateSource($slug),
                 'docs_url'     => $this->pluginReadmePath($manifest, dirname($manifestPath)) !== null
                     ? '/admin/plugins/' . rawurlencode($slug) . '/docs'
@@ -318,26 +332,26 @@ class SettingsController extends BaseAdminController
     }
 
     /**
-     * Modules are being retired. Hide Collection from admin while it remains
-     * parked in code for future re-design around external data/feed imports.
+     * Modules are being retired. Backup moved to the drop-in `backup` plugin;
+     * Collection remains parked in code for a future redesign around external
+     * data/feed imports. Returning an empty list keeps the admin "Modules"
+     * panel out of the way until something needs to land back here.
      *
      * @return array<string, bool>
      */
     private function visibleModules(): array
     {
-        return [
-            'Backup' => (bool) env('MODULE_BACKUP', false),
-        ];
+        return [];
     }
 
-    private function resolveEnabled(string $slug, ?string $envKey = null): bool
+    private function resolveEnabled(string $slug, ?string $envKey = null, bool $defaultEnabled = false): bool
     {
         $db = $this->readDbPluginFlag($slug);
         if ($db !== null) {
             return $db;
         }
         $envKey ??= $this->envKeyForSlug($slug);
-        return (bool) env($envKey, false);
+        return (bool) env($envKey, $defaultEnabled);
     }
 
     private function stateSource(string $slug): string

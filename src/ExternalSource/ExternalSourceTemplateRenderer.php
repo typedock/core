@@ -57,7 +57,7 @@ final class ExternalSourceTemplateRenderer
             'number' => is_numeric($value) ? number_format((float) $value) : '',
             'url' => $this->url($value),
             'image' => $this->image($value),
-            'richText' => (new ContentfulRichTextRenderer())->render($value),
+            'richText' => (new StructuredRichTextRenderer())->render($value),
             'markdown' => $this->markdown($value),
             'join' => $this->escape(implode($arg ?? ', ', $this->listValue($value))),
             default => $this->escape($this->stringValue($value)),

@@ -1,0 +1,15 @@
+{
+    "slug": "backup",
+    "name": "Backup",
+    "version": "1.0.0",
+    "description": "Create, download, and restore tar.gz backups containing the database dump and uploads/.",
+    "readme": "README.md",
+    "main_class": "TypeDock\\Plugin\\Backup\\BackupPlugin",
+    "min_core_version": "0.1",
+    "provides": [],
+    "autoload": {
+        "psr-4": {
+            "TypeDock\\Plugin\\Backup\\": "src/"
+        }
+    }
+}

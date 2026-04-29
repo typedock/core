@@ -121,7 +121,7 @@ class PageController extends BaseAdminController
         return [
             'title'        => trim($_POST['title'] ?? ''),
             'slug'         => trim($_POST['slug'] ?? ''),
-            'body'         => $_POST['body'] ?? null,
+            'body'         => $this->filterUnsafeBlocks($_POST['body'] ?? null),
             'excerpt'      => trim($_POST['excerpt'] ?? '') ?: null,
             'status'       => $_POST['status'] ?? 'draft',
             'published_at' => !empty($_POST['published_at']) ? $_POST['published_at'] : null,

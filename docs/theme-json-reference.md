@@ -248,8 +248,9 @@ template's `$fetch` global without writing PHP.
 ```
 
 Available `source` values: `posts`, `related_posts`, `categories`,
-`tags`, `menu`, `site_options`. The shape returned by each becomes the
-value of `$fetch->{key}` in the template — see
+`tags`, `menu`, `site_options`. External Sources created in the admin
+may also be exposed as `source` values by their slug. The shape returned
+by each becomes the value of `$fetch->{key}` in the template — see
 [theme-template-reference.md](theme-template-reference.md) §1.1.
 
 `params` may interpolate `{{context.category}}` / `{{context.tag}}` /
@@ -257,7 +258,49 @@ value of `$fetch->{key}` in the template — see
 
 ---
 
-## 6. Context-type awareness
+## 6. Source-compatible list components
+
+External Sources can render archive/list pages by mapping API fields to
+a theme component. To make a component available in the Source list view
+picker, declare `source_list.compatible: true` and the inputs the Source
+mapping form can fill.
+
+```json
+{
+  "components": {
+    "job-card": {
+      "label": "Job Card",
+      "template": "components/job-card.latte",
+      "source_list": {
+        "compatible": true,
+        "inputs": {
+          "title":         { "type": "text",  "required": true },
+          "url":           { "type": "url",   "required": true },
+          "excerpt":       { "type": "text",  "required": false },
+          "thumbnail":     { "type": "image", "required": false },
+          "thumbnail_alt": { "type": "text",  "required": false },
+          "date":          { "type": "date",  "required": false },
+          "category":      { "type": "text",  "required": false },
+          "tags":          { "type": "list",  "required": false, "item_type": "text" }
+        }
+      }
+    }
+  }
+}
+```
+
+Source-compatible components should stay bare: emit semantic markup and
+stable classes, but leave card borders, spacing, background, and
+placement-specific chrome to the theme CSS. `title` and `url` should be
+required for most list cards; everything else should degrade cleanly
+when omitted.
+
+Supported input types for Source mapping are `text`, `date`, `number`,
+`url`, `image`, and `list`.
+
+---
+
+## 7. Context-type awareness
 
 Slots can declare the page contexts they render on, via the `context`
 array. Components can declare the contexts they **support**, via their

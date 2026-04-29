@@ -1,0 +1,39 @@
+{layout 'base.latte'}
+
+{block title}{$page->title} - {$site->name}{/block}
+{block description}{$page->excerpt ?? ''}{/block}
+
+{block content}
+<div class="container">
+    <div class="content-area">
+        {include '../partials/breadcrumb.latte'}
+        <article class="post">
+            <header class="post-header">
+                <p class="post-kicker"><a href="/{$source->slug}">{$source->name}</a></p>
+                <h1 class="post-title">{$page->title}</h1>
+                {if $page->publishedAt}
+                    <div class="post-meta">
+                        <time datetime="{$page->publishedAt}">{$page->publishedAt|date:'F j, Y'}</time>
+                    </div>
+                {/if}
+            </header>
+
+            {if $page->thumbnail}
+                <img class="post-featured-image" src="{$page->thumbnail}" alt="{$page->thumbnailAlt}" loading="lazy">
+            {/if}
+
+            <div class="post-body">
+                {$page->renderedBody|noescape}
+            </div>
+
+            <footer class="post-footer">
+                {=slot('after_content')|noescape}
+            </footer>
+        </article>
+    </div>
+
+    <aside class="sidebar">
+        {=slot('sidebar')|noescape}
+    </aside>
+</div>
+{/block}

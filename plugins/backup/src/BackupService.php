@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace TypeDock\Module\Backup;
+namespace TypeDock\Plugin\Backup;
 
 use Ramsey\Uuid\Uuid;
 
@@ -114,6 +114,11 @@ class BackupService
         $this->rmdirRecursive($tmp);
     }
 
+    public function backupDir(): string
+    {
+        return $this->backupDir;
+    }
+
     /** @return array<array<string, mixed>> */
     public function listBackups(): array
     {
@@ -122,6 +127,35 @@ class BackupService
             return $stmt ? $stmt->fetchAll() : [];
         } catch (\Throwable) {
             return [];
+        }
+    }
+
+    /** @return array<string, mixed>|null */
+    public function findById(string $id): ?array
+    {
+        try {
+            $stmt = $this->pdo->prepare('SELECT * FROM backups WHERE id = ? LIMIT 1');
+            $stmt->execute([$id]);
+            $row = $stmt->fetch();
+            return $row !== false ? $row : null;
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    public function deleteById(string $id): void
+    {
+        $row = $this->findById($id);
+        if ($row !== null) {
+            $path = $this->backupDir . '/' . basename((string) $row['filename']);
+            if (is_file($path)) {
+                @unlink($path);
+            }
+        }
+        try {
+            $this->pdo->prepare('DELETE FROM backups WHERE id = ?')->execute([$id]);
+        } catch (\Throwable) {
+            // ignore
         }
     }
 

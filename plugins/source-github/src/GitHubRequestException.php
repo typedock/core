@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace TypeDock\ExternalSource;
+namespace TypeDock\Plugin\SourceGitHub;
 
 final class GitHubRequestException extends \RuntimeException
 {

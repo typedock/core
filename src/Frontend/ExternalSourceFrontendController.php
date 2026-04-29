@@ -153,7 +153,6 @@ final class ExternalSourceFrontendController
             {
                 return match ($name) {
                     'Collection' => (bool) env('MODULE_COLLECTION', false),
-                    'Backup' => (bool) env('MODULE_BACKUP', false),
                     default => false,
                 };
             }

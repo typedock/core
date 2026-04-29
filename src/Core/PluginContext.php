@@ -9,6 +9,7 @@ use TypeDock\Contract\MailerInterface;
 use TypeDock\Contract\MediaProcessor;
 use TypeDock\Contract\RedirectResolver;
 use TypeDock\Contract\StorageDriver;
+use TypeDock\ExternalSource\ExternalSourceAdapterInterface;
 use TypeDock\Middleware\AuthMiddleware;
 use TypeDock\Middleware\CsrfMiddleware;
 use TypeDock\Plugin\Util\FileCache;
@@ -146,6 +147,11 @@ class PluginContext
     public function provideSingle(string $type, object $instance): void
     {
         \Flight::provider_registry()->provide($type, $instance, $this->pluginSlug);
+    }
+
+    public function registerExternalSourceAdapter(ExternalSourceAdapterInterface $adapter): void
+    {
+        \Flight::external_source_adapters()->register($adapter);
     }
 
     public function onMediaUpload(callable|MediaProcessor $handler): void

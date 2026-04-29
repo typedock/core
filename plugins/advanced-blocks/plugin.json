@@ -1,0 +1,15 @@
+{
+    "slug": "advanced-blocks",
+    "name": "Advanced Blocks",
+    "version": "1.0.0",
+    "description": "Extra editor blocks beyond the core set: callout, balloon (speech bubble). Inserted via the editor's slash menu / Component Block.",
+    "readme": "README.md",
+    "main_class": "TypeDock\\Plugin\\AdvancedBlocks\\AdvancedBlocksPlugin",
+    "min_core_version": "0.1",
+    "provides": [],
+    "autoload": {
+        "psr-4": {
+            "TypeDock\\Plugin\\AdvancedBlocks\\": "src/"
+        }
+    }
+}

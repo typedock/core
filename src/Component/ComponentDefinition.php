@@ -45,6 +45,14 @@ class ComponentDefinition
          * Absolute path to the template for custom components, already
          * resolved against the active theme's directory.
          */
-        public readonly string $absoluteTemplatePath = ''
+        public readonly string $absoluteTemplatePath = '',
+        /**
+         * Permission key required to insert this component into a body
+         * editor or slot config. Components that emit caller-supplied raw
+         * HTML (e.g. `custom_html`) set this to `content:unfiltered_html`
+         * so contributor/author roles cannot smuggle <script> through the
+         * editor. Null means anyone with edit access may use it.
+         */
+        public readonly ?string $requiresCapability = null
     ) {}
 }
