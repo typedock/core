@@ -18,7 +18,7 @@ parameters:
         - cli
     excludePaths:
         analyse:
-            - storage
-            - vendor
-            - public
-            - node_modules
+            - storage (?)
+            - vendor (?)
+            - public (?)
+            - node_modules (?)
