@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "65fdac9a8789c5deff03c3b84db08713",
+    "content-hash": "d273a2a9e9a01b2e3d60b8d51ea45f8b",
     "packages": [
         {
             "name": "brick/math",
@@ -208,16 +208,16 @@
         },
         {
             "name": "flightphp/core",
-            "version": "v3.18.0",
+            "version": "v3.18.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/flightphp/core.git",
-                "reference": "88d7032928c09b98e65ccd87b7f8a341a40cc3d2"
+                "reference": "b8dd23aaa828cb289fa3c84e75b2a3717cab50b0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/flightphp/core/zipball/88d7032928c09b98e65ccd87b7f8a341a40cc3d2",
-                "reference": "88d7032928c09b98e65ccd87b7f8a341a40cc3d2",
+                "url": "https://api.github.com/repos/flightphp/core/zipball/b8dd23aaa828cb289fa3c84e75b2a3717cab50b0",
+                "reference": "b8dd23aaa828cb289fa3c84e75b2a3717cab50b0",
                 "shasum": ""
             },
             "require": {
@@ -229,7 +229,7 @@
             },
             "require-dev": {
                 "ext-pdo_sqlite": "*",
-                "flightphp/container": "^1.0",
+                "flightphp/container": "^1.3",
                 "flightphp/runway": "^1.2",
                 "league/container": "^4.2",
                 "level-2/dice": "^4.0",
@@ -237,7 +237,7 @@
                 "phpstan/phpstan": "^2.1",
                 "phpunit/phpunit": "^9.6",
                 "rregeer/phpunit-coverage-check": "^0.3.1",
-                "squizlabs/php_codesniffer": "^3.11"
+                "squizlabs/php_codesniffer": "^4.0"
             },
             "suggest": {
                 "latte/latte": "Latte template engine",
@@ -277,9 +277,9 @@
             "homepage": "http://flightphp.com",
             "support": {
                 "issues": "https://github.com/flightphp/core/issues",
-                "source": "https://github.com/flightphp/core/tree/v3.18.0"
+                "source": "https://github.com/flightphp/core/tree/v3.18.1"
             },
-            "time": "2026-01-15T01:44:32+00:00"
+            "time": "2026-04-22T13:21:39+00:00"
         },
         {
             "name": "intervention/gif",
@@ -427,16 +427,16 @@
         },
         {
             "name": "latte/latte",
-            "version": "v3.1.3",
+            "version": "v3.1.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/nette/latte.git",
-                "reference": "d9f96802ef103705f8a389cd66cbf830d470b537"
+                "reference": "14dea9fc32c0d1cf5e9a1bd59556ae8be023c2a6"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/nette/latte/zipball/d9f96802ef103705f8a389cd66cbf830d470b537",
-                "reference": "d9f96802ef103705f8a389cd66cbf830d470b537",
+                "url": "https://api.github.com/repos/nette/latte/zipball/14dea9fc32c0d1cf5e9a1bd59556ae8be023c2a6",
+                "reference": "14dea9fc32c0d1cf5e9a1bd59556ae8be023c2a6",
                 "shasum": ""
             },
             "require": {
@@ -512,9 +512,9 @@
             ],
             "support": {
                 "issues": "https://github.com/nette/latte/issues",
-                "source": "https://github.com/nette/latte/tree/v3.1.3"
+                "source": "https://github.com/nette/latte/tree/v3.1.4"
             },
-            "time": "2026-03-22T23:12:17+00:00"
+            "time": "2026-04-23T06:30:25+00:00"
         },
         {
             "name": "league/commonmark",
@@ -3085,12 +3085,13 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {},
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
-        "php": ">=8.2"
+        "php": ">=8.2",
+        "ext-zip": "*"
     },
-    "platform-dev": [],
-    "plugin-api-version": "2.3.0"
+    "platform-dev": {},
+    "plugin-api-version": "2.9.0"
 }
