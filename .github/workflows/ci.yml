@@ -6,6 +6,49 @@ on:
   pull_request:
 
 jobs:
+  dependency-review:
+    name: Dependency review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+          fail-on-scopes: runtime, development, unknown
+          show-patched-versions: true
+
+  security-audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+          tools: composer:v2
+
+      - name: Composer audit
+        run: composer audit --locked --no-interaction
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: npm audit
+        run: npm audit --package-lock-only --audit-level=moderate
+
   test:
     name: PHPUnit (${{ matrix.driver }})
     runs-on: ubuntu-latest
