@@ -51,6 +51,9 @@ composer.phar
 .phpunit.result.cache
 .phpunit.cache/
 
+# Theme preview sandboxes
+/.preview/
+
 CLAUDE.md
 AGENTS.md
 .codex
