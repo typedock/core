@@ -16,7 +16,7 @@ Latte 2's `{literal}…{/literal}` block was removed. The replacement is
 either a syntax switch or escape sequences:
 
 ```latte
-{* Latte 2 (no longer compiles) *}
+{* Breaks in Latte 3: "Unexpected tag {literal}" *}
 {literal}
 function greet(name) { return `Hello ${name}`; }
 {/literal}
@@ -43,6 +43,12 @@ tag and throw a `CompileException`. Mark every `<script>` with the
 template-literal pattern as syntax-off:
 
 ```latte
+{* Breaks: Latte sees ${name} as template syntax *}
+<script>
+const greet = (name) => `Hello, ${name}`;
+</script>
+
+{* Works *}
 <script n:syntax="off">
 const greet = (name) => `Hello, ${name}`;
 </script>
@@ -60,6 +66,10 @@ the bundled themes.
 query-string interpolation:
 
 ```latte
+{* Breaks: Filter 'urlencode' is not defined *}
+<a href="/search?q={$query|urlencode}">Search</a>
+
+{* Works *}
 <a href="https://twitter.com/intent/tweet?url={$shareUrl|escapeUrl}&text={$page->title|escapeUrl}">
     Share
 </a>
@@ -80,6 +90,11 @@ default, which is the entire point of using it.
 ## 4. `{include}` uses named arguments
 
 ```latte
+{* Breaks: `=` / `=>` are not Latte include argument syntax *}
+{include 'partials/post-card.latte', post = $post}
+{include 'partials/post-card.latte', post => $post}
+
+{* Works *}
 {include 'partials/post-card.latte', post: $post, variant: 'archive'}
 ```
 
@@ -96,6 +111,13 @@ fresh `partials/<name>.latte` is the idiomatic pattern.
 Latte exposes `$iterator` inside every `{foreach}` block:
 
 ```latte
+{* Works, but avoid manual counters unless you really need them *}
+{var $i = 0}
+{foreach $posts as $post}
+    {var $i = $i + 1}
+{/foreach}
+
+{* Prefer this *}
 {foreach $posts as $post}
     <article class="post-card {$iterator->isFirst() ? 'is-first' : ''}">
         <span class="card-index">{sprintf('%02d', $iterator->counter)}</span>

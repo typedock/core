@@ -126,6 +126,22 @@ single post, static page, category / tag archives, search, and the
 author archive. If a layout still looks empty after seeding, the issue
 is in the template, not the database.
 
+For a disposable preview loop that does not touch your real
+`config.php` or site database, run:
+
+```bash
+php cli/theme-preview.php my-theme --port 8080
+```
+
+This creates `.preview/my-theme/preview.sqlite`, runs migrations, seeds
+preview content, activates the target theme in that sandbox, publishes
+the theme assets, and starts PHP's built-in server. The command prints
+URLs for home, single, page, archive, category, tag, search, author,
+403, 404, and 500 layouts.
+
+If Playwright is already installed in the project, add `--screenshot`
+to save full-page PNGs under `.preview/my-theme/screenshots/`.
+
 ---
 
 ## 4. A checklist for shipping a new theme
@@ -168,6 +184,27 @@ TypeDock theme repository:
 - [ ] All `<img>` elements pair with `$post->thumbnailAlt` (or a
       hard-coded alt attribute, including empty string for purely
       decorative images)
+
+### 4.1 Core component CSS class table
+
+Core components render bare semantic markup with stable classes. Themes
+own the visual chrome around those classes. The table below is the
+public contract for bundled components most themes target.
+
+| Component | Root class | Stable internal classes | Params that change structure |
+|-----------|------------|-------------------------|------------------------------|
+| `search_form` | `.search-form` | `.sr-only`, `.search-submit` | `placeholder` changes the input placeholder only. |
+| `latest_posts` | `.widget.widget-latest-posts` | `.widget-title`, `.post-list`, `.post-list-item`, `.post-list-item-thumb`, `.post-list-item-body` | `title` renders `<h3 class="widget-title">` when non-empty; blank title removes the heading. `count` changes item count only. Thumbnail markup appears only when the post has `$post->thumbnail`. |
+| `category_list` | `.widget.widget-category-list` | `.widget-title`, `.category-list`, `.count` | `title` renders `<h3 class="widget-title">` when non-empty; blank title removes the heading. `.count` appears only for categories with posts. |
+| `tag_cloud` | `.widget.widget-tag-cloud` | `.widget-title`, `.tag-cloud`, `.tag-cloud-item` | `title` renders `<h3 class="widget-title">` when non-empty; blank title removes the heading. `limit` changes item count only. |
+| `related_posts` | `.related-posts` | `.related-posts-title`, `.widget-title`, `.related-posts-grid`, `.related-post-card`, `.related-post-thumb` | `title` renders `<h3 class="related-posts-title widget-title">` when non-empty; blank title removes the heading. `count` changes item count only. Thumbnail markup appears only when the post has `$post->thumbnail`. Requires post context. |
+| `author_profile` | `.author-profile` | `.author-avatar`, `.author-info`, `.author-name`, `.author-bio`, `.author-links` | No params. Avatar, bio, website, and social links render only when the author profile has those values. Requires post or page context. |
+| `menu` | `.menu-list` | `.menu-item`, `.has-children`, `.sub-menu` | `location` selects the theme-declared menu location. `.has-children` and `.sub-menu` appear only for nested items. Menu item custom classes from admin are appended to `.menu-item`. |
+| `link_list` | `.link-list`, plus `.link-list--horizontal` or `.link-list--vertical` | `.link-list__item` | `links` controls rendered anchors. `layout` changes the root modifier class. Empty links render nothing. |
+
+The complete component design contract, including plugin component
+classes and the bare-component-themed-chrome principle, lives in
+[theme-components.md](theme-components.md).
 
 ---
 

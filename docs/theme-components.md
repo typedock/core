@@ -51,6 +51,19 @@ Other built-ins follow the same pattern:
 Each component carries a stable class on its root element so themes can
 target it. Beyond that, nothing.
 
+Core component class contract:
+
+| Component | Root class | Stable internal classes | Params that change structure |
+|-----------|------------|-------------------------|------------------------------|
+| `search_form` | `.search-form` | `.sr-only`, `.search-submit` | `placeholder` changes text only. |
+| `latest_posts` | `.widget.widget-latest-posts` | `.widget-title`, `.post-list`, `.post-list-item`, `.post-list-item-thumb`, `.post-list-item-body` | `title` adds/removes the heading. `count` changes item count only. |
+| `category_list` | `.widget.widget-category-list` | `.widget-title`, `.category-list`, `.count` | `title` adds/removes the heading. `.count` appears only for non-empty categories. |
+| `tag_cloud` | `.widget.widget-tag-cloud` | `.widget-title`, `.tag-cloud`, `.tag-cloud-item` | `title` adds/removes the heading. `limit` changes item count only. |
+| `related_posts` | `.related-posts` | `.related-posts-title`, `.widget-title`, `.related-posts-grid`, `.related-post-card`, `.related-post-thumb` | `title` adds/removes the heading. `count` changes item count only. Requires post context. |
+| `author_profile` | `.author-profile` | `.author-avatar`, `.author-info`, `.author-name`, `.author-bio`, `.author-links` | No params. Optional author fields add/remove child elements. |
+| `menu` | `.menu-list` | `.menu-item`, `.has-children`, `.sub-menu` | `location` selects the menu. Nested items add `.has-children` and `.sub-menu`. |
+| `link_list` | `.link-list`, `.link-list--horizontal`, `.link-list--vertical` | `.link-list__item` | `links` controls anchors. `layout` changes the root modifier class. |
+
 Plugin components follow the same contract. They may ship admin UI CSS
 for their iframe settings screens, but their **frontend** output should
 stay semantic and minimally styled. The active theme owns the visible

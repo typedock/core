@@ -35,6 +35,21 @@ class Router
 
     private function registerSystemRoutes(): void
     {
+        if (filter_var($_ENV['TYPEDOCK_PREVIEW'] ?? getenv('TYPEDOCK_PREVIEW') ?: 'false', FILTER_VALIDATE_BOOL)) {
+            \Flight::route('GET /__preview/403', function () {
+                http_response_code(403);
+                (new \TypeDock\Frontend\FrontendController())->renderErrorPage('403', 'Preview forbidden page');
+            });
+            \Flight::route('GET /__preview/404', function () {
+                http_response_code(404);
+                (new \TypeDock\Frontend\FrontendController())->renderErrorPage('404', 'Preview not found page');
+            });
+            \Flight::route('GET /__preview/500', function () {
+                http_response_code(500);
+                (new \TypeDock\Frontend\FrontendController())->renderErrorPage('500', 'Preview server error page');
+            });
+        }
+
         // Sitemap
         \Flight::route('GET /sitemap.xml', function () {
             (new \TypeDock\Seo\SitemapController())->index();
