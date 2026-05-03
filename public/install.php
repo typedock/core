@@ -307,32 +307,146 @@ $json = fn($v) => json_encode($v, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | 
 <meta name="robots" content="noindex,nofollow">
 <title>TypeDock Installer</title>
 <style>
-body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; color: #222; }
-h1 { border-bottom: 2px solid #333; padding-bottom: .5rem; }
-.step { color: #888; font-size: .9rem; margin-bottom: 1rem; }
-label { display: block; margin: .75rem 0 .25rem; font-weight: 600; }
-input[type=text], input[type=email], input[type=password], input[type=number], select {
-  width: 100%; padding: .5rem; border: 1px solid #bbb; border-radius: 4px; font-size: 1rem; box-sizing: border-box;
+:root {
+  --accent: #1be0bb;
+  --accent-strong: #11c7a5;
+  --accent-soft: #d8fff7;
+  --ink: #050706;
+  --ink-2: #17201d;
+  --muted: #65736f;
+  --line: #dfe8e4;
+  --paper: #fbfbf7;
+  --paper-2: #f2f6f1;
+  --white: #fff;
 }
-fieldset { border: 1px solid #ddd; border-radius: 6px; padding: .75rem 1rem 1rem; margin: 1rem 0; }
-legend { font-weight: 700; padding: 0 .25rem; }
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  padding: 40px 18px;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(27, 224, 187, 0.1), transparent 28rem),
+    linear-gradient(180deg, var(--paper), #ffffff 34rem);
+  color: var(--ink-2);
+  font-family: "Lexend", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+}
+.installer-shell { width: min(820px, 100%); margin: 0 auto; }
+.installer-card {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 24px 80px rgba(2, 10, 8, 0.12);
+}
+.installer-head {
+  display: grid;
+  gap: 18px;
+  padding: 30px 32px 22px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(135deg, rgba(216, 255, 247, 0.72), rgba(255, 255, 255, 0.88));
+}
+.installer-brand img { width: 176px; height: auto; }
+h1 { margin: 0; color: var(--ink); font-size: clamp(32px, 5vw, 48px); line-height: 1.05; font-weight: 800; letter-spacing: 0; }
+h2 { margin: 0 0 16px; color: var(--ink); font-size: 22px; line-height: 1.2; font-weight: 800; }
+p { margin: 0 0 16px; color: var(--muted); }
+.installer-body { padding: 28px 32px 32px; }
+.step {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(17, 199, 165, 0.28);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  padding: 7px 11px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+label { display: block; margin: .85rem 0 .3rem; color: var(--ink-2); font-weight: 700; }
+input[type=text], input[type=email], input[type=password], input[type=number], select {
+  width: 100%;
+  padding: .65rem .75rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--white);
+  color: var(--ink);
+  font-size: 1rem;
+  box-shadow: 0 1px 2px rgba(2, 10, 8, 0.04);
+}
+input:focus, select:focus {
+  outline: 0;
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 3px rgba(27, 224, 187, 0.2);
+}
+fieldset { border: 1px solid var(--line); border-radius: 8px; padding: .85rem 1rem 1rem; margin: 1rem 0; background: rgba(251, 251, 247, 0.42); }
+legend { color: var(--ink); font-weight: 800; padding: 0 .25rem; }
 [hidden] { display: none !important; }
-button { background: #2b6cb0; color: #fff; border: 0; padding: .6rem 1.2rem; border-radius: 4px; font-size: 1rem; cursor: pointer; }
-button:hover { background: #2c5282; }
-button:disabled { background: #aaa; cursor: not-allowed; }
-.ok { color: #2f855a; }
-.bad { color: #c53030; }
-.warn { color: #b7791f; }
-.errors { background: #fed7d7; border: 1px solid #c53030; padding: .75rem 1rem; border-radius: 4px; margin: 1rem 0; }
-table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
-td, th { padding: .35rem .5rem; border-bottom: 1px solid #eee; text-align: left; }
-code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; }
-.hint { font-size: .85rem; color: #666; margin-top: .25rem; }
+button {
+  min-height: 44px;
+  background: var(--accent);
+  color: var(--ink);
+  border: 0;
+  padding: .68rem 1.15rem;
+  border-radius: 999px;
+  font: inherit;
+  font-size: .95rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+button:hover { background: var(--accent-strong); }
+button:disabled { background: #aab6b1; color: #ffffff; cursor: not-allowed; }
+a { color: var(--accent-strong); font-weight: 700; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.ok { color: #07866e; font-weight: 700; }
+.bad { color: #c53030; font-weight: 700; }
+.warn { color: #b7791f; font-weight: 700; }
+.errors {
+  background: #fff1f1;
+  border: 1px solid #fecaca;
+  color: #7f1d1d;
+  padding: .75rem 1rem;
+  border-radius: 8px;
+  margin: 0 0 1rem;
+}
+table {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 8px;
+  margin: 1rem 0 1.25rem;
+  overflow: hidden;
+  background: var(--white);
+}
+td, th { padding: .55rem .7rem; border-bottom: 1px solid #edf3ef; text-align: left; }
+tr:last-child td, tr:last-child th { border-bottom: 0; }
+th { color: var(--ink); font-weight: 700; background: var(--paper-2); }
+code { background: var(--paper-2); color: var(--ink); padding: 1px 5px; border-radius: 4px; }
+.hint { font-size: .85rem; color: var(--muted); margin-top: .3rem; }
+form p:last-child { margin-bottom: 0; }
+@media (max-width: 640px) {
+  body { padding: 18px 12px; }
+  .installer-head, .installer-body { padding: 22px 18px; }
+}
 </style>
 </head>
 <body>
-<h1>TypeDock Installer</h1>
-<div class="step">Step: <strong><?= $e($step) ?></strong></div>
+<div class="installer-shell">
+<div class="installer-card">
+<header class="installer-head">
+  <a class="installer-brand" href="https://github.com/typedock/core" aria-label="TypeDock">
+    <img src="/admin/assets/img/typedock_logo.svg" alt="TypeDock">
+  </a>
+  <div>
+    <div class="step">Step: <strong><?= $e($step) ?></strong></div>
+    <h1>Installer</h1>
+  </div>
+</header>
+<main class="installer-body">
 
 <?php if ($errors !== []): ?>
 <div class="errors"><ul><?php foreach ($errors as $msg): ?><li><?= $e($msg) ?></li><?php endforeach; ?></ul></div>
@@ -525,6 +639,9 @@ code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; }
     <p class="ok">Installer file has been removed.</p>
   <?php endif; ?>
 <?php endif; ?>
+</main>
+</div>
+</div>
 <script>
 (() => {
   const driver = document.querySelector('[data-db-driver]');

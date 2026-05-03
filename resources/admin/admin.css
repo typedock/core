@@ -2,12 +2,9 @@
  * TypeDock admin styles (Tailwind 4).
  *
  * Design goals:
- *   - Familiar WordPress-style shell (dark sidebar + light content) but with
- *     modern typography, consistent spacing, and accessible focus rings.
- *   - Shadows and gradients are used sparingly: just enough to separate
- *     panels from the page, never decorative.
- *   - Everything is utility-first; the small @layer components block below
- *     is only for pieces we reuse many times (buttons, badges, cards).
+ *   - Match the public TypeDock brand: compact, direct, publishing-tool calm.
+ *   - Keep plugin-facing semantic classes stable while refreshing the tokens.
+ *   - Use shadows sparingly; structure should come from spacing and borders.
  */
 
 @import "tailwindcss";
@@ -16,31 +13,37 @@
 @source "../../src/**/*.php";
 
 @theme {
-    --font-sans: "Inter var", "Inter", ui-sans-serif, system-ui, -apple-system,
+    --font-sans: "Lexend", ui-sans-serif, system-ui, -apple-system,
         "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
         "Liberation Mono", "Courier New", monospace;
 
-    /* Brand — a restrained indigo. Used for primary buttons and active nav. */
-    --color-brand-50:  #eef2ff;
-    --color-brand-100: #e0e7ff;
-    --color-brand-200: #c7d2fe;
-    --color-brand-300: #a5b4fc;
-    --color-brand-400: #818cf8;
-    --color-brand-500: #6366f1;
-    --color-brand-600: #4f46e5;
-    --color-brand-700: #4338ca;
-    --color-brand-800: #3730a3;
-    --color-brand-900: #312e81;
+    /* Brand — pulled from the official LP. */
+    --color-brand-50:  #d8fff7;
+    --color-brand-100: #b8fff2;
+    --color-brand-200: #7dffe8;
+    --color-brand-300: #44f4d4;
+    --color-brand-400: #1be0bb;
+    --color-brand-500: #11c7a5;
+    --color-brand-600: #0aa989;
+    --color-brand-700: #07866e;
+    --color-brand-800: #075f50;
+    --color-brand-900: #053d34;
+
+    --color-td-ink: #050706;
+    --color-td-ink-soft: #17201d;
+    --color-td-paper: #fbfbf7;
+    --color-td-paper-soft: #f2f6f1;
+    --color-td-line: #dfe8e4;
 
     /* Sidebar gets its own near-black palette so tweaking it doesn't bleed
        into the generic slate scale used in the content area. */
-    --color-sidebar-bg:      #0f172a;
-    --color-sidebar-bg-soft: #1e293b;
-    --color-sidebar-fg:      #cbd5e1;
-    --color-sidebar-muted:   #94a3b8;
-    --color-sidebar-hover:   #1e293b;
-    --color-sidebar-active:  #312e81;
+    --color-sidebar-bg:      #0a0f0d;
+    --color-sidebar-bg-soft: #15201c;
+    --color-sidebar-fg:      #dbe7e2;
+    --color-sidebar-muted:   #879590;
+    --color-sidebar-hover:   #14211d;
+    --color-sidebar-active:  rgba(27, 224, 187, 0.14);
 }
 
 @layer base {
@@ -49,7 +52,11 @@
         text-rendering: optimizeLegibility;
     }
     body {
-        @apply bg-slate-50 text-slate-800 antialiased;
+        @apply antialiased;
+        background:
+            radial-gradient(circle at 20% 0%, rgba(27, 224, 187, 0.08), transparent 28rem),
+            linear-gradient(180deg, var(--color-td-paper), #ffffff 36rem);
+        color: var(--color-td-ink-soft);
         font-family: var(--font-sans);
     }
     code, pre, kbd, samp {
@@ -72,22 +79,25 @@
     input[type="datetime-local"],
     select,
     textarea {
-        @apply w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900
+        @apply w-full rounded-md border bg-white px-3 py-2 text-sm
                shadow-xs placeholder:text-slate-400
                focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none;
+        border-color: var(--color-td-line);
+        color: var(--color-td-ink);
     }
     textarea {
         @apply min-h-24 leading-relaxed;
     }
     label {
-        @apply text-sm font-medium text-slate-700;
+        @apply text-sm font-medium;
+        color: var(--color-td-ink-soft);
     }
     small {
         @apply text-xs text-slate-500;
     }
-    h1 { @apply text-2xl font-semibold text-slate-900; }
-    h2 { @apply text-lg font-semibold text-slate-900; }
-    h3 { @apply text-base font-semibold text-slate-900; }
+    h1 { @apply text-2xl font-bold; color: var(--color-td-ink); }
+    h2 { @apply text-lg font-bold; color: var(--color-td-ink); }
+    h3 { @apply text-base font-bold; color: var(--color-td-ink); }
     code {
         @apply rounded bg-slate-100 px-1.5 py-0.5 text-[0.85em] text-slate-700;
     }
@@ -102,15 +112,16 @@
                disabled:cursor-not-allowed disabled:opacity-60;
     }
     .btn-primary {
-        @apply bg-brand-600 text-white shadow-xs hover:bg-brand-700 active:bg-brand-800;
+        @apply text-slate-950 shadow-xs hover:bg-brand-500 active:bg-brand-600;
+        background-color: var(--color-brand-400);
     }
     .btn-secondary {
-        @apply border-slate-300 bg-white text-slate-700 shadow-xs
-               hover:border-slate-400 hover:bg-slate-50;
+        @apply bg-white shadow-xs hover:bg-slate-50;
+        border-color: var(--color-td-line);
+        color: var(--color-td-ink-soft);
     }
-    .btn-ghost {
-        @apply text-slate-600 hover:bg-slate-100 hover:text-slate-900;
-    }
+    .btn-ghost { @apply hover:bg-slate-100; color: #65736f; }
+    .btn-ghost:hover { color: var(--color-td-ink); }
     .btn-danger {
         @apply bg-red-600 text-white shadow-xs hover:bg-red-700 active:bg-red-800;
     }
@@ -132,14 +143,18 @@
     .badge-trash     { @apply bg-red-100    text-red-700; }
     .badge-success   { @apply bg-emerald-100 text-emerald-800; }
     .badge-muted     { @apply bg-slate-100  text-slate-500; }
-    .badge-info      { @apply bg-brand-100  text-brand-800; }
+    .badge-info      { @apply bg-brand-50   text-brand-800; }
+    .badge-warning   { @apply bg-amber-100  text-amber-800; }
+    .badge-danger    { @apply bg-red-100    text-red-700; }
 
     /* ---------- Surfaces -------------------------------------------------- */
     .card {
-        @apply rounded-lg border border-slate-200 bg-white shadow-xs;
+        @apply rounded-lg border bg-white shadow-xs;
+        border-color: var(--color-td-line);
     }
     .card-header {
-        @apply flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-3.5;
+        @apply flex items-center justify-between gap-3 border-b px-5 py-3.5;
+        border-color: var(--color-td-line);
     }
     .card-header h2, .card-header h3 { @apply m-0; }
     .card-body   { @apply px-5 py-4; }
@@ -147,23 +162,26 @@
 
     /* ---------- Data tables ----------------------------------------------- */
     .data-table {
-        @apply w-full overflow-hidden rounded-lg border border-slate-200
+        @apply w-full overflow-hidden rounded-lg border
                bg-white text-sm shadow-xs;
+        border-color: var(--color-td-line);
         border-collapse: separate;
         border-spacing: 0;
     }
     .data-table thead {
-        @apply bg-slate-50;
+        background: var(--color-td-paper-soft);
     }
     .data-table th {
-        @apply border-b border-slate-200 px-4 py-2.5 text-left text-xs
-               font-semibold tracking-wide text-slate-600 uppercase;
+        @apply border-b px-4 py-2.5 text-left text-xs
+               font-bold tracking-normal text-slate-600 uppercase;
+        border-color: var(--color-td-line);
     }
     .data-table td {
-        @apply border-b border-slate-100 px-4 py-3 align-middle text-slate-700;
+        @apply border-b px-4 py-3 align-middle text-slate-700;
+        border-color: #edf3ef;
     }
     .data-table tbody tr:last-child td { border-bottom: 0; }
-    .data-table tbody tr:hover { @apply bg-slate-50/60; }
+    .data-table tbody tr:hover { background: rgba(216, 255, 247, 0.32); }
     .data-table a { @apply text-brand-700 hover:text-brand-800 hover:underline; }
     .data-table .actions {
         @apply flex flex-wrap items-center justify-end gap-1.5 text-right;
@@ -187,11 +205,9 @@
     .form-group label small { @apply font-normal text-slate-500; }
     .form-group > small,
     .form-hint { @apply mt-1.5 block text-xs leading-snug text-slate-500; }
-    fieldset {
-        @apply rounded-md border border-slate-200 p-4;
-    }
+    fieldset { @apply rounded-md border p-4; border-color: var(--color-td-line); }
     fieldset legend {
-        @apply px-1.5 text-xs font-semibold tracking-wide text-slate-600 uppercase;
+        @apply px-1.5 text-xs font-bold tracking-normal text-slate-600 uppercase;
     }
 
     .checkbox-label {
@@ -239,7 +255,7 @@
         @apply absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow-xs
                transition-transform;
     }
-    .switch input:checked + .switch-track              { @apply bg-brand-600; }
+    .switch input:checked + .switch-track              { background-color: var(--color-brand-400); }
     .switch input:checked + .switch-track .switch-thumb { transform: translateX(1rem); }
     .switch input:focus-visible + .switch-track        { @apply ring-2 ring-brand-500/60 ring-offset-1; }
     .switch input:disabled + .switch-track             { @apply opacity-50 cursor-not-allowed; }
@@ -256,7 +272,8 @@
 
     .filter-form {
         @apply mb-4 flex flex-wrap items-center gap-2 rounded-lg border
-               border-slate-200 bg-white p-2.5 shadow-xs;
+               bg-white p-2.5 shadow-xs;
+        border-color: var(--color-td-line);
     }
     .filter-form input,
     .filter-form select { @apply w-auto min-w-40; }
@@ -268,7 +285,8 @@
        the current <a>. *.settings-nav is kept as a deprecated alias. */
     .tabs,
     .settings-nav {
-        @apply mb-6 flex flex-wrap gap-1 border-b border-slate-200;
+        @apply mb-6 flex flex-wrap gap-1 border-b;
+        border-color: var(--color-td-line);
     }
     .tabs .tab,
     .tabs > a,
@@ -284,21 +302,23 @@
     .tabs > a.active,
     .tabs > button.is-active,
     .settings-nav a.active {
-        @apply border-brand-600 text-brand-700;
+        @apply border-brand-500 text-brand-700;
     }
     .tab-panel { @apply hidden; }
     .tab-panel.is-active { @apply block; }
 
     /* ---------- Sidebar panels (used next to list tables) ----------------- */
     .sidebar-panel {
-        @apply rounded-lg border border-slate-200 bg-white p-5 shadow-xs;
+        @apply rounded-lg border bg-white p-5 shadow-xs;
+        border-color: var(--color-td-line);
     }
     .sidebar-panel h3 { @apply mb-3 text-sm font-semibold text-slate-900; }
 
     /* ---------- Empty state ---------------------------------------------- */
     .empty-state {
         @apply flex flex-col items-center justify-center gap-3 rounded-lg border
-               border-dashed border-slate-300 bg-white px-6 py-12 text-center;
+               border-dashed bg-white px-6 py-12 text-center;
+        border-color: var(--color-td-line);
     }
     .empty-state svg { @apply h-10 w-10 text-slate-300; }
     .empty-state h3 { @apply text-base font-semibold text-slate-700; }
@@ -324,16 +344,16 @@
         @apply mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4;
     }
     .stat-card {
-        @apply flex items-center gap-3 rounded-lg border border-slate-200
-               bg-white p-4 shadow-xs;
+        @apply flex items-center gap-3 rounded-lg border bg-white p-4 shadow-xs;
+        border-color: var(--color-td-line);
     }
     .stat-card .stat-icon {
         @apply flex h-10 w-10 flex-shrink-0 items-center justify-center
-               rounded-md bg-brand-50 text-brand-600;
+               rounded-md bg-brand-50 text-brand-700;
     }
     .stat-card .stat-icon svg { @apply h-5 w-5; }
     .stat-card h3 {
-        @apply m-0 text-xs font-medium tracking-wide text-slate-500 uppercase;
+        @apply m-0 text-xs font-bold tracking-normal text-slate-500 uppercase;
     }
     .stat-card .stat-number {
         @apply text-2xl font-semibold text-slate-900;
@@ -345,7 +365,8 @@
         grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     }
     .media-item {
-        @apply overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xs;
+        @apply overflow-hidden rounded-lg border bg-white shadow-xs;
+        border-color: var(--color-td-line);
     }
     .media-item img {
         @apply block aspect-square w-full object-cover;
@@ -363,8 +384,9 @@
     }
     .upload-drop-zone {
         @apply mb-4 cursor-pointer rounded-lg border-2 border-dashed
-               border-slate-300 bg-white px-6 py-10 text-center text-slate-600
+               bg-white px-6 py-10 text-center text-slate-600
                transition-colors hover:border-brand-400 hover:bg-brand-50/40;
+        border-color: var(--color-td-line);
     }
     .upload-drop-zone p { @apply m-0; }
     .upload-drop-zone.is-dragover {
@@ -408,8 +430,9 @@
     }
     .td-modal {
         @apply relative z-10 flex max-h-[90vh] w-full max-w-4xl flex-col
-               overflow-hidden rounded-xl border border-slate-200
+               overflow-hidden rounded-xl border
                bg-white shadow-xl;
+        border-color: var(--color-td-line);
     }
     .td-modal-header {
         @apply flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-3;
@@ -479,8 +502,9 @@
     }
     .slot-section h2 { @apply mb-3 text-base; }
     .placement-item {
-        @apply mb-1.5 flex items-center gap-2 rounded-md border border-slate-200
+        @apply mb-1.5 flex items-center gap-2 rounded-md border
                bg-slate-50/50 px-3 py-2;
+        border-color: var(--color-td-line);
     }
     .drag-handle { @apply cursor-grab text-slate-400 select-none; }
     .add-component-form {
@@ -489,8 +513,9 @@
 
     /* ---------- Inline forms --------------------------------------------- */
     .inline-form {
-        @apply mb-4 flex flex-wrap items-end gap-2 rounded-lg border border-slate-200
+        @apply mb-4 flex flex-wrap items-end gap-2 rounded-lg border
                bg-white p-3 shadow-xs;
+        border-color: var(--color-td-line);
     }
     .inline-form input:not([type="hidden"]),
     .inline-form select,
@@ -507,11 +532,12 @@
        =================================================================== */
     .editor-publishbar {
         @apply sticky top-0 z-20 mb-5 flex flex-wrap items-end gap-3
-               rounded-lg border border-slate-200 bg-white/90 px-4 py-3
+               rounded-lg border bg-white/90 px-4 py-3
                shadow-xs backdrop-blur;
+        border-color: var(--color-td-line);
     }
     .editor-publishbar .pb-field {
-        @apply flex flex-col gap-1 text-[0.65rem] font-semibold tracking-wide
+        @apply flex flex-col gap-1 text-[0.65rem] font-bold tracking-normal
                text-slate-500 uppercase;
     }
     .editor-publishbar .pb-field select,
@@ -538,7 +564,7 @@
         @apply mb-4 flex items-center gap-2 border-b border-slate-200 pb-3;
     }
     .slug-row label {
-        @apply text-[0.65rem] font-semibold tracking-wide text-slate-500 uppercase;
+        @apply text-[0.65rem] font-bold tracking-normal text-slate-500 uppercase;
     }
     .slug-row input {
         @apply flex-1 rounded border border-transparent bg-transparent px-2 py-1
@@ -547,11 +573,12 @@
     }
 
     .meta-section {
-        @apply mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white;
+        @apply mt-3 overflow-hidden rounded-lg border bg-white;
+        border-color: var(--color-td-line);
     }
     .meta-section > summary {
         @apply flex cursor-pointer items-center gap-2 px-4 py-3 text-xs
-               font-semibold tracking-wide text-slate-600 uppercase select-none;
+               font-bold tracking-normal text-slate-600 uppercase select-none;
         list-style: none;
     }
     .meta-section > summary::-webkit-details-marker { display: none; }
@@ -569,19 +596,22 @@
        Login pages
        =================================================================== */
     body.login-page {
-        /* Very subtle diagonal gradient — enough to give depth without
-           competing with the form card itself. */
-        @apply min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-brand-50;
+        @apply min-h-screen;
+        background:
+            radial-gradient(circle at 18% 0%, rgba(27, 224, 187, 0.12), transparent 28rem),
+            linear-gradient(180deg, var(--color-td-paper), #ffffff 36rem);
     }
     .login-container {
         @apply flex min-h-screen items-center justify-center px-4 py-12;
     }
     .login-box {
-        @apply w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8 shadow-sm;
+        @apply w-full max-w-sm rounded-lg border bg-white p-8;
+        border-color: var(--color-td-line);
+        box-shadow: 0 24px 80px rgba(2, 10, 8, 0.12);
     }
     .login-logo { @apply mb-6 text-center; }
     .login-logo h1 {
-        @apply m-0 mb-1 text-2xl font-bold tracking-tight text-slate-900;
+        @apply m-0 mb-1 text-2xl font-bold tracking-normal text-slate-900;
     }
     .login-logo p { @apply m-0 text-sm text-slate-500; }
     .back-link {
@@ -647,6 +677,7 @@
     width: 15rem;
     background: var(--color-sidebar-bg);
     color: var(--color-sidebar-fg);
+    box-shadow: inset -1px 0 rgba(255, 255, 255, 0.08);
     @apply fixed inset-y-0 left-0 z-30 flex flex-col overflow-y-auto;
 }
 .admin-sidebar a { @apply no-underline; }
@@ -655,19 +686,21 @@
     border-color: var(--color-sidebar-bg-soft);
 }
 .admin-logo-mark {
-    @apply flex h-8 w-8 items-center justify-center rounded-md
-           bg-gradient-to-br from-brand-500 to-brand-700 text-white;
+    @apply flex min-w-0 flex-1 items-center rounded-none bg-transparent text-white;
 }
-.admin-logo-mark svg { @apply h-5 w-5; }
+.admin-logo-mark img {
+    width: 136px;
+    height: auto;
+}
 .admin-logo-text {
-    @apply text-base font-semibold tracking-tight text-white;
+    @apply sr-only;
 }
 
 .admin-menu {
     @apply flex-1 space-y-0.5 overflow-y-auto px-2 py-3;
 }
 .admin-menu-section {
-    @apply px-2 pt-4 pb-1 text-[0.65rem] font-semibold tracking-wider uppercase;
+    @apply px-2 pt-4 pb-1 text-[0.65rem] font-bold tracking-normal uppercase;
     color: var(--color-sidebar-muted);
 }
 .admin-menu-section:first-child { @apply pt-0; }
@@ -681,7 +714,8 @@
 }
 .admin-menu .menu-item.is-active {
     background: var(--color-sidebar-active);
-    @apply text-white shadow-xs;
+    color: var(--color-brand-400);
+    @apply shadow-xs;
 }
 .admin-menu .menu-item svg {
     @apply h-4 w-4 flex-shrink-0 opacity-90;
@@ -693,7 +727,9 @@
 }
 .admin-user-avatar {
     @apply flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full
-           bg-gradient-to-br from-brand-400 to-brand-600 text-xs font-semibold text-white;
+           text-xs font-bold;
+    background: var(--color-brand-400);
+    color: var(--color-td-ink);
 }
 .admin-user-info .username {
     @apply block truncate text-sm font-medium text-white;
@@ -709,8 +745,9 @@
     @apply flex min-h-screen flex-1 flex-col;
 }
 .admin-header {
-    @apply sticky top-0 z-20 flex h-14 items-center gap-4 border-b border-slate-200
+    @apply sticky top-0 z-20 flex h-14 items-center gap-4 border-b
            bg-white/80 px-6 backdrop-blur;
+    border-color: var(--color-td-line);
 }
 .admin-header-title {
     @apply text-sm font-medium text-slate-500;

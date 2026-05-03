@@ -15,7 +15,8 @@ require TYPEDOCK_ROOT . '/vendor/autoload.php';
 // Redirect to browser installer when not yet installed.
 $uriPath   = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
 $hasConfig = typedock_load_config(TYPEDOCK_ROOT);
-if (!$hasConfig || !\TypeDock\Install\Installer::isInstalled(TYPEDOCK_ROOT)) {
+$previewMode = filter_var($_ENV['TYPEDOCK_PREVIEW'] ?? getenv('TYPEDOCK_PREVIEW') ?: 'false', FILTER_VALIDATE_BOOL);
+if (!$previewMode && (!$hasConfig || !\TypeDock\Install\Installer::isInstalled(TYPEDOCK_ROOT))) {
     if ($uriPath !== '/install.php') {
         header('Location: install.php', true, 302);
         exit;

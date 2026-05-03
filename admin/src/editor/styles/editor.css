@@ -4,7 +4,7 @@
   outline: none;
   font-size: 16px;
   line-height: 1.7;
-  color: #1f2937;
+  color: #17201d;
   padding: 8px 0;
 }
 
@@ -15,10 +15,10 @@
 .typedock-editor h2 { font-size: 1.6rem; font-weight: 700; }
 .typedock-editor h3 { font-size: 1.3rem; font-weight: 700; }
 .typedock-editor h4 { font-size: 1.1rem; font-weight: 700; }
-.typedock-editor blockquote { border-left: 3px solid #d1d5db; padding-left: 1rem; color: #4b5563; }
+.typedock-editor blockquote { border-left: 3px solid #1be0bb; padding-left: 1rem; color: #65736f; }
 .typedock-editor pre.editor-code-block,
 .typedock-editor pre {
-  background: #0f172a; color: #e2e8f0; padding: 12px 16px; border-radius: 6px;
+  background: #0a0f0d; color: #dff7f1; padding: 12px 16px; border-radius: 6px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em;
   overflow-x: auto;
 }
@@ -27,8 +27,8 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.92em;
 }
 .typedock-editor pre code { background: transparent; padding: 0; }
-.typedock-editor a { color: #2563eb; text-decoration: underline; }
-.typedock-editor hr { border: 0; border-top: 1px solid #d1d5db; margin: 2em 0; }
+.typedock-editor a { color: #07866e; text-decoration: underline; }
+.typedock-editor hr { border: 0; border-top: 1px solid #dfe8e4; margin: 2em 0; }
 .typedock-editor ul { list-style: disc; padding-left: 1.5rem; }
 .typedock-editor ol { list-style: decimal; padding-left: 1.5rem; }
 
@@ -76,7 +76,7 @@
   bottom: -6px;
   width: 14px;
   height: 14px;
-  background: #2563eb;
+  background: #1be0bb;
   border: 2px solid #fff;
   border-radius: 50%;
   cursor: nwse-resize;
@@ -92,7 +92,7 @@
   transform: translateX(-50%);
   display: none;
   gap: 2px;
-  background: #1f2937;
+  background: #0a0f0d;
   border-radius: 6px;
   padding: 4px;
   z-index: 5;
@@ -102,7 +102,7 @@
   background: transparent; color: #fff; border: 0; padding: 4px 8px;
   font-size: 12px; cursor: pointer; border-radius: 3px;
 }
-.typedock-editor figure.editor-image .image-align-bar button.is-active { background: #2563eb; }
+.typedock-editor figure.editor-image .image-align-bar button.is-active { background: #11c7a5; color: #050706; }
 
 .typedock-editor figcaption.image-caption {
   text-align: center;
@@ -120,7 +120,7 @@
 /* Bookmark */
 .typedock-editor .bookmark-card {
   position: relative;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #dfe8e4;
   border-radius: 8px;
   background: #fff;
   overflow: hidden;
@@ -129,7 +129,7 @@
   display: flex; gap: 6px; padding: 12px;
 }
 .typedock-editor .bookmark-card .bookmark-input input {
-  flex: 1; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.95em;
+  flex: 1; padding: 6px 10px; border: 1px solid #dfe8e4; border-radius: 4px; font-size: 0.95em;
 }
 .typedock-editor .bookmark-card .bookmark-link {
   display: flex; gap: 16px; padding: 12px; text-decoration: none; color: inherit;
@@ -162,7 +162,7 @@
 /* Embed */
 .typedock-editor .embed-block {
   position: relative;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #dfe8e4;
   border-radius: 8px;
   padding: 12px;
   background: #fff;
@@ -171,7 +171,7 @@
   display: flex; gap: 6px;
 }
 .typedock-editor .embed-block .embed-input input {
-  flex: 1; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px;
+  flex: 1; padding: 6px 10px; border: 1px solid #dfe8e4; border-radius: 4px;
 }
 .typedock-editor .embed-block .embed-wrapper iframe {
   max-width: 100%; aspect-ratio: 16 / 9; width: 100%; border: 0;
@@ -181,8 +181,8 @@
 .typedock-editor .component-block .component-placeholder {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 16px;
-  background: #f9fafb;
-  border: 1px dashed #cbd5e1;
+  background: #fbfbf7;
+  border: 1px dashed #9eeedc;
   border-radius: 6px;
   font-size: 0.95em;
 }
@@ -199,7 +199,7 @@
 .floating-toolbar {
   position: absolute; z-index: 1000;
   display: flex; align-items: center; gap: 4px;
-  background: #1f2937; color: #fff;
+  background: #0a0f0d; color: #fff;
   padding: 4px;
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
@@ -210,15 +210,15 @@
   padding: 4px 8px; cursor: pointer; border-radius: 3px;
   min-width: 26px;
 }
-.floating-toolbar button:hover { background: #374151; }
+.floating-toolbar button:hover { background: rgba(27, 224, 187, 0.18); }
 .floating-toolbar select {
-  background: #374151; color: #fff; border: 0; padding: 4px; border-radius: 3px;
+  background: #14211d; color: #fff; border: 0; padding: 4px; border-radius: 3px;
 }
-.floating-toolbar .toolbar-sep { width: 1px; background: #4b5563; align-self: stretch; margin: 2px 0; }
+.floating-toolbar .toolbar-sep { width: 1px; background: #25342f; align-self: stretch; margin: 2px 0; }
 .floating-toolbar .toolbar-highlight-group { position: relative; }
 .floating-toolbar .highlight-dropdown {
   position: absolute; top: calc(100% + 4px); left: 0;
-  background: #1f2937; padding: 4px; border-radius: 4px;
+  background: #0a0f0d; padding: 4px; border-radius: 4px;
   display: flex; gap: 4px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
@@ -230,7 +230,7 @@
 .slash-menu {
   position: absolute; z-index: 1000;
   background: #fff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #dfe8e4;
   border-radius: 6px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
   padding: 4px;
@@ -255,7 +255,7 @@
   border-radius: 4px;
 }
 .slash-menu .slash-menu-item:hover,
-.slash-menu .slash-menu-item.is-active { background: #eff6ff; }
+.slash-menu .slash-menu-item.is-active { background: #d8fff7; }
 .slash-menu .slash-menu-icon {
   width: 22px; text-align: center;
   font-family: ui-monospace, monospace; font-weight: 700; font-size: 12px;
