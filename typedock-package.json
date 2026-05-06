@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "version": "0.1.0",
+  "managed_paths": [
+    "vendor",
+    "src",
+    "migrations",
+    "cli",
+    "admin",
+    "public/admin/dist",
+    "composer.json",
+    "composer.lock",
+    "LICENSE",
+    "README.md"
+  ],
+  "bundled_themes": [
+    "default",
+    "kinari"
+  ],
+  "bundled_plugins": [
+    "form",
+    "redirect",
+    "social",
+    "image-optimizer",
+    "turnstile-captcha",
+    "advanced-blocks",
+    "backup",
+    "source-contentful",
+    "source-github"
+  ],
+  "file_hashes": {}
+}

@@ -1,8 +1,33 @@
 <?php
 declare(strict_types=1);
 
-define('TYPEDOCK_ROOT', dirname(__DIR__));
-define('TYPEDOCK_VERSION', '0.1.0');
+if (!defined('TYPEDOCK_ROOT')) {
+    define('TYPEDOCK_ROOT', dirname(__DIR__));
+}
+if (!defined('TYPEDOCK_PUBLIC_DIR')) {
+    define('TYPEDOCK_PUBLIC_DIR', __DIR__);
+}
+if (!defined('TYPEDOCK_VERSION')) {
+    define('TYPEDOCK_VERSION', '0.1.0');
+}
+
+if (is_file(TYPEDOCK_ROOT . '/storage/.maintenance')) {
+    $state = json_decode((string) @file_get_contents(TYPEDOCK_ROOT . '/storage/.maintenance'), true);
+    $token = is_array($state) ? (string) ($state['token'] ?? '') : '';
+    $bypass = $token !== '' && hash_equals($token, (string) ($_GET['_maintenance_admin'] ?? ''));
+    if (!$bypass) {
+        http_response_code(503);
+        header('Retry-After: 60');
+        header('Content-Type: text/html; charset=utf-8');
+        $page = TYPEDOCK_ROOT . '/storage/.maintenance.html';
+        if (is_file($page)) {
+            readfile($page);
+        } else {
+            echo '<!doctype html><meta charset="utf-8"><title>Maintenance</title><h1>Maintenance</h1>';
+        }
+        exit;
+    }
+}
 
 if (!is_file(TYPEDOCK_ROOT . '/vendor/autoload.php')) {
     http_response_code(500);

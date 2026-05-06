@@ -106,8 +106,15 @@ php cli/cache-clear.php     # Clear template + HTML cache
 php cli/export.php          # Export all content to JSON
 php cli/import.php          # Import a previously exported archive
 php cli/assets-publish.php  # Copy theme/plugin assets into public/{themes,plugins}/
+php cli/upgrade.php         # Upgrade preflight + coding-agent handoff context
 php cli/seed.php            # Insert demo content
 ```
+
+## Upgrading
+
+TypeDock uses an agent-assisted upgrade model: Core tells you which files
+are managed, which themes/plugins are user-owned, and what a coding agent
+or human operator should preserve. See [docs/upgrade.md](docs/upgrade.md).
 
 ## Contributing
 

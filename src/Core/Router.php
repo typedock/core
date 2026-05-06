@@ -13,6 +13,7 @@ use TypeDock\Admin\CategoryController;
 use TypeDock\Admin\TagController;
 use TypeDock\Admin\UserController;
 use TypeDock\Admin\SettingsController;
+use TypeDock\Admin\SystemUpdateController;
 use TypeDock\Admin\SlotController;
 use TypeDock\Admin\ThemeController;
 use TypeDock\Admin\ThemeSettingsController;
@@ -264,6 +265,10 @@ class Router
             \Flight::route('GET /settings/modules', function () use ($auth) {
                 $auth->requireAuth('admin');
                 (new SettingsController())->modules();
+            });
+            \Flight::route('GET /system/update', function () use ($auth) {
+                $auth->requireAuth('admin');
+                (new SystemUpdateController())->index();
             });
             \Flight::route('POST /settings/modules/plugins/toggle', function () use ($auth) {
                 $auth->requireAuth('admin');

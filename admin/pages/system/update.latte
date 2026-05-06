@@ -1,0 +1,112 @@
+{layout '../../layouts/admin-base.latte'}
+
+{block title}System Update{/block}
+{block page_title}System Update{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <h1>Agent-Assisted Update</h1>
+        <p>Give your coding agent the context it needs to update TypeDock without overwriting local customizations.</p>
+    </div>
+</div>
+
+<div class="columns">
+    <section class="card">
+        <div class="card-header"><h2>Install</h2></div>
+        <div class="card-body space-y-4">
+            <table class="data-table border-0 rounded-none shadow-none">
+                <tbody>
+                    <tr><th>Current version</th><td>{$version}</td></tr>
+                    <tr><th>Mode</th><td>{$report->profile->mode}</td></tr>
+                    <tr><th>Channel</th><td>{$channel}</td></tr>
+                    <tr><th>Public layout</th><td>{if $report->profile->isSplitPublic()}Split public directory{else}Standard public directory{/if}</td></tr>
+                </tbody>
+            </table>
+            {if $report->canApplyUpdates()}
+                <div class="alert alert-success">
+                    <span>No blocking ownership conflicts were found. Review warnings before handing this site to an agent.</span>
+                </div>
+            {else}
+                <div class="alert alert-error">
+                    <span>Blocking ownership conflicts were found. Resolve them before applying an update.</span>
+                </div>
+            {/if}
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-header"><h2>Package Ownership</h2></div>
+        <div class="card-body">
+            <p class="form-hint" style="margin-top:0">Bundled themes and plugins can be updated by TypeDock. User-owned entries are preserved.</p>
+            <table class="data-table border-0 rounded-none shadow-none mt-4">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Slug</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {foreach $report->ownership as $row}
+                        <tr>
+                            <td>{$row['type']}</td>
+                            <td><code>{$row['slug']}</code></td>
+                            <td>{$row['status']}</td>
+                        </tr>
+                        {/foreach}
+                    </tbody>
+                </table>
+        </div>
+    </section>
+</div>
+
+<section class="card mt-6">
+    <div class="card-header"><h2>Agent Prompt</h2></div>
+    <div class="card-body space-y-4">
+        <p class="form-hint" style="margin-top:0">
+            Use this prompt with the coding agent that has access to your deployment, repository, SSH/FTP, or hosting panel. TypeDock Core provides context; the agent performs the update according to your environment.
+        </p>
+        <textarea readonly rows="14" spellcheck="false">{$agent_prompt}</textarea>
+    </div>
+</section>
+
+<section class="card mt-6">
+    <div class="card-header"><h2>Machine Context</h2></div>
+    <div class="card-body">
+        <textarea readonly rows="12" spellcheck="false">{$agent_context_json}</textarea>
+    </div>
+</section>
+
+<section class="card mt-6">
+    <div class="card-header"><h2>Preflight</h2></div>
+    <div class="card-body">
+        <table class="data-table border-0 rounded-none shadow-none">
+            <thead>
+                <tr>
+                    <th>Status</th>
+                    <th>Check</th>
+                    <th>Message</th>
+                </tr>
+            </thead>
+            <tbody>
+                {foreach $report->issues as $issue}
+                <tr>
+                    <td>
+                        {if $issue->severity === 'ok'}
+                            <span class="badge badge-success">OK</span>
+                        {elseif $issue->severity === 'warning'}
+                            <span class="badge badge-warning">Warning</span>
+                        {else}
+                            <span class="badge badge-danger">Error</span>
+                        {/if}
+                    </td>
+                    <td>{$issue->label}</td>
+                    <td>{$issue->message}</td>
+                </tr>
+                {/foreach}
+            </tbody>
+        </table>
+    </div>
+</section>
+{/block}

@@ -73,6 +73,15 @@
                 {include 'icon-slot'}<span>Slots</span>
             </a>
 
+            {if !empty($plugin_admin_menu)}
+            <div class="admin-menu-section">Plugins</div>
+            {foreach $plugin_admin_menu as $item}
+            <a href="{$item['path']}" class="menu-item {if str_starts_with($path, $item['path'])}is-active{/if}">
+                {include 'icon-redirect'}<span>{$item['label']}</span>
+            </a>
+            {/foreach}
+            {/if}
+
             <div class="admin-menu-section">Site</div>
             {if $current_user['role'] === 'admin'}
             <a href="/admin/users" class="menu-item {if str_starts_with($path, '/admin/users')}is-active{/if}">
@@ -81,15 +90,9 @@
             <a href="/admin/settings" class="menu-item {if str_starts_with($path, '/admin/settings')}is-active{/if}">
                 {include 'icon-settings'}<span>Settings</span>
             </a>
-            {/if}
-
-            {if !empty($plugin_admin_menu)}
-            <div class="admin-menu-section">Plugins</div>
-            {foreach $plugin_admin_menu as $item}
-            <a href="{$item['path']}" class="menu-item {if str_starts_with($path, $item['path'])}is-active{/if}">
-                {include 'icon-redirect'}<span>{$item['label']}</span>
+            <a href="/admin/system/update" class="menu-item {if str_starts_with($path, '/admin/system/update')}is-active{/if}">
+                {include 'icon-settings'}<span>System update</span>
             </a>
-            {/foreach}
             {/if}
         </div>
 
