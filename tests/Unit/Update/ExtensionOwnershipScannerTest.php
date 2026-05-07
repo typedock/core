@@ -75,7 +75,7 @@ final class ExtensionOwnershipScannerTest extends TestCase
      */
     private function manifest(array $hashes): PackageManifest
     {
-        return new PackageManifest(1, '0.1.0', [], ['default'], ['form'], $hashes);
+        return new PackageManifest(1, '0.8.0', [], ['default'], ['form'], $hashes);
     }
 
     private function hash(string $relative): string

@@ -8,7 +8,7 @@ if (!defined('TYPEDOCK_PUBLIC_DIR')) {
     define('TYPEDOCK_PUBLIC_DIR', __DIR__);
 }
 if (!defined('TYPEDOCK_VERSION')) {
-    define('TYPEDOCK_VERSION', '0.1.0');
+    define('TYPEDOCK_VERSION', '0.8.0');
 }
 
 if (is_file(TYPEDOCK_ROOT . '/storage/.maintenance')) {

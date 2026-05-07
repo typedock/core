@@ -31,7 +31,7 @@ if (in_array($command, ['--agent-prompt', 'agent-prompt'], true)) {
 }
 
 echo "TypeDock agent-assisted update preflight\n";
-echo "  Version: " . (string) config('app.version', defined('TYPEDOCK_VERSION') ? TYPEDOCK_VERSION : '0.1.0') . "\n";
+echo "  Version: " . (string) config('app.version', defined('TYPEDOCK_VERSION') ? TYPEDOCK_VERSION : '0.8.0') . "\n";
 echo "  Mode:    {$report->profile->mode}\n";
 echo "  Public:  " . ($report->profile->isSplitPublic() ? 'split' : 'standard') . "\n\n";
 

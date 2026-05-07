@@ -56,7 +56,7 @@ try {
         }
     }
 
-    $installer->lock('0.1.0');
+    $installer->lock(defined('TYPEDOCK_VERSION') ? TYPEDOCK_VERSION : '0.8.0');
 
     // Publish theme/plugin static assets into public/.
     echo "\nPublishing assets...\n";

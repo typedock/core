@@ -65,7 +65,7 @@ final class PreflightCheckerTest extends TestCase
 
     private function manifest(): PackageManifest
     {
-        return new PackageManifest(1, '0.1.0', ['src', 'vendor'], [], [], []);
+        return new PackageManifest(1, '0.8.0', ['src', 'vendor'], [], [], []);
     }
 
     private function removeDir(string $dir): void

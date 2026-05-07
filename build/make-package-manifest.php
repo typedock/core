@@ -26,7 +26,7 @@ ksort($fileHashes);
 
 $manifest = [
     'schema_version' => 1,
-    'version' => getenv('VERSION') ?: '0.1.0',
+    'version' => getenv('VERSION') ?: '0.8.0',
     'managed_paths' => $managedPaths,
     'bundled_themes' => $bundledThemes,
     'bundled_plugins' => $bundledPlugins,

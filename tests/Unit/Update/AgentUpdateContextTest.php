@@ -29,7 +29,7 @@ final class AgentUpdateContextTest extends TestCase
     public function testBuildsMachineReadableContextAndPrompt(): void
     {
         $profile = new InstallationProfile($this->root, $this->root . '/public', 'source', true);
-        $manifest = new PackageManifest(1, '0.1.0', ['src'], ['default'], ['form'], []);
+        $manifest = new PackageManifest(1, '0.8.0', ['src'], ['default'], ['form'], []);
         $report = (new PreflightChecker($profile, $manifest))->check();
         $context = new AgentUpdateContext($report);
 

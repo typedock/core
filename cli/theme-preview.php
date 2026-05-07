@@ -9,7 +9,7 @@ declare(strict_types=1);
  */
 
 define('TYPEDOCK_ROOT', dirname(__DIR__));
-define('TYPEDOCK_VERSION', '0.1.0');
+define('TYPEDOCK_VERSION', '0.8.0');
 
 require TYPEDOCK_ROOT . '/vendor/autoload.php';
 

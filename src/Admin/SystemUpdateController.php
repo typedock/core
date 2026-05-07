@@ -17,7 +17,7 @@ final class SystemUpdateController extends BaseAdminController
             'report' => $report,
             'agent_context_json' => $agentContext->toJson(),
             'agent_prompt' => $agentContext->prompt(),
-            'version' => (string) config('app.version', defined('TYPEDOCK_VERSION') ? TYPEDOCK_VERSION : '0.1.0'),
+            'version' => (string) config('app.version', defined('TYPEDOCK_VERSION') ? TYPEDOCK_VERSION : '0.8.0'),
             'channel' => (string) config('update.channel', 'stable'),
             'channel_url' => (string) (config('update.channels', [])[$report->profile->mode === 'zip' ? (string) config('update.channel', 'stable') : 'stable'] ?? ''),
             'flash_success' => $this->getFlash('success'),

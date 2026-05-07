@@ -16,7 +16,7 @@ final class AgentUpdateContext
             'schema_version' => 1,
             'generated_at' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
             'product' => 'TypeDock',
-            'current_version' => (string) \config('app.version', defined('TYPEDOCK_VERSION') ? TYPEDOCK_VERSION : '0.1.0'),
+            'current_version' => (string) \config('app.version', defined('TYPEDOCK_VERSION') ? TYPEDOCK_VERSION : '0.8.0'),
             'update_channel' => (string) \config('update.channel', 'stable'),
             'update_url' => $this->channelUrl(),
             'installation' => [
