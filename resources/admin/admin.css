@@ -614,6 +614,15 @@
         @apply m-0 mb-1 text-2xl font-bold tracking-normal text-slate-900;
     }
     .login-logo p { @apply m-0 text-sm text-slate-500; }
+    .login-form {
+        @apply grid gap-4;
+    }
+    .login-form .form-group {
+        @apply mb-0;
+    }
+    .login-form .btn-block {
+        @apply mt-1;
+    }
     .back-link {
         @apply mt-4 text-center text-sm text-slate-500;
     }

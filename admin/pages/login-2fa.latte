@@ -21,7 +21,7 @@
 
         <p class="mb-4 text-sm text-slate-600">Enter the 6-digit code sent to your email address.</p>
 
-        <form method="post" action="/admin/login/2fa" class="space-y-4">
+        <form method="post" action="/admin/login/2fa" class="login-form">
             <input type="hidden" name="_csrf_token" value="{$csrf_token}">
             <input type="hidden" name="user_id" value="{$user_id}">
 
