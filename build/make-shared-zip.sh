@@ -160,6 +160,28 @@ log "installing composer dependencies (--no-dev --optimize-autoloader)"
 )
 
 # -----------------------------------------------------------------------------
+# Install production Composer dependencies for bundled drop-in plugins
+# -----------------------------------------------------------------------------
+
+log "installing bundled plugin composer dependencies (--no-dev)"
+
+for plugin_composer in "$APP_DIR"/plugins/*/composer.json; do
+    [ -f "$plugin_composer" ] || continue
+    plugin_dir="$(dirname "$plugin_composer")"
+    plugin_slug="$(basename "$plugin_dir")"
+    log "  plugins/$plugin_slug"
+    (
+        cd "$plugin_dir"
+        composer install \
+            --no-dev \
+            --optimize-autoloader \
+            --no-interaction \
+            --no-progress \
+            --prefer-dist
+    )
+done
+
+# -----------------------------------------------------------------------------
 # Split public/ → public_html/ (webroot) + leave the rest in typedock/
 # -----------------------------------------------------------------------------
 
@@ -462,6 +484,11 @@ check_exists "$APP_DIR/vendor/autoload.php"
 check_exists "$APP_DIR/src/Core/App.php"
 check_exists "$APP_DIR/admin/layouts/admin-base.latte"
 check_exists "$APP_DIR/config.php.example"
+for plugin_composer in "$APP_DIR"/plugins/*/composer.json; do
+    [ -f "$plugin_composer" ] || continue
+    plugin_dir="$(dirname "$plugin_composer")"
+    check_exists "$plugin_dir/vendor/autoload.php"
+done
 check_absent "$APP_DIR/public"
 check_absent "$APP_DIR/tests"
 check_absent "$APP_DIR/node_modules"

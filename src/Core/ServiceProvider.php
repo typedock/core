@@ -14,7 +14,6 @@ use TypeDock\Contract\CaptchaProvider;
 use TypeDock\Search\LikeSearchEngine;
 use TypeDock\Security\NullCaptchaProvider;
 use TypeDock\Storage\LocalStorage;
-use TypeDock\Storage\S3Storage;
 use TypeDock\Component\ComponentRegistry;
 use TypeDock\Component\ComponentRenderer;
 use TypeDock\Component\CoreComponentRegistrar;
@@ -207,16 +206,17 @@ class ServiceProvider
     private function registerStorage(): void
     {
         \Flight::map('storage', function (): \TypeDock\Contract\StorageDriver {
+            $override = \Flight::provider_registry()->get('storage');
+            if ($override instanceof \TypeDock\Contract\StorageDriver) {
+                return $override;
+            }
+
             static $driver = null;
             if ($driver !== null) {
                 return $driver;
             }
 
-            $default = config('filesystems.default', 'local');
-            $driver = match ($default) {
-                's3'    => new S3Storage(config('filesystems.s3', [])),
-                default => new LocalStorage(config('filesystems.local', [])),
-            };
+            $driver = new LocalStorage(config('filesystems.local', []));
 
             return $driver;
         });

@@ -63,13 +63,7 @@ return [
     'MAIL_ENCRYPTION'   => 'tls',
 
     // --- Storage ---
-    'STORAGE_DRIVER'        => 'local',
-    'AWS_ACCESS_KEY_ID'     => '',
-    'AWS_SECRET_ACCESS_KEY' => '',
-    'AWS_DEFAULT_REGION'    => 'ap-northeast-1',
-    'AWS_BUCKET'            => '',
-    'AWS_ENDPOINT'          => '',
-    'AWS_URL'               => '',
-    // Upload MIME allowlist is defined in config/filesystems.php.
+    // Local upload paths and MIME allowlists are defined in config/filesystems.php.
+    // S3-compatible storage is configured through the official Cloud Storage plugin.
 
 ];

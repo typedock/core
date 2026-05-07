@@ -8,9 +8,9 @@ namespace TypeDock\Core;
  * "search", "captcha"). Last-wins with an admin warning when a second
  * plugin tries to claim a type already owned by a loaded plugin.
  *
- * Core registers its default implementations first (during ServiceProvider
- * boot); plugins override via PluginContext::provideSingle(). The collected
- * warnings are surfaced to admin users via the dashboard / plugin page.
+ * Core provides defaults directly from ServiceProvider. Plugins override them
+ * via PluginContext::provideSingle(). The collected warnings are surfaced to
+ * admin users via the dashboard / plugin page.
  */
 class ProviderRegistry
 {

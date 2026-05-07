@@ -56,7 +56,7 @@ final class PackageManifest
             version: defined('TYPEDOCK_VERSION') ? TYPEDOCK_VERSION : '0.1.0',
             managedPaths: ['vendor', 'src', 'migrations', 'cli', 'admin', 'public/admin/dist', 'composer.json', 'composer.lock'],
             bundledThemes: ['default', 'kinari'],
-            bundledPlugins: ['form', 'redirect', 'social', 'image-optimizer', 'turnstile-captcha', 'advanced-blocks', 'backup', 'source-contentful', 'source-github'],
+            bundledPlugins: ['form', 'redirect', 'social', 'image-optimizer', 'turnstile-captcha', 'advanced-blocks', 'backup', 'source-contentful', 'source-github', 'cloud-storage'],
             fileHashes: [],
         );
     }

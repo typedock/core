@@ -11,6 +11,13 @@ WORKDIR /app
 # Copy only the files needed to resolve dependencies so this layer caches well.
 COPY composer.json composer.lock ./
 
+# Drop-in plugins may have their own Composer dependencies. They are not
+# installed into this base image by default; install them per plugin when
+# testing locally, for example:
+#   docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/app \
+#     -w /app/plugins/cloud-storage composer:2 \
+#     install --no-dev --prefer-dist --optimize-autoloader
+
 RUN composer install \
     --no-dev \
     --no-interaction \

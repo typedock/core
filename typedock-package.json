@@ -26,7 +26,8 @@
     "advanced-blocks",
     "backup",
     "source-contentful",
-    "source-github"
+    "source-github",
+    "cloud-storage"
   ],
   "file_hashes": {}
 }

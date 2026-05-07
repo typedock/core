@@ -16,7 +16,7 @@ $managedPaths = [
     'README.md',
 ];
 $bundledThemes = ['default', 'kinari'];
-$bundledPlugins = ['form', 'redirect', 'social', 'image-optimizer', 'turnstile-captcha', 'advanced-blocks', 'backup', 'source-contentful', 'source-github'];
+$bundledPlugins = ['form', 'redirect', 'social', 'image-optimizer', 'turnstile-captcha', 'advanced-blocks', 'backup', 'source-contentful', 'source-github', 'cloud-storage'];
 
 $fileHashes = [];
 foreach (array_merge($managedPaths, array_map(fn(string $s): string => 'themes/' . $s, $bundledThemes), array_map(fn(string $s): string => 'plugins/' . $s, $bundledPlugins)) as $path) {

@@ -32,21 +32,18 @@ class MediaController extends BaseAdminController
 
     /**
      * Summarise the active storage driver for the UI badge. We don't expose
-     * credentials — only the driver name and a label the admin can recognise
-     * (bucket name for S3, public upload URL prefix for local).
+     * credentials — only the provider owner or public upload URL prefix.
      *
      * @return array{driver: string, label: string, details: string}
      */
     private function storageInfo(): array
     {
-        $driver = (string) config('filesystems.default', 'local');
-
-        if ($driver === 's3') {
-            $s3 = config('filesystems.s3', []);
+        $provider = \Flight::provider_registry()->claimedBy('storage');
+        if ($provider !== null) {
             return [
-                'driver'  => 's3',
-                'label'   => 'Amazon S3',
-                'details' => (string) ($s3['bucket'] ?? '(no bucket configured)'),
+                'driver'  => 'plugin',
+                'label'   => 'Plugin storage',
+                'details' => $provider,
             ];
         }
 

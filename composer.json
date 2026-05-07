@@ -19,7 +19,7 @@
         "phpunit/phpunit": "^11.0"
     },
     "suggest": {
-        "aws/aws-sdk-php": "Required for S3-compatible storage"
+        "async-aws/s3": "Required by the official Cloud Storage plugin for S3-compatible media storage"
     },
     "autoload": {
         "psr-4": {

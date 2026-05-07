@@ -1,0 +1,14 @@
+{
+    "slug": "cloud-storage",
+    "name": "Cloud Storage",
+    "version": "1.0.0",
+    "description": "S3-compatible media storage provider for Amazon S3, Cloudflare R2, MinIO, and CDN-backed buckets.",
+    "main_class": "TypeDock\\Plugin\\CloudStorage\\CloudStoragePlugin",
+    "min_core_version": "0.1",
+    "provides": ["storage"],
+    "autoload": {
+        "psr-4": {
+            "TypeDock\\Plugin\\CloudStorage\\": "src/"
+        }
+    }
+}

@@ -8,7 +8,7 @@
         <h1>Media</h1>
         <p class="subtitle">Images, documents, and assets uploaded to your site.</p>
         {if isset($storage)}
-            <p class="media-storage-badge" title="Configure in config/filesystems.php">
+            <p class="media-storage-badge" title="Local storage is configured in config/filesystems.php. Cloud storage is configured by a storage provider plugin.">
                 <span class="badge badge-muted">{$storage['label']}</span>
                 <span class="font-mono text-xs text-slate-500">{$storage['details']}</span>
             </p>

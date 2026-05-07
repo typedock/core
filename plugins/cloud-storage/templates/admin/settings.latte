@@ -1,0 +1,113 @@
+{layout $plugin_ui_layout}
+
+{block page_title}Cloud Storage{/block}
+
+{block content}
+<section>
+    <div class="page-header">
+        <div>
+            <h1>Cloud Storage</h1>
+            <p>S3-compatible media storage for Amazon S3 and compatible object stores.</p>
+        </div>
+    </div>
+
+    {if $flash}
+        <div class="plugin-flash plugin-flash--success" role="status">{$flash}</div>
+    {/if}
+    {if $error}
+        <div class="plugin-flash plugin-flash--error" role="alert">{$error}</div>
+    {/if}
+
+    <div class="card">
+        <h2>Status</h2>
+        <p>
+            {if $diagnostics['will_provide']}
+                Cloud Storage is active and currently replaces the Core local storage provider.
+            {else}
+                Core local storage is currently active. Complete the required settings and enable the provider to switch uploads.
+            {/if}
+        </p>
+        {if !$diagnostics['sdk']}
+            <p><strong>Missing dependency:</strong> install <code>async-aws/s3</code> before enabling this provider.</p>
+        {/if}
+        {if $settings['active'] && (!$diagnostics['has_bucket'] || !$diagnostics['has_key'] || !$diagnostics['has_secret'])}
+            <p><strong>Configuration incomplete:</strong> bucket, access key, and secret key are required.</p>
+        {/if}
+    </div>
+
+    <form method="post" action="{$admin_url()}" class="card">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+
+        <div class="form-group">
+            <label class="switch">
+                <input type="checkbox" name="active" value="1" {if $settings['active']}checked{/if}>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+                <span class="switch-label">Use this provider for media uploads</span>
+            </label>
+        </div>
+
+        <div class="form-group">
+            <label for="bucket">Bucket</label>
+            <input id="bucket" type="text" name="bucket" value="{$settings['bucket']}" autocomplete="off" placeholder="my-typedock-bucket">
+            <p class="form-hint">For Amazon S3, this plus credentials is usually enough.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="region">Region</label>
+            <input id="region" type="text" name="region" value="{$settings['region']}" autocomplete="off" placeholder="us-east-1">
+            <p class="form-hint">Use the AWS region for S3. Compatible providers may use a value such as <code>auto</code>.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="access_key_id">Access key ID</label>
+            <input id="access_key_id" type="password" name="access_key_id" value="" autocomplete="new-password" placeholder="{if $settings['access_key_id'] !== ''}Stored - leave blank to keep{else}Required{/if}">
+        </div>
+
+        <div class="form-group">
+            <label for="secret_access_key">Secret access key</label>
+            <input id="secret_access_key" type="password" name="secret_access_key" value="" autocomplete="new-password" placeholder="{if $settings['secret_access_key'] !== ''}Stored - leave blank to keep{else}Required{/if}">
+        </div>
+
+        <fieldset>
+            <legend>Advanced options</legend>
+
+            <div class="form-group">
+                <label for="endpoint">Endpoint URL <small>(optional)</small></label>
+                <input id="endpoint" type="url" name="endpoint" value="{$settings['endpoint']}" autocomplete="off" placeholder="Leave blank for Amazon S3">
+                <p class="form-hint">Set only for S3-compatible providers such as R2, MinIO, or custom gateways.</p>
+            </div>
+
+            <div class="form-group">
+                <label for="public_url">Public URL / CDN URL <small>(optional)</small></label>
+                <input id="public_url" type="url" name="public_url" value="{$settings['public_url']}" autocomplete="off" placeholder="https://cdn.example.com">
+                <p class="form-hint">Leave blank to use the standard S3 object URL.</p>
+            </div>
+
+            <div class="form-group">
+                <label for="key_prefix">Key prefix <small>(optional)</small></label>
+                <input id="key_prefix" type="text" name="key_prefix" value="{$settings['key_prefix']}" autocomplete="off" placeholder="uploads">
+            </div>
+
+            <div class="form-group">
+                <label class="switch">
+                    <input type="checkbox" name="use_path_style_endpoint" value="1" {if $settings['use_path_style_endpoint']}checked{/if}>
+                    <span class="switch-track"><span class="switch-thumb"></span></span>
+                    <span class="switch-label">Use path-style endpoint</span>
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label class="switch">
+                    <input type="checkbox" name="send_chunked_body" value="1" {if $settings['send_chunked_body']}checked{/if}>
+                    <span class="switch-track"><span class="switch-thumb"></span></span>
+                    <span class="switch-label">Use chunked request bodies</span>
+                </label>
+            </div>
+        </fieldset>
+
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+    </form>
+</section>
+{/block}
