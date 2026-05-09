@@ -116,6 +116,12 @@ TypeDock uses an agent-assisted upgrade model: Core tells you which files
 are managed, which themes/plugins are user-owned, and what a coding agent
 or human operator should preserve. See [docs/upgrade.md](docs/upgrade.md).
 
+## Releasing
+
+Release tags are created only after CI is green on `main`. See
+[docs/release.md](docs/release.md) for the preflight checklist and tagging
+commands.
+
 ## Contributing
 
 1. Open an issue first for anything touching the data model, theme API, or component contract.

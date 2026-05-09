@@ -163,3 +163,27 @@ jobs:
 
       - name: PHPStan
         run: composer analyse
+
+  package:
+    name: Distribution package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo, pdo_sqlite, zip, gd, mbstring, intl, json
+          coverage: none
+          tools: composer:v2
+
+      - name: Install build prerequisites
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rsync zip
+
+      # Keep this in sync with .github/workflows/release.yml. If packaging
+      # breaks, the PR should fail before a tag starts the release workflow.
+      - name: Build distribution zip
+        run: bash build/make-shared-zip.sh
+        env:
+          OUT_DIR: ${{ github.workspace }}/dist
