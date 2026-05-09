@@ -14,7 +14,7 @@
 
 TypeDock is an open-source CMS that offers a different set of trade-offs from WordPress. Where WordPress chose maximum extensibility, TypeDock chooses a smaller, type-safe, server-rendered core with stricter boundaries between themes and plugins. It is intended as an **alternative**, not a replacement.
 
-> **Status:** Release candidate. Auth (session + API key + 2FA + brute-force lockout), content, media, SEO, search, theme engine, admin MPA, Tiptap 3 block editor, drop-in plugin system, External Source headless mode, and an OWASP-aligned security baseline are all working. 210 PHPUnit tests pass on SQLite, MySQL 8, and PostgreSQL 14.
+> **Status:** Release candidate. Auth (session + API key + 2FA + brute-force lockout), content, media, SEO, search, theme engine, admin MPA, Tiptap 3 block editor, drop-in plugin system, External Source headless mode, and an OWASP-aligned security baseline are all working. 226 PHPUnit tests pass on SQLite, MySQL 8, and PostgreSQL 14.
 
 ## Where TypeDock differs
 
@@ -30,11 +30,12 @@ TypeDock is an open-source CMS that offers a different set of trade-offs from Wo
 ## Features
 
 - **Content** — Pages, Posts, Categories, Tags, Revisions, scheduling, trash/restore, translation groups, author profiles
-- **Block editor** — Tiptap 3 with slash menu, floating toolbar, Media Picker, OGP bookmark cards, oEmbed (YouTube/Vimeo/X/Spotify/SoundCloud), embeddable `{component}` blocks. Body stored as Tiptap JSON, server-rendered by `TiptapRenderer` — HTML never persisted.
+- **Block editor** — Tiptap 3 with slash menu, floating toolbar, Media Picker, OGP bookmark cards, oEmbed (YouTube/Vimeo/X/Spotify/SoundCloud), embeddable `{component}` blocks, and a small Editor Public API for trusted plugins. Body stored as Tiptap JSON, server-rendered by `TiptapRenderer` — HTML never persisted.
 - **Auth & RBAC** — Session cookies + API keys + TOTP 2FA + brute-force lockout (login *and* 2FA verify). 4 roles, 30 named permissions, defense-in-depth ownership checks.
 - **Security baseline** — CSP, X-Frame-Options, X-Content-Type-Options, Referrer/Permissions-Policy, HSTS (HTTPS), HttpOnly + SameSite session cookies, `server_tokens off`, `expose_php = Off`. OWASP ZAP scan tooling included (`make security-scan`).
 - **External Source** — Read-only headless mode pulling content from Contentful, GitHub Issues, or any JSON HTTP API. Credentials encrypted at rest via AES-256-GCM keyed off `APP_KEY`.
-- **Plugins** — Drop-in `plugins/<slug>/` with manifest, optional iframe-isolated admin UI, zip upload installer, `provides` collision detection. Bundled: `form`, `redirect`, `social`, `image-optimizer`, `turnstile-captcha`, `advanced-blocks`, `backup`, `source-contentful`, `source-github`.
+- **Plugins** — Drop-in `plugins/<slug>/` with manifest, optional iframe-isolated admin UI, zip upload installer, `provides` collision detection. Bundled: `form`, `redirect`, `social`, `image-optimizer`, `turnstile-captcha`, `advanced-blocks`, `backup`, `source-contentful`, `source-github`, `simple-ai-writing`.
+- **Simple AI Writing** — Optional reference plugin for OpenAI-compatible editing assistance: selection rewrites, metadata suggestions, draft generation, and Markdown subset import through the editor public API.
 - **Themes** — Layout + partial + component overrides; `theme.json` settings + custom components + declarative `fetch`. Bundled: `default`, `kinari`, `kawara`, `northline`. See [docs/theme-development.md](docs/theme-development.md).
 - **Multi-DB & multi-language** — MySQL 8, PostgreSQL 14, SQLite 3.35+ on the same migrations. `locale` column on content with translation groups; default `en`. Optional locale routing (`/ja/about`).
 - **Shared-hosting friendly** — Pre-built zip with split `public_html/` + `typedock/` layout, browser installer, single `config.php`. No SSH or Composer required on the host.
