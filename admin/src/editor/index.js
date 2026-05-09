@@ -16,6 +16,7 @@ import { ComponentBlock } from './extensions/component-block.js'
 import { FloatingToolbar } from './ui/floating-toolbar.js'
 import { SlashMenu } from './ui/slash-menu.js'
 import { uploadImage } from './ui/image-upload.js'
+import { EditorPublicApi } from './ui/public-api.js'
 
 const EMPTY_DOC = { type: 'doc', content: [{ type: 'paragraph' }] }
 
@@ -109,6 +110,8 @@ function mount() {
       if (bodyInput) bodyInput.value = JSON.stringify(json)
     },
   })
+
+  EditorPublicApi.attach(editor, bodyInput)
 
   // Sync once on mount so a brand-new doc is also persisted on save.
   if (bodyInput) bodyInput.value = JSON.stringify(editor.getJSON())

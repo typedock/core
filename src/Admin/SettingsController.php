@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace TypeDock\Admin;
 
 use League\CommonMark\CommonMarkConverter;
+use TypeDock\Core\AssetPublisher;
 
 class SettingsController extends BaseAdminController
 {
@@ -292,9 +293,21 @@ class SettingsController extends BaseAdminController
                 ->execute([$key, json_encode($enabled), 'plugins', $now]);
         }
 
+        $assetNote = '';
+        try {
+            $publisher = new AssetPublisher(TYPEDOCK_ROOT);
+            if ($enabled) {
+                $publisher->publishPlugin($slug);
+            } else {
+                $publisher->unpublishPlugin($slug);
+            }
+        } catch (\Throwable $e) {
+            $assetNote = ' Asset publishing failed; run php cli/assets-publish.php.';
+        }
+
         $this->redirect(
             '/admin/settings/modules',
-            sprintf('%s %s.', ucfirst($slug), $enabled ? 'enabled' : 'disabled')
+            sprintf('%s %s.%s', ucfirst($slug), $enabled ? 'enabled' : 'disabled', $assetNote)
         );
     }
 

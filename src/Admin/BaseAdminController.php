@@ -21,6 +21,8 @@ abstract class BaseAdminController
             'csrf_token'        => CsrfMiddleware::generate(),
             'current_path'      => (string) ($_SERVER['REQUEST_URI'] ?? ''),
             'plugin_admin_menu' => \Flight::plugin_admin_menu()->all(),
+            'editor_extension_scripts' => \Flight::editor_extensions()->scripts(),
+            'editor_asset_version' => $this->editorAssetVersion(),
         ];
 
         \Flight::latte()->render($template, array_merge($defaults, $params), TYPEDOCK_ROOT . '/admin');
@@ -292,5 +294,18 @@ abstract class BaseAdminController
             'name' => $opts['site.name'] ?? config('app.name', 'TypeDock'),
             'url'  => config('app.url', 'http://localhost'),
         ];
+    }
+
+    private function editorAssetVersion(): int
+    {
+        $files = [
+            TYPEDOCK_ROOT . '/public/admin/dist/editor.bundle.js',
+            TYPEDOCK_ROOT . '/public/admin/dist/editor.bundle.css',
+        ];
+        $versions = array_map(
+            static fn(string $file): int => is_file($file) ? (int) filemtime($file) : 0,
+            $files
+        );
+        return max($versions) ?: time();
     }
 }

@@ -18,6 +18,7 @@ use TypeDock\Component\ComponentRegistry;
 use TypeDock\Component\ComponentRenderer;
 use TypeDock\Component\CoreComponentRegistrar;
 use TypeDock\Admin\PluginAdminMenu;
+use TypeDock\Admin\EditorExtensionRegistry;
 use TypeDock\Core\PluginDiagnostics;
 use TypeDock\Core\ProviderRegistry;
 use TypeDock\Locale\LocaleService;
@@ -100,6 +101,15 @@ class ServiceProvider
             }
             $diag = new PluginDiagnostics();
             return $diag;
+        });
+
+        \Flight::map('editor_extensions', function (): EditorExtensionRegistry {
+            static $registry = null;
+            if ($registry !== null) {
+                return $registry;
+            }
+            $registry = new EditorExtensionRegistry();
+            return $registry;
         });
     }
 

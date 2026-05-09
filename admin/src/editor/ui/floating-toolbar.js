@@ -35,6 +35,8 @@ export const FloatingToolbar = {
         <option value="3">Heading 3</option>
         <option value="4">Heading 4</option>
       </select>
+      <span class="toolbar-sep toolbar-extension-sep" hidden></span>
+      <span class="toolbar-extension-actions"></span>
     `
     document.body.appendChild(toolbar)
 
@@ -68,6 +70,13 @@ export const FloatingToolbar = {
       }
     })
 
+    toolbar.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-extension-action]')
+      if (!btn) return
+      const action = window.TypeDockEditorApi?.getInlineAction(btn.dataset.extensionAction)
+      if (action) action.run(window.TypeDockEditorApi)
+    })
+
     dropdown.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-color]')
       if (!btn) return
@@ -81,6 +90,10 @@ export const FloatingToolbar = {
       else editor.chain().focus().toggleHeading({ level: parseInt(v, 10) }).run()
       e.target.value = currentBlockValue(editor)
     })
+
+    const renderActions = () => renderExtensionActions(toolbar)
+    renderActions()
+    document.addEventListener('typedock:editor-actions-changed', renderActions)
 
     const sync = () => updateToolbar(editor, toolbar)
     editor.on('selectionUpdate', sync)
@@ -98,6 +111,25 @@ export const FloatingToolbar = {
       }
     })
   },
+}
+
+function renderExtensionActions(toolbar) {
+  const wrap = toolbar.querySelector('.toolbar-extension-actions')
+  const sep = toolbar.querySelector('.toolbar-extension-sep')
+  if (!wrap || !sep) return
+
+  const actions = window.TypeDockEditorApi?.getInlineActions?.() || []
+  wrap.replaceChildren()
+  sep.hidden = actions.length === 0
+
+  actions.forEach((action) => {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.dataset.extensionAction = action.id
+    button.title = action.title || action.label
+    button.textContent = action.label
+    wrap.appendChild(button)
+  })
 }
 
 function currentBlockValue(editor) {

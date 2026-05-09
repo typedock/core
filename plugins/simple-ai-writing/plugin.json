@@ -1,0 +1,16 @@
+{
+    "slug": "simple-ai-writing",
+    "name": "Simple AI Writing",
+    "version": "0.1.0",
+    "description": "Reference AI writing helper for selection rewrites and SEO field suggestions.",
+    "readme": "README.md",
+    "main_class": "TypeDock\\Plugin\\SimpleAiWriting\\SimpleAiWritingPlugin",
+    "min_core_version": "0.1",
+    "default_enabled": false,
+    "provides": [],
+    "autoload": {
+        "psr-4": {
+            "TypeDock\\Plugin\\SimpleAiWriting\\": "src/"
+        }
+    }
+}

@@ -139,6 +139,31 @@ class PluginContext
         \Flight::plugin_admin_menu()->add($this->pluginSlug, $label, $full);
     }
 
+    /**
+     * Register a browser script loaded on the post/page editor screen.
+     *
+     * Relative paths resolve to /plugins/<slug>/assets/<path> after the
+     * standard asset publisher has copied plugin assets into public/.
+     */
+    public function registerEditorScript(string $pathOrUrl): void
+    {
+        $src = trim($pathOrUrl);
+        if ($src === '') {
+            return;
+        }
+        if (!str_starts_with($src, '/') && !preg_match('#^https?://#i', $src)) {
+            $asset = ltrim($src, '/');
+            $src = '/plugins/' . $this->pluginSlug . '/assets/' . $asset;
+            $sourceFile = $this->pluginDir !== null
+                ? rtrim($this->pluginDir, '/') . '/assets/' . $asset
+                : null;
+            if ($sourceFile !== null && is_file($sourceFile)) {
+                $src .= '?v=' . filemtime($sourceFile);
+            }
+        }
+        \Flight::editor_extensions()->addScript($src);
+    }
+
     public function hasAdminSurface(): bool
     {
         return $this->hasAdminSurface;

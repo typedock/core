@@ -1,0 +1,61 @@
+{layout $plugin_ui_layout}
+
+{block page_title}Simple AI Writing{/block}
+
+{block content}
+<section>
+    <div class="page-header">
+        <div>
+            <h1>Simple AI Writing</h1>
+            <p>Connect an OpenAI-compatible chat endpoint for editor rewrites and SEO field suggestions.</p>
+        </div>
+    </div>
+
+    {if $flash}
+        <div class="plugin-flash plugin-flash--success" role="status">{$flash}</div>
+    {/if}
+    {if $error}
+        <div class="plugin-flash plugin-flash--error" role="alert">{$error}</div>
+    {/if}
+
+    <div class="card">
+        <h2>Status</h2>
+        <p>
+            {if $configured}
+                Simple AI Writing is configured. Editor actions appear when text is selected.
+            {else}
+                Add an endpoint, model, and API key to enable editor actions.
+            {/if}
+        </p>
+    </div>
+
+    <form method="post" action="{$admin_url()}" class="card">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+
+        <div class="form-group">
+            <label for="endpoint">Chat completions endpoint</label>
+            <input id="endpoint" type="url" name="endpoint" value="{$settings['endpoint']}" autocomplete="off" placeholder="https://api.openai.com/v1/chat/completions">
+            <p class="form-hint">Use an OpenAI-compatible chat completions endpoint.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="model">Model</label>
+            <input id="model" type="text" name="model" value="{$settings['model']}" autocomplete="off" placeholder="gpt-4o-mini">
+        </div>
+
+        <div class="form-group">
+            <label for="api_key">API key</label>
+            <input id="api_key" type="password" name="api_key" value="" autocomplete="new-password" placeholder="{if $settings['api_key'] !== ''}Stored - leave blank to keep{else}Required{/if}">
+        </div>
+
+        <div class="form-group">
+            <label for="temperature">Temperature</label>
+            <input id="temperature" type="number" name="temperature" min="0" max="2" step="0.1" value="{$settings['temperature']}">
+        </div>
+
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+    </form>
+</section>
+{/block}

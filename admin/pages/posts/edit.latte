@@ -6,7 +6,7 @@
 {block page_title}{$post['id'] ?? '' ? 'Edit ' . $noun : 'New ' . $noun}{/block}
 
 {block head}
-<link rel="stylesheet" href="/admin/dist/editor.bundle.css">
+<link rel="stylesheet" href="/admin/dist/editor.bundle.css?v={$editor_asset_version}">
 {/block}
 
 {block content}
@@ -69,6 +69,8 @@
                    value="{$post['slug'] ?? ''}"
                    placeholder="url-slug">
         </div>
+
+        <div class="editor-panel-actions" data-editor-panel-actions="draft"></div>
 
         {* Tiptap editor mount point. The editor bundle reads the hidden
            #body-field above for the initial Tiptap JSON document and writes
@@ -147,6 +149,8 @@
         <details class="meta-section seo-panel" {if !empty($seo)}open{/if}>
             <summary>SEO &amp; Social</summary>
             <div class="meta-body space-y-4">
+                <div class="editor-panel-actions" data-editor-panel-actions="seo"></div>
+
                 <div class="form-group">
                     <label>SEO Title <small>(blank = use post title)</small></label>
                     <input type="text" name="seo[seo_title]" maxlength="500"
@@ -247,10 +251,15 @@
 {block scripts}
 <script src="/admin/assets/js/media-picker.js"></script>
 {var $componentDefsJson = json_encode($component_defs ?? [], \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE)}
+{var $editorConfigJson = json_encode(['csrfToken' => $csrf_token], \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE)}
 <script>
   // Component catalog for the editor's slash menu + componentBlock params.
   window.typedockComponentDefs = {$componentDefsJson|noescape};
+  window.typedockEditorConfig = {$editorConfigJson|noescape};
 </script>
-<script src="/admin/dist/editor.bundle.js" defer></script>
+<script src="/admin/dist/editor.bundle.js?v={$editor_asset_version}" defer></script>
+{foreach $editor_extension_scripts ?? [] as $scriptSrc}
+<script src="{$scriptSrc}" defer></script>
+{/foreach}
 <script src="/admin/assets/js/seo-og-image.js"></script>
 {/block}
