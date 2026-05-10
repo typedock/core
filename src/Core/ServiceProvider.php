@@ -17,6 +17,7 @@ use TypeDock\Storage\LocalStorage;
 use TypeDock\Component\ComponentRegistry;
 use TypeDock\Component\ComponentRenderer;
 use TypeDock\Component\CoreComponentRegistrar;
+use TypeDock\Core\Database\SqlitePragmas;
 use TypeDock\Admin\PluginAdminMenu;
 use TypeDock\Admin\EditorExtensionRegistry;
 use TypeDock\Core\PluginDiagnostics;
@@ -153,6 +154,10 @@ class ServiceProvider
                 $driver === 'sqlite' ? null : ($db['password'] ?? ''),
                 $pdoOptions
             );
+
+            if ($driver === 'sqlite') {
+                SqlitePragmas::apply($pdo, $db);
+            }
 
             return $pdo;
         });

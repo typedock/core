@@ -7,6 +7,7 @@ use DateTimeImmutable;
 use PDO;
 use Ramsey\Uuid\Uuid;
 use RuntimeException;
+use TypeDock\Core\Database\SqlitePragmas;
 use TypeDock\Core\Migration\Migrator;
 
 /**
@@ -205,9 +206,6 @@ final class Installer
     {
         $db  = require $this->root . '/config/database.php';
         $pdo = $this->makePdo($db);
-        if (($db['driver'] ?? '') === 'sqlite') {
-            $pdo->exec('PRAGMA foreign_keys = ON');
-        }
         $migrator = new Migrator($pdo, (string) $db['driver'], $this->root . '/migrations');
         return $migrator->migrate();
     }
@@ -254,9 +252,6 @@ final class Installer
     public function activateTheme(array $db, string $themeName = 'default'): void
     {
         $pdo = $this->makePdo($db);
-        if (($db['driver'] ?? '') === 'sqlite') {
-            $pdo->exec('PRAGMA foreign_keys = ON');
-        }
         (new \TypeDock\Theme\ThemeLoader())->activateTheme($themeName, $pdo);
     }
 
@@ -274,9 +269,6 @@ final class Installer
     public function seedSiteOptions(array $db, array $site): void
     {
         $pdo = $this->makePdo($db);
-        if (($db['driver'] ?? '') === 'sqlite') {
-            $pdo->exec('PRAGMA foreign_keys = ON');
-        }
 
         $defaults = [
             'site.name'                 => $site['name']                 ?? 'TypeDock',
@@ -316,9 +308,6 @@ final class Installer
     public function seedDemoContent(array $db, ?string $authorId = null): array
     {
         $pdo = $this->makePdo($db);
-        if (($db['driver'] ?? '') === 'sqlite') {
-            $pdo->exec('PRAGMA foreign_keys = ON');
-        }
         return (new DemoSeeder($pdo))->seed($authorId);
     }
 
@@ -365,12 +354,18 @@ final class Installer
             default  => sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $db['host'] ?? '127.0.0.1', (int) ($db['port'] ?? 3306), $db['database'] ?? '', $charset),
         };
 
-        return new PDO(
+        $pdo = new PDO(
             $dsn,
             $driver === 'sqlite' ? null : ($db['username'] ?? ''),
             $driver === 'sqlite' ? null : ($db['password'] ?? ''),
             [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
         );
+
+        if ($driver === 'sqlite') {
+            SqlitePragmas::apply($pdo, $db);
+        }
+
+        return $pdo;
     }
 
 }

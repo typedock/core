@@ -4,6 +4,8 @@ declare(strict_types=1);
 define('TYPEDOCK_ROOT', dirname(__DIR__));
 require TYPEDOCK_ROOT . '/vendor/autoload.php';
 
+use TypeDock\Core\Database\SqlitePragmas;
+
 typedock_load_config(TYPEDOCK_ROOT);
 
 $db     = require TYPEDOCK_ROOT . '/config/database.php';
@@ -21,6 +23,9 @@ $pdo = new PDO(
     $driver === 'sqlite' ? null : $db['password'],
     [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
 );
+if ($driver === 'sqlite') {
+    SqlitePragmas::apply($pdo, $db);
+}
 
 $schemaDir = TYPEDOCK_ROOT . '/schema';
 if (!is_dir($schemaDir)) {

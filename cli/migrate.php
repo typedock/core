@@ -4,6 +4,7 @@ declare(strict_types=1);
 define('TYPEDOCK_ROOT', dirname(__DIR__));
 require TYPEDOCK_ROOT . '/vendor/autoload.php';
 
+use TypeDock\Core\Database\SqlitePragmas;
 use TypeDock\Core\Migration\Migrator;
 
 typedock_load_config(TYPEDOCK_ROOT);
@@ -83,7 +84,7 @@ function makePdoForCli(array $db, string $root): PDO
     );
 
     if ($driver === 'sqlite') {
-        $pdo->exec('PRAGMA foreign_keys = ON');
+        SqlitePragmas::apply($pdo, $db);
     }
 
     return $pdo;
