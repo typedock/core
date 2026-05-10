@@ -43,6 +43,21 @@ return [
     'DB_PREFIX'      => '',
     'DB_SQLITE_PATH' => '',
 
+    // --- SQLite tuning ---
+    // balanced applies WAL + synchronous=NORMAL when the host allows it.
+    // off/safe disable performance tuning but keep connection safety settings.
+    // Use custom to opt into the advanced values below.
+    'SQLITE_TUNING'       => 'balanced', // off / safe / balanced / custom
+    'SQLITE_FOREIGN_KEYS' => 'true',
+    'SQLITE_BUSY_TIMEOUT' => '5000',
+    'SQLITE_WAL'          => 'true',
+    'SQLITE_SYNCHRONOUS'  => 'NORMAL',
+    'SQLITE_PAGE_SIZE'    => '',
+    'SQLITE_CACHE_SIZE'   => '',
+    'SQLITE_MMAP_SIZE'    => '',
+    'SQLITE_TEMP_STORE'   => '',
+    'SQLITE_LOG_WARNINGS' => 'true',
+
     // --- Cache ---
     'CACHE_STATIC_HTML' => 'false',
     'CACHE_TTL'         => '3600',

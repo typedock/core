@@ -15,6 +15,7 @@ require TYPEDOCK_ROOT . '/vendor/autoload.php';
 
 use Ramsey\Uuid\Uuid;
 use TypeDock\Core\AssetPublisher;
+use TypeDock\Core\Database\SqlitePragmas;
 use TypeDock\Core\Migration\Migrator;
 use TypeDock\Install\Installer;
 use TypeDock\Theme\ThemeLoader;
@@ -203,7 +204,7 @@ function theme_preview_pdo(array $db): PDO
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     ]);
-    $pdo->exec('PRAGMA foreign_keys = ON');
+    SqlitePragmas::apply($pdo, $db);
     return $pdo;
 }
 
