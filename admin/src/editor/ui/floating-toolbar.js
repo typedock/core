@@ -5,6 +5,8 @@ const HIGHLIGHT_COLORS = [
   { color: 'blue', swatch: '#bfdbfe' },
 ]
 
+const FORM_CONTROL_SELECTOR = 'select, input, textarea, option'
+
 export const FloatingToolbar = {
   init(editor) {
     const toolbar = document.createElement('div')
@@ -41,8 +43,30 @@ export const FloatingToolbar = {
     document.body.appendChild(toolbar)
 
     const dropdown = toolbar.querySelector('.highlight-dropdown')
+    const blockTypeSelect = toolbar.querySelector('select[data-cmd="heading"]')
+    const state = { interactingWithFormControl: false }
 
-    toolbar.addEventListener('mousedown', (e) => e.preventDefault())
+    toolbar.addEventListener('mousedown', (e) => {
+      if (e.target.closest(FORM_CONTROL_SELECTOR)) {
+        state.interactingWithFormControl = true
+        return
+      }
+      e.preventDefault()
+    })
+
+    toolbar.addEventListener('focusin', (e) => {
+      if (e.target.closest(FORM_CONTROL_SELECTOR)) {
+        state.interactingWithFormControl = true
+      }
+    })
+
+    toolbar.addEventListener('focusout', (e) => {
+      if (!e.target.closest(FORM_CONTROL_SELECTOR)) return
+      setTimeout(() => {
+        state.interactingWithFormControl = false
+        updateToolbar(editor, toolbar, state)
+      }, 100)
+    })
 
     toolbar.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-cmd]')
@@ -84,24 +108,27 @@ export const FloatingToolbar = {
       dropdown.hidden = true
     })
 
-    toolbar.querySelector('select[data-cmd="heading"]').addEventListener('change', (e) => {
+    blockTypeSelect.addEventListener('change', (e) => {
       const v = e.target.value
       if (v === 'paragraph') editor.chain().focus().setParagraph().run()
       else editor.chain().focus().toggleHeading({ level: parseInt(v, 10) }).run()
       e.target.value = currentBlockValue(editor)
+      state.interactingWithFormControl = false
     })
 
     const renderActions = () => renderExtensionActions(toolbar)
     renderActions()
     document.addEventListener('typedock:editor-actions-changed', renderActions)
 
-    const sync = () => updateToolbar(editor, toolbar)
+    const sync = () => updateToolbar(editor, toolbar, state)
     editor.on('selectionUpdate', sync)
     editor.on('transaction', sync)
     editor.on('blur', () => {
       // Defer so clicks on the toolbar can register before hiding.
       setTimeout(() => {
-        if (!toolbar.contains(document.activeElement)) toolbar.hidden = true
+        if (!state.interactingWithFormControl && !toolbar.contains(document.activeElement)) {
+          toolbar.hidden = true
+        }
       }, 100)
     })
 
@@ -139,12 +166,13 @@ function currentBlockValue(editor) {
   return 'paragraph'
 }
 
-function updateToolbar(editor, toolbar) {
+function updateToolbar(editor, toolbar, state = { interactingWithFormControl: false }) {
   const sel = editor.state.selection
   const { from, to, empty } = sel
   // Hide on collapsed selection, on NodeSelection (atom block selected via
   // click), and when the editor doesn't actually have focus.
-  if (empty || !editor.isFocused || sel.node) {
+  const keepOpenForToolbarControl = state.interactingWithFormControl || toolbar.contains(document.activeElement)
+  if (sel.node || (!keepOpenForToolbarControl && (empty || !editor.isFocused))) {
     toolbar.hidden = true
     return
   }
