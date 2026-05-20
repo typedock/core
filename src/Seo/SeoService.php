@@ -177,8 +177,9 @@ class SeoService
      *
      * Precedence (highest wins):
      *   1. Per-page seo_meta row (explicit editor input)
-     *   2. Global seo_meta row (site defaults from /admin/settings/seo)
-     *   3. Derived from page row (title/excerpt/slug)
+     *   2. First image in the Tiptap body (for page-specific social cards)
+     *   3. Global seo_meta row (site defaults from /admin/settings/seo)
+     *   4. Derived from page row (title/excerpt/slug)
      *
      * Returned as a plain object so themes can do `{$seo->ogImageUrl}`
      * without caring about DB shape.
@@ -213,8 +214,7 @@ class SeoService
         $twitterCard = $pick('twitter_card')     ?? 'summary_large_image';
         $robots      = $pick('robots');
         $canonical   = $pick('canonical_url')    ?? $this->defaultCanonical($page);
-        $ogImageId   = $raw['og_image_id'] ?? $global['og_image_id'] ?? null;
-        $ogImageUrl  = $this->resolveOgImageUrl(is_string($ogImageId) ? $ogImageId : null);
+        $ogImageUrl  = $this->resolvePageOgImageUrl($page, $raw, $global);
         $schemaType  = $pick('schema_type');
 
         return (object) [
@@ -273,6 +273,103 @@ class SeoService
     public function resolveOgImageUrl(?string $mediaId): ?string
     {
         return $this->resolveOgImage($mediaId)['url'] ?? null;
+    }
+
+    /**
+     * @param array<string, mixed> $page
+     * @param array<string, mixed> $raw
+     * @param array<string, mixed> $global
+     */
+    private function resolvePageOgImageUrl(array $page, array $raw, array $global): ?string
+    {
+        $explicitId = $raw['og_image_id'] ?? null;
+        $url = $this->resolveOgImageUrl(is_string($explicitId) ? $explicitId : null);
+        if ($url !== null) {
+            return $url;
+        }
+
+        $url = $this->firstTiptapImageUrl($page['body'] ?? null);
+        if ($url !== null) {
+            return $url;
+        }
+
+        $globalId = $global['og_image_id'] ?? null;
+        return $this->resolveOgImageUrl(is_string($globalId) ? $globalId : null);
+    }
+
+    private function firstTiptapImageUrl(mixed $body): ?string
+    {
+        if (!is_string($body) || trim($body) === '') {
+            return null;
+        }
+
+        try {
+            $doc = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return null;
+        }
+
+        if (!is_array($doc)) {
+            return null;
+        }
+
+        return $this->findFirstImageUrlInNode($doc);
+    }
+
+    /**
+     * @param array<string, mixed> $node
+     */
+    private function findFirstImageUrlInNode(array $node): ?string
+    {
+        if (($node['type'] ?? null) === 'image' && is_array($node['attrs'] ?? null)) {
+            $attrs = $node['attrs'];
+            $mediaId = $attrs['mediaId'] ?? null;
+            $resolved = $this->resolveOgImageUrl(is_string($mediaId) ? $mediaId : null);
+            if ($resolved !== null) {
+                return $resolved;
+            }
+
+            $src = $attrs['src'] ?? null;
+            return is_string($src) ? $this->absoluteImageUrl($src) : null;
+        }
+
+        if (!is_array($node['content'] ?? null)) {
+            return null;
+        }
+
+        foreach ($node['content'] as $child) {
+            if (!is_array($child)) {
+                continue;
+            }
+            $url = $this->findFirstImageUrlInNode($child);
+            if ($url !== null) {
+                return $url;
+            }
+        }
+
+        return null;
+    }
+
+    private function absoluteImageUrl(string $src): ?string
+    {
+        $src = trim($src);
+        if ($src === '') {
+            return null;
+        }
+
+        if (preg_match('#^https?://#i', $src)) {
+            return $src;
+        }
+
+        if (str_starts_with($src, '//')) {
+            return 'https:' . $src;
+        }
+
+        if (str_starts_with($src, '/')) {
+            return rtrim((string) config('app.url', ''), '/') . $src;
+        }
+
+        return null;
     }
 
     /**

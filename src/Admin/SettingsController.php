@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace TypeDock\Admin;
 
 use League\CommonMark\CommonMarkConverter;
+use TypeDock\Auth\ApiKeyService;
 use TypeDock\Core\AssetPublisher;
 
 class SettingsController extends BaseAdminController
@@ -160,6 +161,69 @@ class SettingsController extends BaseAdminController
         );
     }
 
+    public function apiKeys(): void
+    {
+        $user = \Flight::get('current_user');
+        $apiKey = $this->consumeApiKeyFlash();
+
+        $this->render('pages/settings/api.latte', [
+            'api_enabled'    => (bool) site_option('api.enabled', config('app.api_enabled', false)),
+            'api_env_locked' => (bool) config('app.api_enabled', false),
+            'api_keys'       => $this->formatApiKeys(\Flight::apikey()->listByUser((string) ($user['id'] ?? ''))),
+            'scopes'         => ApiKeyService::availableScopes(),
+            'default_scopes' => ApiKeyService::defaultReadScopes(),
+            'new_api_key'    => $apiKey,
+            'flash_success'  => $this->getFlash('success'),
+            'flash_error'    => $this->getFlash('error'),
+        ]);
+    }
+
+    public function updateApiSettings(): void
+    {
+        $enabled = !empty($_POST['api_enabled']);
+        $this->setOption('api.enabled', $enabled, 'api');
+        $this->redirect('/admin/settings/api', $enabled ? 'API enabled.' : 'API disabled.');
+    }
+
+    public function createApiKey(): void
+    {
+        $user = \Flight::get('current_user');
+        $name = trim((string) ($_POST['name'] ?? ''));
+        if ($name === '') {
+            $this->redirect('/admin/settings/api', 'API key name is required.', 'error');
+            return;
+        }
+
+        $rawScopes = $_POST['scopes'] ?? [];
+        $scopes = is_array($rawScopes) ? ApiKeyService::filterScopes($rawScopes) : [];
+        $permissions = !empty($_POST['inherit_role']) ? null : $scopes;
+
+        $expiresAt = null;
+        $expiresIn = (int) ($_POST['expires_in_days'] ?? 0);
+        if ($expiresIn > 0) {
+            $expiresAt = (new \DateTimeImmutable())->modify('+' . min($expiresIn, 3650) . ' days');
+        }
+
+        $created = \Flight::apikey()->create((string) ($user['id'] ?? ''), $name, $permissions, $expiresAt);
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $_SESSION['new_api_key'] = $created['key'];
+        $this->redirect('/admin/settings/api', 'API key created. Copy it now; it will not be shown again.');
+    }
+
+    public function revokeApiKey(): void
+    {
+        $id = trim((string) ($_POST['id'] ?? ''));
+        if ($id === '') {
+            $this->redirect('/admin/settings/api', 'Missing API key id.', 'error');
+            return;
+        }
+
+        \Flight::apikey()->revoke($id);
+        $this->redirect('/admin/settings/api', 'API key revoked.');
+    }
+
     /**
      * @return array<string, mixed>|null
      */
@@ -198,6 +262,36 @@ class SettingsController extends BaseAdminController
     private function mailEncryption(string $value): string
     {
         return in_array($value, ['', 'tls', 'ssl'], true) ? $value : 'tls';
+    }
+
+    private function consumeApiKeyFlash(): ?string
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $value = $_SESSION['new_api_key'] ?? null;
+        unset($_SESSION['new_api_key']);
+        return is_string($value) ? $value : null;
+    }
+
+    /**
+     * @param array<array<string, mixed>> $keys
+     * @return array<array<string, mixed>>
+     */
+    private function formatApiKeys(array $keys): array
+    {
+        foreach ($keys as &$key) {
+            if ($key['permissions'] === null) {
+                $key['scope_label'] = 'Role permissions';
+                continue;
+            }
+            $decoded = json_decode((string) $key['permissions'], true);
+            $key['scope_label'] = is_array($decoded) && $decoded !== []
+                ? implode(', ', array_map('strval', $decoded))
+                : 'No scopes';
+        }
+        unset($key);
+        return $keys;
     }
 
     public function modules(): void

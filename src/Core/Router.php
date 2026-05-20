@@ -262,6 +262,22 @@ class Router
                 $auth->requireAuth('admin');
                 (new SettingsController())->testMail();
             });
+            \Flight::route('GET /settings/api', function () use ($auth) {
+                $auth->requireAuth('admin');
+                (new SettingsController())->apiKeys();
+            });
+            \Flight::route('POST /settings/api', function () use ($auth) {
+                $auth->requireAuth('admin');
+                (new SettingsController())->updateApiSettings();
+            });
+            \Flight::route('POST /settings/api/keys', function () use ($auth) {
+                $auth->requireAuth('admin');
+                (new SettingsController())->createApiKey();
+            });
+            \Flight::route('POST /settings/api/keys/revoke', function () use ($auth) {
+                $auth->requireAuth('admin');
+                (new SettingsController())->revokeApiKey();
+            });
             \Flight::route('GET /settings/modules', function () use ($auth) {
                 $auth->requireAuth('admin');
                 (new SettingsController())->modules();
@@ -357,6 +373,10 @@ class Router
                 $auth->requireAuth('admin');
                 (new ThemeSettingsController())->reset();
             });
+            \Flight::route('POST /theme-settings/clear-cache', function () use ($auth) {
+                $auth->requireAuth('admin');
+                (new ThemeSettingsController())->clearCache();
+            });
         }, [AuthMiddleware::class, CsrfMiddleware::class]);
 
         // Admin internal JSON API (for JS islands). Kept on the per-route
@@ -399,7 +419,8 @@ class Router
 
     private function registerApiRoutes(): void
     {
-        if (!(bool) config('app.api_enabled', false)) {
+        $apiEnabled = (bool) config('app.api_enabled', false) || (bool) site_option('api.enabled', false);
+        if (!$apiEnabled) {
             $disabled = function (): void {
                 http_response_code(404);
                 header('Content-Type: application/json');
@@ -414,17 +435,62 @@ class Router
         }
 
         // External REST API (APIKey auth)
+        \Flight::route('GET /api/v1', function () {
+            (new ApiController())->manifest();
+        });
+        \Flight::route('GET /api/v1/manifest', function () {
+            (new ApiController())->manifest();
+        });
+
         \Flight::route('GET /api/v1/posts', function () {
             (new ApiController())->listPosts();
+        });
+        \Flight::route('POST /api/v1/posts', function () {
+            (new ApiController())->createPost();
         });
         \Flight::route('GET /api/v1/posts/@id', function (string $id) {
             (new ApiController())->getPost($id);
         });
+        \Flight::route('PATCH /api/v1/posts/@id', function (string $id) {
+            (new ApiController())->updatePost($id);
+        });
+        \Flight::route('PUT /api/v1/posts/@id', function (string $id) {
+            (new ApiController())->updatePost($id);
+        });
+        \Flight::route('DELETE /api/v1/posts/@id', function (string $id) {
+            (new ApiController())->deletePost($id);
+        });
+
+        \Flight::route('GET /api/v1/pages', function () {
+            (new ApiController())->listPages();
+        });
+        \Flight::route('POST /api/v1/pages', function () {
+            (new ApiController())->createPage();
+        });
+        \Flight::route('GET /api/v1/pages/@id', function (string $id) {
+            (new ApiController())->getPage($id);
+        });
+        \Flight::route('PATCH /api/v1/pages/@id', function (string $id) {
+            (new ApiController())->updatePage($id);
+        });
+        \Flight::route('PUT /api/v1/pages/@id', function (string $id) {
+            (new ApiController())->updatePage($id);
+        });
+        \Flight::route('DELETE /api/v1/pages/@id', function (string $id) {
+            (new ApiController())->deletePage($id);
+        });
+
         \Flight::route('GET /api/v1/media', function () {
             (new ApiController())->listMedia();
         });
         \Flight::route('POST /api/v1/media', function () {
             (new ApiController())->uploadMedia();
+        });
+        \Flight::route('GET /api/v1/media/@id', function (string $id) {
+            (new ApiController())->getMedia($id);
+        });
+        \Flight::route('DELETE /api/v1/media/@id', function (string $id) {
+            (new ApiController())->deleteMedia($id);
         });
     }
 

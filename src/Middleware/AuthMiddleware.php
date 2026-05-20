@@ -86,6 +86,7 @@ class AuthMiddleware
         if (!str_starts_with($header, 'Bearer ')) {
             http_response_code(401);
             header('Content-Type: application/json');
+            header('WWW-Authenticate: Bearer realm="TypeDock API"');
             echo json_encode(['error' => 'Unauthorized']);
             exit;
         }

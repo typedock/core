@@ -36,10 +36,14 @@ fields that "ought to be there"; treat this section as canonical.
 | Variable       | When present                                        | Notes |
 |----------------|-----------------------------------------------------|-------|
 | `$breadcrumbs` | Single, page, archive (category/tag/author), search | Empty array on 404/500/home. Each item has `label` (string), `url` (string), `isCurrent` (bool). Render via `{include 'partials/breadcrumb.latte'}`. |
-| `$pagination`  | archive, search, author archive, home (archive mode) | `PaginationData`: `current`, `totalPages`, `perPage`, `totalItems`, plus `hasPrev()`, `hasNext()`, `url(int $page)`, `range(int $window)`. `range()` returns a contiguous list of page numbers — no `null` gaps. |
+| `$pagination`  | archive, search, author archive, home (archive mode), External Source list | `PaginationData`: `current`, `totalPages`, `perPage`, `totalItems`, plus `hasPrev()`, `hasNext()`, `url(int $page)`, `range(int $window)`. `range()` returns a contiguous list of page numbers — no `null` gaps. |
 | `$seo`         | single, page, home                                  | `SeoService` result object: `title`, `description`, `canonical`, `robots`, `ogTitle`, `ogDescription`, `ogImageUrl`, `ogType`, `twitterCard`, `schemaType`, `jsonLd` (HTML string, emit with `\|noescape`). |
-| `$page`        | single (`single.latte`), page (`page.latte`), home in `home.latte` when `home_mode = page` | `PageView` object — see §2. |
+| `$page`        | single (`single.latte`), page (`page.latte`), External Source detail (`source-detail.latte`), home in `home.latte` when `home_mode = page` | `PageView` object for posts/pages (§2). External Source detail receives a page-like object whose `renderedBody` is the source detail template output (§4). |
 | `$posts`       | archive, author archive, home (archive mode)        | `PostView[]` (list) — see §3. |
+| `$items`       | External Source list (`source-list.latte`)          | External Source item objects — see §4. `$posts` is also set to the same array for archive fallback compatibility. Prefer `$items` in source templates. |
+| `$source`      | External Source list/detail                         | Source configuration object — see §4. |
+| `$source_meta` | External Source list/detail                         | Adapter metadata object — see §4. |
+| `$resource`    | External Source detail                              | The raw projected source item object — see §4. |
 | `$results`     | search                                              | `PostView[]` (list). Same shape as `$posts`. |
 | `$category`    | category archive                                    | Array `{id, name, slug, description?, parent_id?}`. |
 | `$tag`         | tag archive                                         | Array `{id, name, slug}`. |
@@ -139,7 +143,102 @@ the object shape above. Translation table for porting an older theme:
 
 ---
 
-## 4. Image handling
+## 4. External Source view models
+
+External Sources render read-only data from an adapter such as Contentful,
+GitHub Issues, Generic JSON, WordPress REST, or GitHub Markdown Docs.
+They use their own template candidates before falling back to normal blog
+templates.
+
+List route candidates, in order:
+
+1. `source-{slug}.latte`
+2. `layouts/source-{slug}.latte`
+3. `source-list.latte`
+4. `layouts/source-list.latte`
+5. `archive.latte`
+6. `layouts/archive.latte`
+
+Detail route candidates, in order:
+
+1. `source-{slug}-single.latte`
+2. `layouts/source-{slug}-single.latte`
+3. `source-detail.latte`
+4. `layouts/source-detail.latte`
+5. `single.latte`
+6. `layouts/single.latte`
+
+### 4.1 `$source`
+
+Available on `source-list.latte` and `source-detail.latte`.
+
+| Property | Type | Notes |
+|----------|------|-------|
+| `$source->id` | string | UUID. |
+| `$source->slug` | string | Public route prefix, e.g. `docs` owns `/docs`. |
+| `$source->name` | string | Operator-authored section name. Use this as the H1 on list pages. |
+| `$source->description` | string | Operator-authored section tagline / description. Use for archive copy and meta description. Empty string when not authored. |
+| `$source->provider` | string | Adapter id such as `contentful`, `github_issues`, `github_docs`, `wordpress_rest`, or `generic_json`. |
+| `$source->status` | string | `active` or `draft`; public templates only receive active sources. |
+| `$source->cache_ttl_seconds` | int | Mostly for diagnostics. |
+
+### 4.2 `$source_meta`
+
+Available on External Source list/detail templates. This describes the
+adapter, not the individual section.
+
+| Property | Type | Notes |
+|----------|------|-------|
+| `$source_meta->provider` | string | Same adapter id as `$source->provider`. |
+| `$source_meta->label` | string | Human label such as `GitHub Markdown Docs`. Useful for a small kicker. |
+| `$source_meta->description` | string | Adapter description, with `$source->description` already preferred when authored. Use as a fallback only. |
+
+### 4.3 `$items` and `$resource`
+
+External Source list templates receive `$items`. Detail templates receive
+`$resource` plus a page-like `$page` object for compatibility with
+single-page markup.
+
+| Property | Type | Notes |
+|----------|------|-------|
+| `$item->id` / `$resource->id` | string | Adapter-provided id or stable hash. |
+| `$item->slug` | string | Public item slug. May contain `/` for nested GitHub docs. |
+| `$item->url` | string | Public URL. Use this; do not reconstruct from the slug. |
+| `$item->title` | string | Mapped title. |
+| `$item->excerpt` | string | Mapped excerpt or adapter-derived first paragraph. |
+| `$item->thumbnail` | string | URL or empty string. |
+| `$item->thumbnailAlt` | string | Currently title fallback for external items. |
+| `$item->publishedAt` / `$item->date` | string | Mapped date or adapter update time. |
+| `$item->category` | string | Mapped category/directory/state. |
+| `$item->tags` | string[] | Mapped tags. |
+| `$item->content` | mixed | Mapped content field. Usually Markdown string, Contentful rich text array, or plain text. |
+| `$item->fields` | object/array-like payload | Normalized adapter fields. Prefer mapped top-level fields for templates. |
+| `$item->raw` | mixed | Raw normalized adapter item. Use only for adapter-specific escape hatches, such as a source URL. |
+
+On detail pages, `$page` exposes:
+
+| Property | Type | Notes |
+|----------|------|-------|
+| `$page->title` | string | Same as `$resource->title`. |
+| `$page->excerpt` | string | Same as `$resource->excerpt`. |
+| `$page->renderedBody` | string (HTML) | External Source detail template output. Emit with `\|noescape`. |
+| `$page->publishedAt` | string | Same as `$resource->publishedAt`. |
+| `$page->thumbnail` / `$page->heroImage` | string | External image URL or empty string. |
+| `$page->tags` | string[] | External tags. These are strings, not `{name, slug}` objects. |
+| `$page->source` | object | Same source object as `$source`. |
+| `$page->resource` | object | Same item object as `$resource`. |
+
+GitHub Markdown Docs sources render GitHub-Flavored Markdown in
+`$page->renderedBody`. Relative links ending in `.md` are rewritten to
+the routed External Source URL (`theme-template-reference.md` becomes
+`/docs/theme-template-reference`), and direct `.md` requests redirect to
+the extensionless URL. Themes should still style the generated HTML:
+inline `code`, `pre > code`, `table`, `blockquote`, `ul`, `ol`, images,
+and headings.
+
+---
+
+## 5. Image handling
 
 There is one image per page in TypeDock today: the `og_image` set on the
 SEO panel. The view model exposes it under three names so templates can
@@ -191,7 +290,7 @@ form as stable.
 
 ---
 
-## 5. `base.latte` — the root document
+## 6. `base.latte` — the root document
 
 Every concrete layout extends `base.latte` via `{layout 'base.latte'}`. A
 minimal but production-ready `base.latte`:
@@ -237,7 +336,7 @@ minimal but production-ready `base.latte`:
 
 ---
 
-## 6. Slots and components
+## 7. Slots and components
 
 Render configurable regions with `{slot('name')}`. Render a single named
 component with `{component('type', [params])}`:
@@ -270,7 +369,7 @@ content.
 
 ---
 
-## 7. Partials — the idiomatic pattern
+## 8. Partials — the idiomatic pattern
 
 Breadcrumbs, pagination, and navigation are data arrays (§1) that
 TypeDock hands to every template. The convention is to isolate their
@@ -316,7 +415,7 @@ every layout.
 
 ---
 
-## 8. Reading a theme setting
+## 9. Reading a theme setting
 
 ```latte
 <body class="... font-style--{$theme->setting('typography.font_family', 'sans')}">

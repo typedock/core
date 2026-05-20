@@ -44,6 +44,10 @@ return [
     'DB_SQLITE_PATH' => '',
 
     // --- Cache ---
+    // Keep Latte auto-refresh enabled so replacing theme files on disk does not
+    // leave stale compiled templates behind. Set false only for tightly
+    // controlled deployments that clear cache during release.
+    'LATTE_AUTO_REFRESH' => 'true',
     'CACHE_STATIC_HTML' => 'false',
     'CACHE_TTL'         => '3600',
 

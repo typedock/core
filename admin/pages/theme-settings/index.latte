@@ -15,6 +15,21 @@
     </div>
 </div>
 
+<div class="card theme-maintenance-card">
+    <div class="card-body theme-maintenance-body">
+        <div>
+            <h2 class="theme-maintenance-title">Template cache</h2>
+            <p class="form-hint">
+                Clear compiled Latte templates and static HTML after replacing theme files on disk.
+            </p>
+        </div>
+        <form method="post" action="/admin/theme-settings/clear-cache">
+            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+            <button type="submit" class="btn btn-secondary">Clear template cache</button>
+        </form>
+    </div>
+</div>
+
 {if empty($schema)}
     <div class="empty-state">
         <h3>No settings available</h3>
@@ -192,6 +207,19 @@
     }
     .color-field-hex { max-width: 120px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
     .image-field-input { width: 100%; }
+    .theme-maintenance-card { margin-bottom: 1.25rem; }
+    .theme-maintenance-body {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .theme-maintenance-title {
+        margin: 0 0 0.25rem;
+        font-size: 1rem;
+        color: #0f172a;
+    }
     .sticky-actions {
         position: sticky;
         bottom: 0;

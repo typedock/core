@@ -7,17 +7,13 @@ namespace TypeDock\Middleware;
  * Adds the OWASP-recommended baseline of HTTP response headers and strips
  * server fingerprinting headers that PHP / nginx emit by default.
  *
- * Two CSP policies are emitted depending on the route prefix:
- *   - admin/api: locked down to same-origin (with `'unsafe-inline'` for the
- *     handful of inline <style> blocks Latte templates carry, and to keep the
- *     plugin iframe shell working on the same origin).
- *   - frontend: more permissive — themes legitimately load fonts/images from
- *     third parties, and oEmbed iframes (YouTube/Vimeo/X/Spotify/SoundCloud)
- *     need https: in `frame-src`.
+ * CSP is emitted only for admin/api routes. Public frontend pages intentionally
+ * omit CSP by default so operator-managed analytics, ads, consent managers, and
+ * embeds can work without an ever-growing allowlist.
  *
- * Both policies block `object-src`, set `base-uri` and `form-action` to self,
- * and use `frame-ancestors 'self'` to mitigate clickjacking. Tightening to
- * nonce-based script-src/style-src is a future hardening step once admin
+ * The admin policy blocks `object-src`, sets `base-uri` and `form-action` to
+ * self, and uses `frame-ancestors 'self'` to mitigate clickjacking. Tightening
+ * to nonce-based script-src/style-src is a future hardening step once admin
  * templates are audited for inline scripts.
  */
 class SecurityHeadersMiddleware
@@ -47,7 +43,9 @@ class SecurityHeadersMiddleware
             header('Strict-Transport-Security: max-age=15552000; includeSubDomains');
         }
 
-        header('Content-Security-Policy: ' . ($isAdmin ? self::adminCsp() : self::frontendCsp()));
+        if ($isAdmin) {
+            header('Content-Security-Policy: ' . self::adminCsp());
+        }
     }
 
     private static function adminCsp(): string
@@ -60,23 +58,6 @@ class SecurityHeadersMiddleware
             "font-src 'self' data:",
             "connect-src 'self'",
             "frame-src 'self'",
-            "frame-ancestors 'self'",
-            "base-uri 'self'",
-            "form-action 'self'",
-            "object-src 'none'",
-        ]);
-    }
-
-    private static function frontendCsp(): string
-    {
-        return implode('; ', [
-            "default-src 'self'",
-            "script-src 'self' 'unsafe-inline'",
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-            "img-src 'self' data: blob: https:",
-            "font-src 'self' data: https://fonts.gstatic.com",
-            "connect-src 'self'",
-            "frame-src 'self' https:",
             "frame-ancestors 'self'",
             "base-uri 'self'",
             "form-action 'self'",

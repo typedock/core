@@ -57,6 +57,7 @@
                 {include 'icon-eye'}<span>Preview</span>
             </a>
             {if $theme['is_active']}
+                <a href="/admin/theme-settings" class="btn btn-secondary btn-sm">Settings</a>
                 <button type="button" class="btn btn-ghost btn-sm" disabled>Active</button>
             {else}
             <form method="post" action="/admin/themes/activate" class="inline"

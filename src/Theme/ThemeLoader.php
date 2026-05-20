@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace TypeDock\Theme;
 
+use TypeDock\Core\CacheClearer;
+
 class ThemeLoader
 {
     private string $themesDir;
@@ -124,6 +126,12 @@ class ThemeLoader
             (new \TypeDock\Core\AssetPublisher(TYPEDOCK_ROOT))->publishTheme($themeName);
         } catch (\Throwable) {
             // Swallow; the web server may still serve assets via the PHP fallback.
+        }
+
+        try {
+            (new CacheClearer())->clearTemplateCaches();
+        } catch (\Throwable) {
+            // Non-fatal. Admin users can retry from Theme Settings.
         }
     }
 

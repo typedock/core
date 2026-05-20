@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace TypeDock\Admin;
 
 use TypeDock\Core\AssetPublisher;
+use TypeDock\Core\CacheClearer;
 use TypeDock\Theme\ThemeLoader;
 
 class ThemeController extends BaseAdminController
@@ -75,6 +76,7 @@ class ThemeController extends BaseAdminController
 
         try {
             (new AssetPublisher(TYPEDOCK_ROOT))->publishTheme($slug);
+            (new CacheClearer())->clearTemplateCaches();
         } catch (\Throwable) {
             // Non-fatal — PHP readfile() fallback will still serve the assets.
         }

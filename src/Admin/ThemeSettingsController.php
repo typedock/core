@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace TypeDock\Admin;
 
+use TypeDock\Core\CacheClearer;
 use TypeDock\Theme\ThemeLoader;
 
 class ThemeSettingsController extends BaseAdminController
@@ -56,5 +57,20 @@ class ThemeSettingsController extends BaseAdminController
     {
         \Flight::theme_settings()->reset();
         $this->redirect('/admin/theme-settings', 'Theme settings reset to defaults.');
+    }
+
+    public function clearCache(): void
+    {
+        try {
+            $result = (new CacheClearer())->clearTemplateCaches();
+        } catch (\Throwable $e) {
+            $this->redirect('/admin/theme-settings', 'Failed to clear template cache: ' . $e->getMessage(), 'error');
+            return;
+        }
+
+        $this->redirect('/admin/theme-settings', sprintf(
+            'Template cache cleared (%d files deleted).',
+            $result['total']
+        ));
     }
 }
