@@ -95,4 +95,86 @@ final class SeoServiceTest extends TestCase
         $this->assertNull($seo->ogImageUrl);
         $this->assertSame('summary_large_image', $seo->twitterCard);
     }
+
+    public function testResolveForPageUsesFirstBodyImageBeforeGlobalDefault(): void
+    {
+        $this->pdo->prepare('INSERT INTO media (id, path) VALUES (?, ?)')->execute([
+            'global-image',
+            '2026/global.jpg',
+        ]);
+        $this->service->upsert('global', null, [
+            'og_image_id' => 'global-image',
+        ]);
+
+        $seo = $this->service->resolveForPage([
+            'id' => 'post-1',
+            'post_type' => 'post',
+            'slug' => 'body-image',
+            'title' => 'Body image',
+            'body' => json_encode([
+                'type' => 'doc',
+                'content' => [
+                    ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Intro']]],
+                    ['type' => 'image', 'attrs' => ['src' => '/uploads/2026/body.jpg']],
+                ],
+            ], JSON_THROW_ON_ERROR),
+        ]);
+
+        $this->assertSame('http://localhost/uploads/2026/body.jpg', $seo->ogImageUrl);
+    }
+
+    public function testResolveForPageUsesImageMediaIdWhenPresent(): void
+    {
+        $this->pdo->prepare('INSERT INTO media (id, path) VALUES (?, ?)')->execute([
+            'body-media',
+            '2026/body-media.jpg',
+        ]);
+
+        $seo = $this->service->resolveForPage([
+            'id' => 'post-1',
+            'post_type' => 'post',
+            'slug' => 'body-media',
+            'title' => 'Body media',
+            'body' => json_encode([
+                'type' => 'doc',
+                'content' => [
+                    [
+                        'type' => 'image',
+                        'attrs' => [
+                            'src' => '/uploads/stale.jpg',
+                            'mediaId' => 'body-media',
+                        ],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR),
+        ]);
+
+        $this->assertSame('https://cdn.example/2026/body-media.jpg', $seo->ogImageUrl);
+    }
+
+    public function testResolveForPageKeepsExplicitOgImageAheadOfBodyImage(): void
+    {
+        $this->pdo->prepare('INSERT INTO media (id, path) VALUES (?, ?)')->execute([
+            'explicit-image',
+            '2026/explicit.jpg',
+        ]);
+        $this->service->upsert('post', 'post-1', [
+            'og_image_id' => 'explicit-image',
+        ]);
+
+        $seo = $this->service->resolveForPage([
+            'id' => 'post-1',
+            'post_type' => 'post',
+            'slug' => 'explicit',
+            'title' => 'Explicit',
+            'body' => json_encode([
+                'type' => 'doc',
+                'content' => [
+                    ['type' => 'image', 'attrs' => ['src' => '/uploads/2026/body.jpg']],
+                ],
+            ], JSON_THROW_ON_ERROR),
+        ]);
+
+        $this->assertSame('https://cdn.example/2026/explicit.jpg', $seo->ogImageUrl);
+    }
 }

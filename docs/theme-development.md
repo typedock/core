@@ -42,6 +42,8 @@ themes/my-theme/
     single.latte             # Blog post
     page.latte               # Static page
     archive.latte            # Category/tag/blog index
+    source-list.latte        # External Source list/archive, e.g. /docs
+    source-detail.latte      # External Source detail, e.g. /docs/install
     search.latte             # Search results
     home.latte               # Homepage when home_mode = page
     author.latte             # Author archive
@@ -153,6 +155,9 @@ TypeDock theme repository:
 - [ ] At least `base`, `single`, `page`, `archive`, `search`, `404`
       layouts render without error against a seeded database
       (run `php cli/seed.php` and walk every URL)
+- [ ] If the site uses External Sources, ship `source-list.latte` and
+      `source-detail.latte` (or slug-specific variants such as
+      `source-docs.latte`) so `/docs` does not fall back to the blog archive
 - [ ] `.sr-only` and `.skip-link` are defined in your CSS
 - [ ] Every slot your theme declares has a sensible `defaults` array
 - [ ] Every `menus.<location>` declared in `theme.json` is consumed
@@ -176,6 +181,9 @@ TypeDock theme repository:
       `.td-social-*`
 - [ ] Components intended for External Source list views declare
       `source_list.compatible` and their mappable inputs in `theme.json`
+- [ ] Body/content CSS covers Markdown and Tiptap output: headings,
+      lists, blockquotes, links, images, inline `code`, fenced code
+      blocks (`pre > code`), and GFM tables
 - [ ] Switching between `font-style--sans` / `--serif` etc. does not
       leave stray `var(--font-serif)` references unset
 - [ ] `screenshot.svg` (or .png/.jpg/.webp) is present under `assets/`
@@ -185,7 +193,143 @@ TypeDock theme repository:
       hard-coded alt attribute, including empty string for purely
       decorative images)
 
-### 4.1 Core component CSS class table
+### 4.1 External Source layouts
+
+External Sources are read-only routed sections managed in the admin UI:
+jobs, docs, changelogs, issue boards, product catalogs, and similar
+content that lives outside TypeDock. They are not blog posts, so do not
+make them inherit blog copy by accident.
+
+Ship generic templates when your theme supports External Sources:
+
+```
+layouts/source-list.latte
+layouts/source-detail.latte
+```
+
+You can also specialize a single source by slug:
+
+```
+layouts/source-docs.latte
+layouts/source-docs-single.latte
+```
+
+List templates receive `$source`, `$source_meta`, `$items`, `$posts`
+(an alias of `$items` for archive fallback compatibility), and
+`$pagination`. Detail templates receive `$source`, `$source_meta`,
+`$resource`, and a synthetic `$page` object whose `renderedBody` is the
+source detail template output.
+
+Use `$source->name` for the archive heading and `$source->description`
+for the tagline / meta description. `$source_meta` describes the adapter
+(`GitHub Markdown Docs`, `Contentful`, etc.); it is useful for small
+kickers, not for user-facing section copy.
+
+```latte
+{* layouts/source-list.latte *}
+{layout 'base.latte'}
+{block title}{$source->name} - {$site->name}{/block}
+{block description}{$source->description ?: ($source_meta->description ?? '')}{/block}
+
+{block content}
+<section class="listing-shell">
+    {include '../partials/breadcrumb.latte'}
+    <header class="content-header">
+        <p class="section-kicker">{$source_meta->label}</p>
+        <h1>{$source->name}</h1>
+        {if $source->description}<p>{$source->description}</p>{/if}
+    </header>
+
+    {foreach $items as $item}
+        <article>
+            <h2><a href="{$item->url}">{$item->title}</a></h2>
+            {if $item->excerpt}<p>{$item->excerpt}</p>{/if}
+        </article>
+    {/foreach}
+
+    {include '../partials/pagination.latte'}
+</section>
+{/block}
+```
+
+For detail pages:
+
+```latte
+{* layouts/source-detail.latte *}
+{layout 'base.latte'}
+{block title}{$page->title} - {$site->name}{/block}
+{block description}{$page->excerpt ?: ($source->description ?? '')}{/block}
+
+{block content}
+<article class="content-shell">
+    {include '../partials/breadcrumb.latte'}
+    <header class="content-header">
+        <p class="section-kicker">{$source->name}</p>
+        <h1>{$page->title}</h1>
+    </header>
+    <div class="entry-content">
+        {$page->renderedBody|noescape}
+    </div>
+</article>
+{/block}
+```
+
+When the source is GitHub Markdown Docs, TypeDock renders GitHub-Flavored
+Markdown. Relative links ending in `.md` are normalized to the routed
+External Source URL, and direct `.md` requests redirect to the extensionless
+URL. Your theme still owns the visual styling for generated HTML.
+
+### 4.2 Content body CSS
+
+Theme CSS should style generated body HTML from both Tiptap pages/posts
+and External Source Markdown. A practical baseline:
+
+```css
+.entry-content {
+  font-size: 1rem;
+  line-height: 1.75;
+}
+
+.entry-content a {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.entry-content :not(pre) > code {
+  padding: 0.12em 0.34em;
+  border-radius: 5px;
+  background: var(--color-surface);
+  font-size: 0.9em;
+}
+
+.entry-content pre {
+  margin: 1.75rem 0;
+  padding: 1rem;
+  overflow-x: auto;
+  border-radius: 8px;
+  background: #0b1110;
+  color: #e7fff8;
+}
+
+.entry-content table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.entry-content th,
+.entry-content td {
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--color-border);
+}
+```
+
+Also cover `ul`, `ol`, `blockquote`, `hr`, `img`, `figure`, and heading
+spacing. External Markdown can contain GFM tables and fenced code blocks;
+without these rules docs pages look broken even when the data is correct.
+
+### 4.3 Core component CSS class table
 
 Core components render bare semantic markup with stable classes. Themes
 own the visual chrome around those classes. The table below is the

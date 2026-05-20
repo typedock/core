@@ -23,7 +23,7 @@ class LatteFactory
 
         $engine = new Engine();
         $engine->setTempDirectory($latteDir);
-        $engine->setAutoRefresh((bool) config('app.debug', false));
+        $engine->setAutoRefresh((bool) config('cache.latte_auto_refresh', true));
 
         // Register CMS extension (custom tags)
         $engine->addExtension(new CmsLatteExtension());

@@ -183,6 +183,7 @@ final class ExternalSourceController extends BaseAdminController
         }
         $source['provider'] = $provider;
         $source['name'] = (string) ($_POST['name'] ?? $source['name'] ?? '');
+        $source['description'] = (string) ($_POST['description'] ?? $source['description'] ?? '');
         $source['slug'] = (string) ($_POST['slug'] ?? $source['slug'] ?? '');
         $source['status'] = (string) ($_POST['status'] ?? $source['status'] ?? 'active');
         $source['cache_ttl_seconds'] = (int) ($_POST['cache_ttl_seconds'] ?? $source['cache_ttl_seconds'] ?? 600);
@@ -192,13 +193,29 @@ final class ExternalSourceController extends BaseAdminController
         foreach (($adapter['config_fields'] ?? []) as $field) {
             $name = (string) ($field['name'] ?? '');
             if ($name !== '') {
-                $source['config'][$name] = (string) ($_POST[$name] ?? $source['config'][$name] ?? $adapter['default_config'][$name] ?? '');
+                $source['config'][$name] = (string) ($this->postedConfigValue($provider, $name) ?? $source['config'][$name] ?? $adapter['default_config'][$name] ?? '');
             }
         }
         foreach (['slug', 'title', 'excerpt', 'thumbnail', 'date', 'category', 'tags', 'content'] as $field) {
             $source['field_mapping'][$field] = (string) ($_POST['field_' . $field] ?? $source['field_mapping'][$field] ?? '');
         }
         return $source;
+    }
+
+    private function postedConfigValue(string $provider, string $name): mixed
+    {
+        $config = $_POST['config'] ?? null;
+        if (is_array($config)) {
+            $providerConfig = $config[$provider] ?? null;
+            if (is_array($providerConfig) && array_key_exists($name, $providerConfig)) {
+                return $providerConfig[$name];
+            }
+            if (array_key_exists($name, $config)) {
+                return $config[$name];
+            }
+        }
+
+        return $_POST[$name] ?? null;
     }
 
     /**

@@ -50,6 +50,7 @@ final class ExternalSourceFrontendController
         $resolver = new TemplateResolver(TYPEDOCK_ROOT . '/themes', \Flight::latte()->getActiveTheme());
         $this->renderLatte($resolver->resolveExternalSourceList($source, $isHome), [
             'source' => (object) $source,
+            'source_meta' => $this->sourceMeta($source),
             'items' => $result['items'],
             'posts' => $result['items'],
             'pagination' => new PaginationData(
@@ -71,6 +72,12 @@ final class ExternalSourceFrontendController
      */
     private function renderDetail(array $source, string $slug): void
     {
+        $canonicalSlug = $this->stripMarkdownExtension($slug);
+        if ($canonicalSlug !== $slug) {
+            header('Location: /' . trim((string) $source['slug'], '/') . '/' . $this->encodeSlugPath($canonicalSlug), true, 301);
+            exit;
+        }
+
         $result = \Flight::external_sources()->fetchItem($source, $slug);
         $item = $result['item'];
         if (!$item instanceof \stdClass) {
@@ -99,6 +106,7 @@ final class ExternalSourceFrontendController
         $resolver = new TemplateResolver(TYPEDOCK_ROOT . '/themes', \Flight::latte()->getActiveTheme());
         $this->renderLatte($resolver->resolveExternalSourceDetail($source), [
             'source' => (object) $source,
+            'source_meta' => $this->sourceMeta($source),
             'resource' => $item,
             'page' => $page,
             'breadcrumbs' => [],
@@ -119,6 +127,17 @@ final class ExternalSourceFrontendController
         ]);
     }
 
+    private function stripMarkdownExtension(string $slug): string
+    {
+        return preg_replace('/\.(?:md|markdown)$/i', '', trim($slug, '/')) ?? trim($slug, '/');
+    }
+
+    private function encodeSlugPath(string $slug): string
+    {
+        $segments = array_values(array_filter(explode('/', trim($slug, '/')), fn (string $part): bool => $part !== ''));
+        return implode('/', array_map('rawurlencode', $segments));
+    }
+
     /**
      * @param array<string, mixed> $vars
      */
@@ -133,6 +152,33 @@ final class ExternalSourceFrontendController
         ], $vars);
 
         \Flight::latte()->render($template, $vars);
+    }
+
+    /**
+     * @param array<string, mixed> $source
+     */
+    private function sourceMeta(array $source): object
+    {
+        $provider = (string) ($source['provider'] ?? '');
+        $label = 'External Source';
+        $description = 'Read-only external content.';
+
+        foreach (\Flight::external_sources()->availableAdapters() as $adapter) {
+            if ((string) ($adapter['id'] ?? '') !== $provider) {
+                continue;
+            }
+            $label = (string) ($adapter['label'] ?? $label);
+            $description = (string) ($adapter['description'] ?? $description);
+            break;
+        }
+
+        $sourceDescription = trim((string) ($source['description'] ?? ''));
+
+        return (object) [
+            'provider' => $provider,
+            'label' => $label,
+            'description' => $sourceDescription !== '' ? $sourceDescription : $description,
+        ];
     }
 
     private function themeObject(): \TypeDock\Theme\ThemeContext

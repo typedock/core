@@ -1,0 +1,138 @@
+{layout '../../layouts/admin-base.latte'}
+
+{block page_title}API Settings{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <h1>API Settings</h1>
+        <p class="subtitle">Issue scoped Bearer tokens for integrations that need TypeDock content or media.</p>
+    </div>
+</div>
+
+<nav class="tabs">
+    <a href="/admin/settings/general">General</a>
+    <a href="/admin/settings/seo">SEO</a>
+    <a href="/admin/settings/mail">Mail</a>
+    <a href="/admin/settings/api" class="is-active">API</a>
+    <a href="/admin/settings/modules">Modules</a>
+</nav>
+
+{if isset($new_api_key) && $new_api_key}
+<div class="alert alert-success">
+    <div>
+        <strong>New API key</strong>
+        <div class="font-mono text-xs break-all mt-2">{$new_api_key}</div>
+    </div>
+</div>
+{/if}
+
+{if isset($flash_success) && $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if isset($flash_error) && $flash_error}<div class="alert alert-danger">{$flash_error}</div>{/if}
+
+<div class="space-y-6">
+    <div class="card max-w-3xl">
+        <div class="card-header"><h2>Availability</h2></div>
+        <div class="card-body">
+            <form method="post" action="/admin/settings/api">
+                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                <label class="switch">
+                    <input type="checkbox" name="api_enabled" value="1" {$api_enabled ? 'checked' : ''} {$api_env_locked ? 'disabled' : ''}>
+                    <span>Enable external API routes under <code>/api/v1</code></span>
+                </label>
+                {if $api_env_locked}
+                    <small class="form-hint">The API is enabled by configuration, so this switch is locked on.</small>
+                {else}
+                    <small class="form-hint">When disabled, every <code>/api/*</code> route returns 404.</small>
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">Save API Setting</button>
+                    </div>
+                {/if}
+            </form>
+        </div>
+    </div>
+
+    <div class="card max-w-3xl">
+        <div class="card-header"><h2>Create API Key</h2></div>
+        <div class="card-body">
+            <form method="post" action="/admin/settings/api/keys">
+                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                <div class="form-group">
+                    <label for="api-key-name">Name</label>
+                    <input type="text" id="api-key-name" name="name" placeholder="Deployment sync, local script, content audit" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="expires-in-days">Expires in days</label>
+                    <input type="number" id="expires-in-days" name="expires_in_days" min="0" max="3650" value="365">
+                    <small class="form-hint">Use 0 for no expiry. Short-lived keys are easier to rotate safely.</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="inherit_role" value="1">
+                        Inherit my admin role permissions instead of fixed scopes
+                    </label>
+                </div>
+
+                <fieldset class="form-fieldset">
+                    <legend>Scopes</legend>
+                    <div class="columns columns-2">
+                        {foreach $scopes as $scope => $label}
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="scopes[]" value="{$scope}" {in_array($scope, $default_scopes, true) ? 'checked' : ''}>
+                                <span><code>{$scope}</code> {$label}</span>
+                            </label>
+                        {/foreach}
+                    </div>
+                </fieldset>
+
+                <div class="mt-6">
+                    <button type="submit" class="btn btn-primary">Create Key</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2>API Keys</h2>
+            <span class="text-xs text-slate-500">Plaintext keys are shown only once.</span>
+        </div>
+        <table class="data-table border-0 rounded-none shadow-none">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Prefix</th>
+                    <th>Scopes</th>
+                    <th>Last Used</th>
+                    <th>Expires</th>
+                    <th class="text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {foreach $api_keys as $key}
+                <tr>
+                    <td class="font-medium">{$key['name']}</td>
+                    <td><code>td_{$key['key_prefix']}_...</code></td>
+                    <td class="text-xs text-slate-600">{$key['scope_label']}</td>
+                    <td class="text-xs text-slate-500">{$key['last_used_at'] ?? 'Never'}</td>
+                    <td class="text-xs text-slate-500">{$key['expires_at'] ?? 'Never'}</td>
+                    <td class="text-right">
+                        <form method="post" action="/admin/settings/api/keys/revoke" class="inline" onsubmit="return confirm('Revoke this API key?');">
+                            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                            <input type="hidden" name="id" value="{$key['id']}">
+                            <button type="submit" class="btn btn-danger btn-sm">Revoke</button>
+                        </form>
+                    </td>
+                </tr>
+                {else}
+                <tr>
+                    <td colspan="6" class="text-center text-slate-500">No API keys yet.</td>
+                </tr>
+                {/foreach}
+            </tbody>
+        </table>
+    </div>
+</div>
+{/block}

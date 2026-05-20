@@ -17,6 +17,7 @@ class PermissionChecker
         'themes:manage'     => ['admin'],
 
         // Content
+        'posts:read'        => ['admin', 'editor', 'author', 'contributor'],
         'posts:publish'     => ['admin', 'editor', 'author'],
         'posts:create'      => ['admin', 'editor', 'author', 'contributor'],
         'posts:edit_any'    => ['admin', 'editor'],
@@ -25,6 +26,7 @@ class PermissionChecker
         'posts:delete_own'  => ['admin', 'editor', 'author'],
 
         // Pages
+        'pages:read'        => ['admin', 'editor', 'author', 'contributor'],
         'pages:publish'     => ['admin', 'editor'],
         'pages:create'      => ['admin', 'editor', 'author', 'contributor'],
         'pages:edit_any'    => ['admin', 'editor'],
@@ -32,6 +34,7 @@ class PermissionChecker
         'pages:edit_own'    => ['admin', 'editor', 'author', 'contributor'],
 
         // Media
+        'media:read'        => ['admin', 'editor', 'author', 'contributor'],
         'media:upload'      => ['admin', 'editor', 'author', 'contributor'],
         'media:manage_any'  => ['admin', 'editor'],
         'media:manage_own'  => ['admin', 'editor', 'author', 'contributor'],

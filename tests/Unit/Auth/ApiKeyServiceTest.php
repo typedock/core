@@ -20,6 +20,17 @@ final class ApiKeyServiceTest extends TestCase
 
         // Minimal api_keys table mirroring the migration's columns ApiKeyService touches.
         $this->pdo->exec(
+            'CREATE TABLE users (
+                id TEXT PRIMARY KEY,
+                email TEXT NOT NULL,
+                name TEXT NOT NULL,
+                role TEXT NOT NULL
+            )'
+        );
+        $this->pdo->prepare('INSERT INTO users (id, email, name, role) VALUES (?, ?, ?, ?)')
+            ->execute([$this->userId, 'admin@example.com', 'Admin', 'admin']);
+
+        $this->pdo->exec(
             'CREATE TABLE api_keys (
                 id TEXT PRIMARY KEY,
                 user_id TEXT NOT NULL,
@@ -79,9 +90,17 @@ final class ApiKeyServiceTest extends TestCase
 
     public function testValidateEnforcesPermission(): void
     {
-        $issued = $this->service->create($this->userId, 'Scoped', ['posts.read']);
+        $issued = $this->service->create($this->userId, 'Scoped', ['posts:read']);
 
-        $this->assertNotNull($this->service->validate($issued['key'], 'posts.read'));
-        $this->assertNull($this->service->validate($issued['key'], 'posts.write'));
+        $this->assertNotNull($this->service->validate($issued['key'], 'posts:read'));
+        $this->assertNull($this->service->validate($issued['key'], 'media:upload'));
+    }
+
+    public function testUnscopedKeyInheritsUserRolePermissions(): void
+    {
+        $issued = $this->service->create($this->userId, 'Inherited');
+
+        $this->assertNotNull($this->service->validate($issued['key'], 'settings:manage'));
+        $this->assertNotNull($this->service->validate($issued['key'], 'media:upload'));
     }
 }
