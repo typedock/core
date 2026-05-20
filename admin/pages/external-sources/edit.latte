@@ -62,6 +62,12 @@
                     </div>
 
                     <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea id="description" name="description" rows="3">{$source['description'] ?? ''}</textarea>
+                        <small class="form-hint">Shown by themes as the archive tagline and SEO description for this source.</small>
+                    </div>
+
+                    <div class="form-group">
                         <label for="slug">URL prefix</label>
                         <input type="text" id="slug" name="slug" value="{$source['slug']}" placeholder="jobs" required>
                         <small class="form-hint">Owns the public route, e.g. <code>jobs</code> creates <code>/jobs</code> and item detail URLs such as <code>/jobs/frontend-engineer</code>. Existing pages and reserved routes are rejected.</small>
@@ -90,19 +96,22 @@
                     {/if}
 
                     {foreach $adapters as $adapter}
-                        <div class="form-grid" data-provider-panel="{$adapter['id']}" {if $provider !== $adapter['id']}hidden{/if}>
+                        {var $adapter_id = (string) $adapter['id']}
+                        <div class="form-grid" data-provider-panel="{$adapter_id}" {if $provider !== $adapter_id}hidden{/if}>
                             {foreach $adapter['config_fields'] as $field}
                                 {var $field_name = (string) $field['name']}
+                                {var $field_id = 'config_' . $adapter_id . '_' . $field_name}
+                                {var $field_value = $provider === $adapter_id ? ($source['config'][$field_name] ?? $adapter['default_config'][$field_name] ?? '') : ($adapter['default_config'][$field_name] ?? '')}
                                 <div class="form-group">
-                                    <label for="{$field_name}">{$field['label']}</label>
+                                    <label for="{$field_id}">{$field['label']}</label>
                                     {if ($field['type'] ?? 'text') === 'select'}
-                                        <select id="{$field_name}" name="{$field_name}">
+                                        <select id="{$field_id}" name="config[{$adapter_id}][{$field_name}]">
                                             {foreach ($field['options'] ?? []) as $option}
-                                                <option value="{$option['value']}" {($source['config'][$field_name] ?? $adapter['default_config'][$field_name] ?? '') === $option['value'] ? 'selected' : ''}>{$option['label']}</option>
+                                                <option value="{$option['value']}" {$field_value === $option['value'] ? 'selected' : ''}>{$option['label']}</option>
                                             {/foreach}
                                         </select>
                                     {else}
-                                        <input type="text" id="{$field_name}" name="{$field_name}" value="{$source['config'][$field_name] ?? $adapter['default_config'][$field_name] ?? ''}" placeholder="{$field['placeholder'] ?? ''}">
+                                        <input type="text" id="{$field_id}" name="config[{$adapter_id}][{$field_name}]" value="{$field_value}" placeholder="{$field['placeholder'] ?? ''}">
                                     {/if}
                                     {if !empty($field['hint'])}
                                         <small class="form-hint">{$field['hint']}</small>

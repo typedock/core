@@ -66,6 +66,8 @@ final class MigrationsTest extends TestCase
             'change_log',
             'snapshots',
             'backups',
+            'external_sources',
+            'external_source_credentials',
             'locales',
             'migrations',
         ];
@@ -85,6 +87,10 @@ final class MigrationsTest extends TestCase
         $revisionColumns = $pdo->query("PRAGMA table_info('post_revisions')")->fetchAll(\PDO::FETCH_ASSOC);
         $revisionColumnNames = array_map('strval', array_column($revisionColumns, 'name'));
         $this->assertContains('body_markdown', $revisionColumnNames);
+
+        $sourceColumns = $pdo->query("PRAGMA table_info('external_sources')")->fetchAll(\PDO::FETCH_ASSOC);
+        $sourceColumnNames = array_map('strval', array_column($sourceColumns, 'name'));
+        $this->assertContains('description', $sourceColumnNames);
     }
 
     public function testRedirectPluginMigrationCreatesRedirectsTable(): void

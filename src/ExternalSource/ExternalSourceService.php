@@ -81,6 +81,7 @@ final class ExternalSourceService
             'id' => '',
             'slug' => '',
             'name' => '',
+            'description' => '',
             'provider' => $metadata->id,
             'status' => 'active',
             'config' => $metadata->defaultConfig,
@@ -102,8 +103,8 @@ final class ExternalSourceService
         $this->validate($row);
 
         $stmt = $this->pdo->prepare(
-            'INSERT INTO external_sources (id, slug, name, provider, status, config, field_mapping, detail_template, cache_ttl_seconds, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO external_sources (id, slug, name, description, provider, status, config, field_mapping, detail_template, cache_ttl_seconds, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
 
         $secrets = $this->normalizeSecrets($data);
@@ -120,6 +121,7 @@ final class ExternalSourceService
                 $id,
                 $row['slug'],
                 $row['name'],
+                $row['description'],
                 $row['provider'],
                 $row['status'],
                 json_encode($row['config'], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
@@ -171,7 +173,7 @@ final class ExternalSourceService
 
         $stmt = $this->pdo->prepare(
             'UPDATE external_sources
-             SET slug = ?, name = ?, provider = ?, status = ?, config = ?, field_mapping = ?, detail_template = ?, cache_ttl_seconds = ?, updated_at = ?
+             SET slug = ?, name = ?, description = ?, provider = ?, status = ?, config = ?, field_mapping = ?, detail_template = ?, cache_ttl_seconds = ?, updated_at = ?
              WHERE id = ?'
         );
 
@@ -180,6 +182,7 @@ final class ExternalSourceService
             $stmt->execute([
                 $row['slug'],
                 $row['name'],
+                $row['description'],
                 $row['provider'],
                 $row['status'],
                 json_encode($row['config'], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
@@ -616,6 +619,7 @@ final class ExternalSourceService
         return [
             'slug' => $this->normalizeSlug((string) ($data['slug'] ?? $existing['slug'] ?? '')),
             'name' => trim((string) ($data['name'] ?? $existing['name'] ?? '')),
+            'description' => trim((string) ($data['description'] ?? $existing['description'] ?? '')),
             'provider' => $provider,
             'status' => in_array(($data['status'] ?? $existing['status'] ?? 'active'), ['active', 'draft'], true)
                 ? (string) ($data['status'] ?? $existing['status'] ?? 'active')
@@ -642,7 +646,7 @@ final class ExternalSourceService
             if ($name === '') {
                 continue;
             }
-            $value = trim((string) ($data[$name] ?? $existingConfig[$name] ?? $metadata->defaultConfig[$name] ?? ''));
+            $value = trim((string) ($this->configValueFromData($data, $provider, $name) ?? $existingConfig[$name] ?? $metadata->defaultConfig[$name] ?? ''));
             if (($field['type'] ?? '') === 'select') {
                 $allowed = array_map(
                     fn (array $option): string => (string) ($option['value'] ?? ''),
@@ -655,6 +659,25 @@ final class ExternalSourceService
             $config[$name] = $value;
         }
         return $config + $metadata->defaultConfig;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function configValueFromData(array $data, string $provider, string $name): mixed
+    {
+        $scoped = $data['config'] ?? null;
+        if (is_array($scoped)) {
+            $providerConfig = $scoped[$provider] ?? null;
+            if (is_array($providerConfig) && array_key_exists($name, $providerConfig)) {
+                return $providerConfig[$name];
+            }
+            if (array_key_exists($name, $scoped)) {
+                return $scoped[$name];
+            }
+        }
+
+        return $data[$name] ?? null;
     }
 
     /**
@@ -805,7 +828,7 @@ final class ExternalSourceService
         return (object) [
             'id' => (string) ($sys['id'] ?? sha1(json_encode($item))),
             'slug' => $slug,
-            'url' => '/' . trim((string) $source['slug'], '/') . '/' . rawurlencode($slug),
+            'url' => '/' . trim((string) $source['slug'], '/') . '/' . $this->encodeSlugPath($slug),
             'title' => $title,
             'excerpt' => $excerpt,
             'thumbnail' => $this->stringValue($this->mapped($item, $mapping['thumbnail'] ?? 'thumbnail')),
@@ -836,6 +859,15 @@ final class ExternalSourceService
             return $this->path($item['fields'], $path);
         }
         return null;
+    }
+
+    private function encodeSlugPath(string $slug): string
+    {
+        $segments = array_values(array_filter(explode('/', trim($slug, '/')), fn (string $part): bool => $part !== ''));
+        if ($segments === []) {
+            return rawurlencode($slug);
+        }
+        return implode('/', array_map('rawurlencode', $segments));
     }
 
     private function path(mixed $value, string $path): mixed
