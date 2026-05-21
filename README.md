@@ -34,7 +34,7 @@ It is probably not the right fit yet if you need a mature plugin marketplace, co
 
 ### Public Demo
 
-You can try the admin UI at [https://demo.typedock.dev/](https://demo.typedock.dev/).
+You can try the admin UI at [https://demo.typedock.dev/admin/login](https://demo.typedock.dev/admin/login).
 
 ```text
 Email: demo@typedock.dev
