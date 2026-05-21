@@ -460,7 +460,7 @@ keep the `typedock/` directory next to `public_html/` anywhere that PHP can
 read — just remember to edit `public_html/index.php` and `install.php` to
 point TYPEDOCK_ROOT at the actual location.
 
-Support: https://github.com/ku-suke/typedock
+Support: https://github.com/typedock/core
 EOF
 
 # -----------------------------------------------------------------------------
