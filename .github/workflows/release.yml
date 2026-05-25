@@ -59,7 +59,7 @@ jobs:
           (cd dist && sha256sum "typedock-shared.zip" "typedock-shared-${{ steps.artifact.outputs.version }}.zip") > dist/SHA256SUMS
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: TypeDock ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
