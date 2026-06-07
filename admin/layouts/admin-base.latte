@@ -97,6 +97,20 @@
             {/if}
         </div>
 
+        {if isset($admin_locales) && count($admin_locales) > 1}
+        <div class="admin-sidebar-locale">
+            <form method="get" action="{$localePath}">
+                <label for="admin_locale">{_'Language'}</label>
+                <select id="admin_locale" name="lang" class="admin-locale-select" onchange="this.form.submit()">
+                    {foreach $admin_locales as $localeCode => $localeLabel}
+                        <option value="{$localeCode}" {if ($admin_locale ?? 'en') === $localeCode}selected{/if}>{$localeLabel}</option>
+                    {/foreach}
+                </select>
+                <button type="submit" class="sr-only">{_'Change language'}</button>
+            </form>
+        </div>
+        {/if}
+
         <div class="admin-user-info">
             <div class="admin-user-avatar" aria-hidden="true">
                 {substr((string) $current_user['name'], 0, 1)|upper}
@@ -120,15 +134,6 @@
                    class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 hover:bg-slate-100 hover:text-slate-700">
                     {include 'icon-external'}<span>{_'View site'}</span>
                 </a>
-                {if isset($admin_locales) && count($admin_locales) > 1}
-                    <span class="text-slate-300">|</span>
-                    {foreach $admin_locales as $localeCode => $localeLabel}
-                        <a href="{$localePath}?lang={$localeCode}"
-                           class="rounded-md px-2 py-1 {if ($admin_locale ?? 'en') === $localeCode}bg-slate-100 text-slate-700{else}hover:bg-slate-100 hover:text-slate-700{/if}">
-                            {$localeLabel}
-                        </a>
-                    {/foreach}
-                {/if}
             </div>
         </header>
         {/if}

@@ -161,7 +161,7 @@ class PostController extends BaseAdminController
         $this->authorizeOwnerOrAny($existing, 'posts:delete_own', 'posts:delete_any');
 
         $this->service()->trash($id);
-        $this->redirect('/admin/posts', 'Post moved to trash.');
+        $this->redirect('/admin/posts', __('Post moved to trash.'));
     }
 
     public function autosave(string $id): void

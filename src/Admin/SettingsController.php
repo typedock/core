@@ -80,7 +80,7 @@ class SettingsController extends BaseAdminController
         $this->setOption('site.posts_archive_slug', $postsSlug, 'general');
         $this->setOption('site.posts_archive_label', $postsLabel, 'general');
 
-        $this->redirect('/admin/settings/general', 'Settings saved successfully.');
+        $this->redirect('/admin/settings/general', __('Settings saved successfully.'));
     }
 
     /**

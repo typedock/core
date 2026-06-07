@@ -38,6 +38,17 @@
         </form>
 
         <p class="back-link"><a href="/admin/login">← {_'Back to login'}</a></p>
+        {if isset($admin_locales) && count($admin_locales) > 1}
+            <form method="get" action="/admin/login/2fa" class="form-group mt-4 mb-0">
+                <label for="admin_locale">{_'Language'}</label>
+                <select id="admin_locale" name="lang" onchange="this.form.submit()">
+                    {foreach $admin_locales as $localeCode => $localeLabel}
+                        <option value="{$localeCode}" {if ($admin_locale ?? 'en') === $localeCode}selected{/if}>{$localeLabel}</option>
+                    {/foreach}
+                </select>
+                <button type="submit" class="sr-only">{_'Change language'}</button>
+            </form>
+        {/if}
     </div>
 </div>
 {/block}

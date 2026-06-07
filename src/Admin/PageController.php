@@ -144,6 +144,6 @@ class PageController extends BaseAdminController
             throw new \TypeDock\Exception\ForbiddenException('Insufficient permissions');
         }
         $this->service()->trash($id);
-        $this->redirect('/admin/pages', 'Page moved to trash.');
+        $this->redirect('/admin/pages', __('Page moved to trash.'));
     }
 }
