@@ -4,6 +4,8 @@ declare(strict_types=1);
 namespace TypeDock\Theme;
 
 use Latte\Engine;
+use Latte\Essential\TranslatorExtension;
+use TypeDock\Locale\Translator;
 
 class LatteFactory
 {
@@ -27,6 +29,11 @@ class LatteFactory
 
         // Register CMS extension (custom tags)
         $engine->addExtension(new CmsLatteExtension());
+        $locale = $this->resolveLocale();
+        $engine->addExtension(new TranslatorExtension(
+            (new Translator($locale, TYPEDOCK_ROOT . '/resources/lang/admin'))->translate(...),
+            $locale,
+        ));
 
         $this->engine = $engine;
         return $engine;
@@ -94,6 +101,15 @@ class LatteFactory
         // Matches both POSIX (/foo) and Windows (C:\foo, C:/foo) roots.
         return $path !== ''
             && ($path[0] === '/' || $path[0] === '\\' || (isset($path[1]) && $path[1] === ':'));
+    }
+
+    private function resolveLocale(): string
+    {
+        try {
+            return (string) \Flight::admin_locale();
+        } catch (\Throwable) {
+            return (string) config('app.admin_locale', 'en');
+        }
     }
 
     public function setActiveTheme(string $theme): void

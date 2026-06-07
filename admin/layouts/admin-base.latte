@@ -8,12 +8,13 @@
     just like /admin/posts does.
 *}
 {var $path = $current_path ?? ''}
+{var $localePath = explode('?', $path)[0] ?: '/admin/dashboard'}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{$admin_locale ?? 'en'}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{block title}Admin{/block} — {$site->name ?? 'TypeDock'}</title>
+    <title>{block title}{_'Admin'}{/block} — {$site->name ?? 'TypeDock'}</title>
     <link rel="stylesheet" href="/admin/assets/css/admin.css">
     {block head}{/block}
 </head>
@@ -30,51 +31,51 @@
         </div>
 
         <div class="admin-menu">
-            <div class="admin-menu-section">Overview</div>
+            <div class="admin-menu-section">{_'Overview'}</div>
             <a href="/admin/dashboard" class="menu-item {if str_starts_with($path, '/admin/dashboard')}is-active{/if}">
-                {include 'icon-dashboard'}<span>Dashboard</span>
+                {include 'icon-dashboard'}<span>{_'Dashboard'}</span>
             </a>
 
-            <div class="admin-menu-section">Content</div>
+            <div class="admin-menu-section">{_'Content'}</div>
             <a href="/admin/posts" class="menu-item {if str_starts_with($path, '/admin/posts')}is-active{/if}">
-                {include 'icon-post'}<span>Posts</span>
+                {include 'icon-post'}<span>{_'Posts'}</span>
             </a>
             <a href="/admin/pages" class="menu-item {if str_starts_with($path, '/admin/pages')}is-active{/if}">
-                {include 'icon-page'}<span>Pages</span>
+                {include 'icon-page'}<span>{_'Pages'}</span>
             </a>
             <a href="/admin/media" class="menu-item {if str_starts_with($path, '/admin/media')}is-active{/if}">
-                {include 'icon-media'}<span>Media</span>
+                {include 'icon-media'}<span>{_'Media'}</span>
             </a>
             <a href="/admin/categories" class="menu-item {if str_starts_with($path, '/admin/categories')}is-active{/if}">
-                {include 'icon-folder'}<span>Categories</span>
+                {include 'icon-folder'}<span>{_'Categories'}</span>
             </a>
             <a href="/admin/tags" class="menu-item {if str_starts_with($path, '/admin/tags')}is-active{/if}">
-                {include 'icon-tag'}<span>Tags</span>
+                {include 'icon-tag'}<span>{_'Tags'}</span>
             </a>
             {if $current_user['role'] === 'admin'}
             <a href="/admin/external-sources" class="menu-item {if str_starts_with($path, '/admin/external-sources')}is-active{/if}">
-                {include 'icon-collection'}<span>External Sources</span>
+                {include 'icon-collection'}<span>{_'External Sources'}</span>
             </a>
             {/if}
 
-            <div class="admin-menu-section">Appearance</div>
+            <div class="admin-menu-section">{_'Appearance'}</div>
             {if $current_user['role'] === 'admin'}
             <a href="/admin/themes" class="menu-item {if str_starts_with($path, '/admin/themes')}is-active{/if}">
-                {include 'icon-theme'}<span>Themes</span>
+                {include 'icon-theme'}<span>{_'Themes'}</span>
             </a>
             <a href="/admin/theme-settings" class="menu-item {if str_starts_with($path, '/admin/theme-settings')}is-active{/if}">
-                {include 'icon-sliders'}<span>Theme settings</span>
+                {include 'icon-sliders'}<span>{_'Theme settings'}</span>
             </a>
             {/if}
             <a href="/admin/menus" class="menu-item {if str_starts_with($path, '/admin/menus')}is-active{/if}">
-                {include 'icon-menu'}<span>Menus</span>
+                {include 'icon-menu'}<span>{_'Menus'}</span>
             </a>
             <a href="/admin/slots" class="menu-item {if str_starts_with($path, '/admin/slots')}is-active{/if}">
-                {include 'icon-slot'}<span>Slots</span>
+                {include 'icon-slot'}<span>{_'Slots'}</span>
             </a>
 
             {if !empty($plugin_admin_menu)}
-            <div class="admin-menu-section">Plugins</div>
+            <div class="admin-menu-section">{_'Plugins'}</div>
             {foreach $plugin_admin_menu as $item}
             <a href="{$item['path']}" class="menu-item {if str_starts_with($path, $item['path'])}is-active{/if}">
                 {include 'icon-redirect'}<span>{$item['label']}</span>
@@ -82,16 +83,16 @@
             {/foreach}
             {/if}
 
-            <div class="admin-menu-section">Site</div>
+            <div class="admin-menu-section">{_'Site'}</div>
             {if $current_user['role'] === 'admin'}
             <a href="/admin/users" class="menu-item {if str_starts_with($path, '/admin/users')}is-active{/if}">
-                {include 'icon-users'}<span>Users</span>
+                {include 'icon-users'}<span>{_'Users'}</span>
             </a>
             <a href="/admin/settings" class="menu-item {if str_starts_with($path, '/admin/settings')}is-active{/if}">
-                {include 'icon-settings'}<span>Settings</span>
+                {include 'icon-settings'}<span>{_'Settings'}</span>
             </a>
             <a href="/admin/system/update" class="menu-item {if str_starts_with($path, '/admin/system/update')}is-active{/if}">
-                {include 'icon-settings'}<span>System update</span>
+                {include 'icon-settings'}<span>{_'System update'}</span>
             </a>
             {/if}
         </div>
@@ -102,7 +103,7 @@
             </div>
             <div class="min-w-0 flex-1">
                 <span class="username">{$current_user['name']}</span>
-                <a href="/admin/logout" class="logout-link">Log out</a>
+                <a href="/admin/logout" class="logout-link">{_'Log out'}</a>
             </div>
         </div>
     </nav>
@@ -117,8 +118,17 @@
             <div class="ml-auto flex items-center gap-2 text-sm text-slate-500">
                 <a href="/" target="_blank" rel="noopener"
                    class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 hover:bg-slate-100 hover:text-slate-700">
-                    {include 'icon-external'}<span>View site</span>
+                    {include 'icon-external'}<span>{_'View site'}</span>
                 </a>
+                {if isset($admin_locales) && count($admin_locales) > 1}
+                    <span class="text-slate-300">|</span>
+                    {foreach $admin_locales as $localeCode => $localeLabel}
+                        <a href="{$localePath}?lang={$localeCode}"
+                           class="rounded-md px-2 py-1 {if ($admin_locale ?? 'en') === $localeCode}bg-slate-100 text-slate-700{else}hover:bg-slate-100 hover:text-slate-700{/if}">
+                            {$localeLabel}
+                        </a>
+                    {/foreach}
+                {/if}
             </div>
         </header>
         {/if}

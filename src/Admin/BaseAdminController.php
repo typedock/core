@@ -20,6 +20,8 @@ abstract class BaseAdminController
             'site'              => $siteObj,
             'csrf_token'        => CsrfMiddleware::generate(),
             'current_path'      => (string) ($_SERVER['REQUEST_URI'] ?? ''),
+            'admin_locale'      => \Flight::admin_locale(),
+            'admin_locales'     => \Flight::admin_locale_resolver()->locales(),
             'plugin_admin_menu' => \Flight::plugin_admin_menu()->all(),
             'editor_extension_scripts' => \Flight::editor_extensions()->scripts(),
             'editor_asset_version' => $this->editorAssetVersion(),
@@ -61,8 +63,8 @@ abstract class BaseAdminController
                 session_start();
             }
             $_SESSION['flash_error'] = sprintf(
-                'Removed %d block(s) you are not allowed to publish: %s. '
-                . 'Ask an editor to add raw HTML on your behalf.',
+                __('Removed %d block(s) you are not allowed to publish: %s. '
+                . 'Ask an editor to add raw HTML on your behalf.'),
                 count($removed),
                 implode(', ', $removed),
             );
@@ -175,10 +177,10 @@ abstract class BaseAdminController
         if (($page['status'] ?? null) === 'published') {
             $url = $this->publicUrlFor($page);
             return $url !== null
-                ? "{$noun} published. View: {$url}"
-                : "{$noun} published.";
+                ? __('{noun} published. View: {url}', ['noun' => $noun, 'url' => $url])
+                : __('{noun} published.', ['noun' => $noun]);
         }
-        return "{$noun} saved.";
+        return __('{noun} saved.', ['noun' => $noun]);
     }
 
     /**

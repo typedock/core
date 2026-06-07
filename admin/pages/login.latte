@@ -1,6 +1,6 @@
 {layout '../layouts/admin-base.latte'}
 
-{block title}Log in{/block}
+{block title}{_'Log in'}{/block}
 {block body_class}login-page{/block}
 
 {block content}
@@ -9,7 +9,7 @@
         <div class="login-logo">
             <img src="/admin/assets/img/typedock_logo.svg" alt="TypeDock" class="mx-auto mb-3 h-12 !w-auto">
             <h1>{$site->name}</h1>
-            <p>TypeDock admin</p>
+            <p>{_'TypeDock admin'}</p>
         </div>
 
         {if isset($error)}
@@ -23,14 +23,14 @@
             <input type="hidden" name="_csrf_token" value="{$csrf_token}">
 
             <div class="form-group mb-0">
-                <label for="email">Email</label>
+                <label for="email">{_'Email'}</label>
                 <input type="email" id="email" name="email" required
                        value="{$old_email ?? ''}"
                        autocomplete="email" autofocus>
             </div>
 
             <div class="form-group mb-0">
-                <label for="password">Password</label>
+                <label for="password">{_'Password'}</label>
                 <input type="password" id="password" name="password" required
                        autocomplete="current-password">
             </div>
@@ -41,8 +41,15 @@
                 </div>
             {/if}
 
-            <button type="submit" class="btn btn-primary btn-block">Log in</button>
+            <button type="submit" class="btn btn-primary btn-block">{_'Log in'}</button>
         </form>
+        {if isset($admin_locales) && count($admin_locales) > 1}
+            <p class="back-link">
+                {foreach $admin_locales as $localeCode => $localeLabel}
+                    <a href="/admin/login?lang={$localeCode}">{$localeLabel}</a>{sep} / {/sep}
+                {/foreach}
+            </p>
+        {/if}
     </div>
 </div>
 {/block}

@@ -22,7 +22,9 @@ use TypeDock\Admin\PluginAdminMenu;
 use TypeDock\Admin\EditorExtensionRegistry;
 use TypeDock\Core\PluginDiagnostics;
 use TypeDock\Core\ProviderRegistry;
+use TypeDock\Locale\AdminLocaleResolver;
 use TypeDock\Locale\LocaleService;
+use TypeDock\Locale\Translator;
 use TypeDock\Mail\MailService;
 use TypeDock\Media\MediaService;
 use TypeDock\ExternalSource\ExternalSourceAdapterRegistry;
@@ -35,6 +37,7 @@ class ServiceProvider
     {
         $this->registerDatabase();
         $this->registerLatte();
+        $this->registerLocale();
         $this->registerAuth();
         $this->registerStorage();
         $this->registerSearch();
@@ -45,6 +48,47 @@ class ServiceProvider
         $this->registerExternalSources();
     }
 
+    private function registerLocale(): void
+    {
+        \Flight::map('locales', function (): LocaleService {
+            static $service = null;
+            if ($service !== null) {
+                return $service;
+            }
+            $service = new LocaleService(\Flight::db());
+            return $service;
+        });
+
+        \Flight::map('admin_locale_resolver', function (): AdminLocaleResolver {
+            static $resolver = null;
+            if ($resolver !== null) {
+                return $resolver;
+            }
+            return $resolver = new AdminLocaleResolver(
+                TYPEDOCK_ROOT . '/resources/lang/admin',
+                (string) config('app.admin_locale', 'en'),
+                (string) config('app.admin_locale_cookie', 'typedock_admin_locale'),
+            );
+        });
+
+        \Flight::map('admin_locale', function (): string {
+            return \Flight::admin_locale_resolver()->current();
+        });
+
+        \Flight::map('translator', function (): Translator {
+            static $translator = null;
+            static $locale = null;
+
+            $current = \Flight::admin_locale();
+            if ($translator !== null && $locale === $current) {
+                return $translator;
+            }
+
+            $locale = $current;
+            return $translator = new Translator($current, TYPEDOCK_ROOT . '/resources/lang/admin');
+        });
+    }
+
     private function registerMail(): void
     {
         \Flight::map('mailer', function (): MailService {
@@ -53,15 +97,6 @@ class ServiceProvider
                 return $service;
             }
             $service = new MailService();
-            return $service;
-        });
-
-        \Flight::map('locales', function (): LocaleService {
-            static $service = null;
-            if ($service !== null) {
-                return $service;
-            }
-            $service = new LocaleService(\Flight::db());
             return $service;
         });
     }

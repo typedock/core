@@ -26,7 +26,7 @@ class AuthController
 
         if ($email === '' || $password === '') {
             $this->renderLogin([
-                'error'      => 'Please enter your email address and password.',
+                'error'      => __('Please enter your email address and password.'),
                 'old_email'  => $email,
             ]);
             return;
@@ -35,7 +35,7 @@ class AuthController
         $captcha = \Flight::captcha()->verify($_POST, self::LOGIN_CAPTCHA_ACTION, $this->captchaContext($email));
         if (!$captcha->ok) {
             $this->renderLogin([
-                'error'     => $captcha->error ?? 'Captcha verification failed.',
+                'error'     => $captcha->error ?? __('Captcha verification failed.'),
                 'old_email' => $email,
             ]);
             return;
@@ -45,7 +45,7 @@ class AuthController
             $result = \Flight::session()->login($email, $password);
         } catch (\TypeDock\Exception\TypeDockException $e) {
             $this->renderLogin([
-                'error'      => 'Your account is locked. Please try again later.',
+                'error'      => __('Your account is locked. Please try again later.'),
                 'old_email'  => $email,
             ]);
             return;
@@ -53,7 +53,7 @@ class AuthController
 
         if ($result === null) {
             $this->renderLogin([
-                'error'      => 'Incorrect email address or password.',
+                'error'      => __('Incorrect email address or password.'),
                 'old_email'  => $email,
             ]);
             return;
@@ -99,6 +99,8 @@ class AuthController
             'site'       => $this->getSiteData(),
             'csrf_token' => CsrfMiddleware::generate(),
             'user_id'    => $_SESSION['pending_2fa_user_id'],
+            'admin_locale' => \Flight::admin_locale(),
+            'admin_locales' => \Flight::admin_locale_resolver()->locales(),
         ], TYPEDOCK_ROOT . '/admin');
     }
 
@@ -128,7 +130,7 @@ class AuthController
             // submitting on /admin/login/2fa).
             unset($_SESSION['pending_2fa_user_id']);
             $this->renderLogin([
-                'error'     => 'Your account is locked. Please try again later.',
+                'error'     => __('Your account is locked. Please try again later.'),
                 'old_email' => '',
             ]);
             return;
@@ -139,7 +141,9 @@ class AuthController
                 'site'       => $this->getSiteData(),
                 'csrf_token' => CsrfMiddleware::generate(),
                 'user_id'    => $userId,
-                'error'      => 'The verification code is incorrect.',
+                'error'      => __('The verification code is incorrect.'),
+                'admin_locale' => \Flight::admin_locale(),
+                'admin_locales' => \Flight::admin_locale_resolver()->locales(),
             ], TYPEDOCK_ROOT . '/admin');
             return;
         }
@@ -181,6 +185,8 @@ class AuthController
             'site'         => $this->getSiteData(),
             'csrf_token'   => CsrfMiddleware::generate(),
             'captcha_html' => \Flight::captcha()->render(self::LOGIN_CAPTCHA_ACTION, $this->captchaContext($email)),
+            'admin_locale' => \Flight::admin_locale(),
+            'admin_locales' => \Flight::admin_locale_resolver()->locales(),
         ], $params), TYPEDOCK_ROOT . '/admin');
     }
 

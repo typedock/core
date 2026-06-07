@@ -1,6 +1,6 @@
 {layout '../layouts/admin-base.latte'}
 
-{block title}Two-Factor Authentication{/block}
+{block title}{_'Two-Factor Authentication'}{/block}
 {block body_class}login-page{/block}
 
 {block content}
@@ -9,7 +9,7 @@
         <div class="login-logo">
             <img src="/admin/assets/img/typedock_logo.svg" alt="TypeDock" class="mx-auto mb-3 h-12 !w-auto">
             <h1>{$site->name}</h1>
-            <p>Two-Factor Authentication</p>
+            <p>{_'Two-Factor Authentication'}</p>
         </div>
 
         {if isset($error)}
@@ -19,14 +19,14 @@
             </div>
         {/if}
 
-        <p class="mb-4 text-sm text-slate-600">Enter the 6-digit code sent to your email address.</p>
+        <p class="mb-4 text-sm text-slate-600">{_'Enter the 6-digit code sent to your email address.'}</p>
 
         <form method="post" action="/admin/login/2fa" class="login-form">
             <input type="hidden" name="_csrf_token" value="{$csrf_token}">
             <input type="hidden" name="user_id" value="{$user_id}">
 
             <div class="form-group mb-0">
-                <label for="code">Verification Code</label>
+                <label for="code">{_'Verification Code'}</label>
                 <input type="text" id="code" name="code" required
                        maxlength="6" pattern="[0-9]{6}"
                        autocomplete="one-time-code" autofocus
@@ -34,10 +34,10 @@
                        class="text-center font-mono text-lg tracking-[0.5em]">
             </div>
 
-            <button type="submit" class="btn btn-primary btn-block">Confirm</button>
+            <button type="submit" class="btn btn-primary btn-block">{_'Confirm'}</button>
         </form>
 
-        <p class="back-link"><a href="/admin/login">← Back to login</a></p>
+        <p class="back-link"><a href="/admin/login">← {_'Back to login'}</a></p>
     </div>
 </div>
 {/block}

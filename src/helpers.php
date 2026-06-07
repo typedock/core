@@ -97,6 +97,27 @@ if (!function_exists('config')) {
     }
 }
 
+if (!function_exists('__')) {
+    function __(string $original, mixed ...$params): string
+    {
+        try {
+            return \Flight::translator()->translate($original, ...$params);
+        } catch (\Throwable) {
+            if ($params === []) {
+                return $original;
+            }
+            $values = count($params) === 1 && is_array($params[0] ?? null) ? $params[0] : $params;
+            $replace = [];
+            foreach ($values as $key => $value) {
+                if (is_scalar($value) || $value === null) {
+                    $replace['{' . (string) $key . '}'] = (string) $value;
+                }
+            }
+            return $replace === [] ? $original : strtr($original, $replace);
+        }
+    }
+}
+
 if (!function_exists('base_path')) {
     function base_path(string $path = ''): string
     {
