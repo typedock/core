@@ -174,13 +174,14 @@ abstract class BaseAdminController
      */
     protected function saveMessage(string $noun, ?array $page): string
     {
+        $nounLabel = __($noun);
         if (($page['status'] ?? null) === 'published') {
             $url = $this->publicUrlFor($page);
             return $url !== null
-                ? __('{noun} published. View: {url}', ['noun' => $noun, 'url' => $url])
-                : __('{noun} published.', ['noun' => $noun]);
+                ? __('{noun} published. View: {url}', ['noun' => $nounLabel, 'url' => $url])
+                : __('{noun} published.', ['noun' => $nounLabel]);
         }
-        return __('{noun} saved.', ['noun' => $noun]);
+        return __('{noun} saved.', ['noun' => $nounLabel]);
     }
 
     /**

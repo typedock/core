@@ -7,7 +7,10 @@ document.addEventListener('DOMContentLoaded', function () {
         var originalLabel = btn.textContent;
         btn.addEventListener('click', function () {
             navigator.clipboard.writeText(btn.dataset.url).then(function () {
-                btn.textContent = 'Copied';
+                var uploadArea = document.getElementById('media-upload-area');
+                btn.textContent = btn.dataset.copiedLabel
+                    || (uploadArea && uploadArea.dataset.copiedLabel)
+                    || 'Copied';
                 setTimeout(function () { btn.textContent = originalLabel; }, 2000);
             });
         });

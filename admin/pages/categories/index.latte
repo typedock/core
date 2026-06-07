@@ -1,12 +1,12 @@
 {layout '../../layouts/admin-base.latte'}
 
-{block page_title}Categories{/block}
+{block page_title}{_'Categories'}{/block}
 
 {block content}
 <div class="page-header">
     <div>
-        <h1>Categories</h1>
-        <p class="subtitle">Hierarchical taxonomy for posts.</p>
+        <h1>{_'Categories'}</h1>
+        <p class="subtitle">{_'Hierarchical taxonomy for posts.'}</p>
     </div>
 </div>
 
@@ -15,13 +15,13 @@
         {if empty($categories)}
             <div class="empty-state">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/></svg>
-                <h3>No categories yet</h3>
-                <p>Create your first category using the form on the right.</p>
+                <h3>{_'No categories yet'}</h3>
+                <p>{_'Create your first category using the form on the right.'}</p>
             </div>
         {else}
         <table class="data-table">
             <thead>
-                <tr><th>Name</th><th>Slug</th><th>Description</th><th>Posts</th><th class="text-right">Actions</th></tr>
+                <tr><th>{_'Name'}</th><th>{_'Slug'}</th><th>{_'Description'}</th><th>{_'Posts'}</th><th class="text-right">{_'Actions'}</th></tr>
             </thead>
             <tbody>
                 {foreach $categories as $cat}
@@ -31,10 +31,10 @@
                     <td class="text-slate-500">{$cat['description'] ?? ''}</td>
                     <td class="text-slate-500">{$cat['post_count'] ?? 0}</td>
                     <td class="actions">
-                        <a href="/category/{$cat['slug']}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">View</a>
+                        <a href="/category/{$cat['slug']}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">{_'View'}</a>
                         <form method="post" action="/admin/categories/{$cat['id']}/delete" class="inline">
                             <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this item?')">Delete</button>
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm({_'Delete this item?'})">{_'Delete'}</button>
                         </form>
                     </td>
                 </tr>
@@ -46,32 +46,32 @@
 
     <aside>
         <div class="sidebar-panel">
-            <h3>Add New Category</h3>
+            <h3>{_'Add New Category'}</h3>
             <form method="post" action="/admin/categories" data-slug-form>
                 <input type="hidden" name="_csrf_token" value="{$csrf_token}">
                 <div class="form-group">
-                    <label>Name</label>
+                    <label>{_'Name'}</label>
                     <input type="text" name="name" required data-slug-name>
                 </div>
                 <div class="form-group">
-                    <label>Slug</label>
-                    <input type="text" name="slug" placeholder="Auto-generated" data-slug-input>
-                    <small class="form-hint">Preview: <code data-slug-preview></code></small>
+                    <label>{_'Slug'}</label>
+                    <input type="text" name="slug" placeholder="{_'Auto-generated'}" data-slug-input>
+                    <small class="form-hint">{_'Preview:'} <code data-slug-preview></code></small>
                 </div>
                 <div class="form-group">
-                    <label>Description</label>
+                    <label>{_'Description'}</label>
                     <textarea name="description" rows="3"></textarea>
                 </div>
                 <div class="form-group">
-                    <label>Parent Category</label>
+                    <label>{_'Parent Category'}</label>
                     <select name="parent_id">
-                        <option value="">None</option>
+                        <option value="">{_'None'}</option>
                         {foreach $categories as $cat}
                         <option value="{$cat['id']}">{$cat['name']}</option>
                         {/foreach}
                     </select>
                 </div>
-                <button type="submit" class="btn btn-primary btn-block">Add Category</button>
+                <button type="submit" class="btn btn-primary btn-block">{_'Add Category'}</button>
             </form>
         </div>
     </aside>

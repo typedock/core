@@ -13,7 +13,7 @@
             {/if}
         </p>
     </div>
-    <a href="/admin/media" class="btn btn-secondary">← All media</a>
+    <a href="/admin/media" class="btn btn-secondary">← {_'All media'}</a>
 </div>
 
 {if !empty($flash_success)}
@@ -34,45 +34,45 @@
             <input type="hidden" name="_csrf_token" value="{$csrf_token}">
 
             <div class="form-group">
-                <label for="alt_text">Alt text</label>
+                <label for="alt_text">{_'Alt text'}</label>
                 <input type="text" id="alt_text" name="alt_text"
                        value="{$media['alt_text'] ?? ''}"
-                       placeholder="Describe the image for screen readers and SEO">
+                       placeholder="{_'Describe the image for screen readers and SEO'}">
             </div>
 
             <div class="form-group">
-                <label for="caption">Caption</label>
+                <label for="caption">{_'Caption'}</label>
                 <textarea id="caption" name="caption" rows="2"
-                          placeholder="Optional caption shown under the image">{$media['caption'] ?? ''}</textarea>
+                          placeholder="{_'Optional caption shown under the image'}">{$media['caption'] ?? ''}</textarea>
             </div>
 
-            <button type="submit" class="btn btn-primary">Save</button>
+            <button type="submit" class="btn btn-primary">{_'Save'}</button>
         </form>
     </div>
 
     <aside>
         <div class="sidebar-panel">
-            <h3>Details</h3>
+            <h3>{_'Details'}</h3>
             <dl class="detail-list">
-                <dt>Uploaded</dt>
+                <dt>{_'Uploaded'}</dt>
                 <dd>{$media['created_at']}</dd>
-                <dt>File size</dt>
+                <dt>{_'File size'}</dt>
                 <dd>{round($media['file_size'] / 1024, 1)} KB</dd>
-                <dt>Storage path</dt>
+                <dt>{_'Storage path'}</dt>
                 <dd><code class="text-xs break-all">{$media['path']}</code></dd>
                 <dt>ID</dt>
                 <dd>
                     <code class="text-xs">{$media['id']}</code>
-                    <button type="button" class="btn btn-ghost btn-xs copy-url-btn" data-url="{$media['id']}">Copy</button>
+                    <button type="button" class="btn btn-ghost btn-xs copy-url-btn" data-url="{$media['id']}">{_'Copy'}</button>
                 </dd>
             </dl>
         </div>
 
         {if count($variants) > 0}
         <div class="sidebar-panel">
-            <h3>Variants</h3>
+            <h3>{_'Variants'}</h3>
             <p class="text-xs text-slate-500 mb-2">
-                Browsers pick the right variant automatically via <code>srcset</code>. Copy a URL here only when you need a specific size from another tool.
+                {_'Browsers pick the right variant automatically via'} <code>srcset</code>. {_'Copy a URL here only when you need a specific size from another tool.'}
             </p>
             <ul class="variant-list">
                 {foreach $variants as $v}
@@ -84,7 +84,7 @@
                             <span class="text-xs text-slate-500">≤ {$v['max_width']} px</span>
                         {/if}
                     </div>
-                    <button type="button" class="btn btn-ghost btn-xs copy-url-btn" data-url="{$v['url']}" title="{$v['url']}">Copy URL</button>
+                    <button type="button" class="btn btn-ghost btn-xs copy-url-btn" data-url="{$v['url']}" title="{$v['url']}">{_'Copy URL'}</button>
                 </li>
                 {/foreach}
             </ul>
@@ -95,8 +95,8 @@
             <form method="post" action="/admin/media/delete/{$media['id']}">
                 <input type="hidden" name="_csrf_token" value="{$csrf_token}">
                 <button type="submit" class="btn btn-danger btn-block"
-                        onclick="return confirm('Delete this media item? Thumbnails and WebP siblings are removed too.')">
-                    Delete media
+                        onclick="return confirm({_'Delete this media item? Thumbnails and WebP siblings are removed too.'})">
+                    {_'Delete media'}
                 </button>
             </form>
         </div>
@@ -162,7 +162,7 @@
             try {
                 await navigator.clipboard.writeText(url);
                 const prev = btn.textContent;
-                btn.textContent = 'Copied!';
+                btn.textContent = {_'Copied!'};
                 setTimeout(() => { btn.textContent = prev; }, 1200);
             } catch { /* ignore */ }
         });

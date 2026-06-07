@@ -50,7 +50,7 @@ class MediaController extends BaseAdminController
         $local = config('filesystems.local', []);
         return [
             'driver'  => 'local',
-            'label'   => 'Local filesystem',
+                'label'   => 'Local filesystem',
             'details' => (string) ($local['url'] ?? '/uploads'),
         ];
     }
@@ -62,7 +62,7 @@ class MediaController extends BaseAdminController
         if (empty($_FILES['file'])) {
             http_response_code(400);
             header('Content-Type: application/json');
-            echo json_encode(['error' => 'No file uploaded']);
+            echo json_encode(['error' => __('No file uploaded')]);
             return;
         }
 
@@ -107,7 +107,7 @@ class MediaController extends BaseAdminController
             'focal_point_y' => $_POST['focal_point_y'] ?? null,
         ]);
 
-        $this->redirect('/admin/media/' . $id, 'Media updated.');
+        $this->redirect('/admin/media/' . $id, __('Media updated.'));
     }
 
     /**
@@ -134,7 +134,7 @@ class MediaController extends BaseAdminController
 
         $out = [[
             'key'       => 'original',
-            'label'     => 'Original',
+            'label'     => __('Original'),
             'max_width' => $origWidth,
             'url'       => (string) ($media['url'] ?? $storage->url((string) $media['path'])),
             'is_webp'   => ($media['mime_type'] ?? '') === 'image/webp',
@@ -154,7 +154,7 @@ class MediaController extends BaseAdminController
         if (!empty($thumbs['original_webp'])) {
             $out[] = [
                 'key'       => 'original_webp',
-                'label'     => 'Original (WebP)',
+                'label'     => __('Original (WebP)'),
                 'max_width' => $origWidth,
                 'url'       => $storage->url((string) $thumbs['original_webp']),
                 'is_webp'   => true,
@@ -185,7 +185,7 @@ class MediaController extends BaseAdminController
         $this->authorizeOwnerOrAny($media, 'media:delete_own', 'media:manage_any', 'uploaded_by');
 
         $this->service()->delete($id);
-        $this->redirect('/admin/media', 'Media deleted successfully.');
+        $this->redirect('/admin/media', __('Media deleted successfully.'));
     }
 
     /**

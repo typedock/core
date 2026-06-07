@@ -25,13 +25,13 @@ class TagController extends BaseAdminController
             'slug'   => trim($_POST['slug'] ?? ''),
             'locale' => $_POST['locale'] ?? typedock_default_locale(),
         ]);
-        $this->redirect('/admin/tags', 'Tag created successfully.');
+        $this->redirect('/admin/tags', __('Tag created successfully.'));
     }
 
     public function destroy(string $id): void
     {
         $service = new TagService(\Flight::db());
         $service->delete($id);
-        $this->redirect('/admin/tags', 'Tag deleted successfully.');
+        $this->redirect('/admin/tags', __('Tag deleted successfully.'));
     }
 }
