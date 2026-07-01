@@ -52,7 +52,7 @@ class PageController extends BaseAdminController
         $tagNames   = array_filter(array_map('trim', explode(',', $_POST['tags_input'] ?? '')));
         $data['tag_ids'] = $tagService->findOrCreateByNames(
             $tagNames,
-            (string) ($existing['locale'] ?? typedock_default_locale())
+            (string) ($data['locale'] ?? typedock_default_locale())
         );
 
         $page = $this->service()->create($data);
@@ -105,7 +105,10 @@ class PageController extends BaseAdminController
 
         $tagService = new TagService(\Flight::db());
         $tagNames   = array_filter(array_map('trim', explode(',', $_POST['tags_input'] ?? '')));
-        $data['tag_ids'] = $tagService->findOrCreateByNames($tagNames);
+        $data['tag_ids'] = $tagService->findOrCreateByNames(
+            $tagNames,
+            (string) ($existing['locale'] ?? typedock_default_locale())
+        );
 
         $this->service()->update($id, $data);
         (new SeoService(\Flight::db()))->upsert('page', $id, $this->collectSeoInput());
