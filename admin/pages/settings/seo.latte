@@ -1,21 +1,21 @@
 {layout '../../layouts/admin-base.latte'}
 
-{block page_title}SEO Settings{/block}
+{block page_title}{_'SEO Settings'}{/block}
 
 {block content}
 <div class="page-header">
     <div>
-        <h1>SEO Settings</h1>
-        <p class="subtitle">Site-wide defaults used when a post or page doesn't override them.</p>
+        <h1>{_'SEO Settings'}</h1>
+        <p class="subtitle">{_'Site-wide defaults used when a post or page doesn\'t override them.'}</p>
     </div>
 </div>
 
 <nav class="tabs">
-    <a href="/admin/settings/general">General</a>
-    <a href="/admin/settings/seo" class="is-active">SEO</a>
-    <a href="/admin/settings/mail">Mail</a>
-    <a href="/admin/settings/api">API</a>
-    <a href="/admin/settings/modules">Modules</a>
+    <a href="/admin/settings/general">{_'General'}</a>
+    <a href="/admin/settings/seo" class="is-active">{_'SEO'}</a>
+    <a href="/admin/settings/mail">{_'Mail'}</a>
+    <a href="/admin/settings/api">{_'API'}</a>
+    <a href="/admin/settings/modules">{_'Modules'}</a>
 </nav>
 
 <div class="card max-w-3xl">
@@ -23,38 +23,38 @@
         <form method="post" action="/admin/settings/seo">
             <input type="hidden" name="_csrf_token" value="{$csrf_token}">
             <div class="form-group">
-                <label>Default SEO Title</label>
+                <label>{_'Default SEO Title'}</label>
                 <input type="text" name="seo_title" value="{$seo['seo_title'] ?? ''}">
-                <small class="form-hint">Used for the home page title and as the fallback &lt;title&gt; when an individual page or post has no custom SEO title.</small>
+                <small class="form-hint">{_'Used for the home page title and as the fallback <title> when an individual page or post has no custom SEO title.'}</small>
             </div>
             <div class="form-group">
-                <label>Default Meta Description</label>
+                <label>{_'Default Meta Description'}</label>
                 <textarea name="meta_description" rows="3">{$seo['meta_description'] ?? ''}</textarea>
-                <small class="form-hint">Used when a page or post has no custom meta description or excerpt fallback.</small>
+                <small class="form-hint">{_'Used when a page or post has no custom meta description or excerpt fallback.'}</small>
             </div>
             <div class="form-group">
-                <label>Robots Directives</label>
+                <label>{_'Robots Directives'}</label>
                 <input type="text" name="robots" value="{$seo['robots'] ?? 'index,follow'}" placeholder="index,follow" class="font-mono">
             </div>
             <div class="form-group" id="og-image-field">
-                <label>Default OG Image</label>
+                <label>{_'Default OG Image'}</label>
                 <div class="og-image-control">
                     <input type="text" name="og_image_id" id="og-image-id" maxlength="36"
                            value="{$seo['og_image_id'] ?? ''}"
-                           placeholder="Pick an image from the library"
+                           placeholder="{_'Pick an image from the library'}"
                            class="font-mono text-xs" readonly>
-                    <button type="button" class="btn btn-secondary btn-sm" id="og-image-pick">Choose image</button>
-                    <button type="button" class="btn btn-ghost btn-sm" id="og-image-clear" {if empty($seo['og_image_id'])}hidden{/if}>Clear</button>
+                    <button type="button" class="btn btn-secondary btn-sm" id="og-image-pick">{_'Choose image'}</button>
+                    <button type="button" class="btn btn-ghost btn-sm" id="og-image-clear" {if empty($seo['og_image_id'])}hidden{/if}>{_'Clear'}</button>
                 </div>
                 <div id="og-image-preview" class="og-image-preview" {if empty($default_og_image)}hidden{/if}>
                     {if !empty($default_og_image)}
                         <img src="{$default_og_image['url']}" alt="{$default_og_image['alt_text'] ?? ''}" loading="lazy">
                     {/if}
                 </div>
-                <small class="form-hint">Used for &lt;meta property="og:image"&gt; and Twitter images when a post or page has no individual OG image.</small>
+                <small class="form-hint">{_'Used for <meta property="og:image"> and Twitter images when a post or page has no individual OG image.'}</small>
             </div>
             <div class="form-group">
-                <label>Default Twitter Card</label>
+                <label>{_'Default Twitter Card'}</label>
                 {var $twCard = $seo['twitter_card'] ?? 'summary_large_image'}
                 <select name="twitter_card">
                     <option value="summary" {$twCard === 'summary' ? 'selected' : ''}>summary</option>
@@ -62,7 +62,7 @@
                 </select>
             </div>
             <div class="mt-6">
-                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <button type="submit" class="btn btn-primary">{_'Save Changes'}</button>
             </div>
         </form>
     </div>

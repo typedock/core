@@ -1,22 +1,22 @@
 {layout '../../layouts/admin-base.latte'}
 
-{block page_title}Users{/block}
+{block page_title}{_'Users'}{/block}
 
 {block content}
 <div class="page-header">
     <div>
-        <h1>Users</h1>
-        <p class="subtitle">People who can sign in and manage this site.</p>
+        <h1>{_'Users'}</h1>
+        <p class="subtitle">{_'People who can sign in and manage this site.'}</p>
     </div>
     <a href="/admin/users/create" class="btn btn-primary">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-        <span>New User</span>
+        <span>{_'New User'}</span>
     </a>
 </div>
 
 <table class="data-table">
     <thead>
-        <tr><th>Name</th><th>Email</th><th>Role</th><th>Last Login</th><th>Registered</th><th class="text-right">Actions</th></tr>
+        <tr><th>{_'Name'}</th><th>{_'Email'}</th><th>{_'Role'}</th><th>{_'Last Login'}</th><th>{_'Registered'}</th><th class="text-right">{_'Actions'}</th></tr>
     </thead>
     <tbody>
         {foreach $users as $user}
@@ -30,14 +30,14 @@
                 </div>
             </td>
             <td class="text-slate-600">{$user['email']}</td>
-            <td><span class="badge badge-{$user['role'] === 'admin' ? 'published' : 'draft'}">{$user['role']}</span></td>
+            <td><span class="badge badge-{$user['role'] === 'admin' ? 'published' : 'draft'}">{$user['role']|translate}</span></td>
             <td class="text-slate-500">{$user['last_login_at'] ? ($user['last_login_at']|date:'Y/m/d H:i') : '—'}</td>
             <td class="text-slate-500">{$user['created_at']|date:'Y/m/d'}</td>
             <td class="actions">
-                <a href="/admin/users/{$user['id']}/edit" class="btn btn-secondary btn-sm">Edit</a>
+                <a href="/admin/users/{$user['id']}/edit" class="btn btn-secondary btn-sm">{_'Edit'}</a>
                 <form method="post" action="/admin/users/{$user['id']}/delete" class="inline">
                     <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this item?')">Delete</button>
+                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm({_'Delete this item?'})">{_'Delete'}</button>
                 </form>
             </td>
         </tr>

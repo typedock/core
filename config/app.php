@@ -6,6 +6,8 @@ return [
     'url'      => rtrim((string) env('APP_URL', 'http://localhost'), '/'),
     'debug'    => (bool) env('APP_DEBUG', false),
     'locale'   => env('APP_LOCALE', 'en'),
+    'admin_locale' => env('ADMIN_LOCALE', 'en'),
+    'admin_locale_cookie' => env('ADMIN_LOCALE_COOKIE', 'typedock_admin_locale'),
     'timezone' => env('APP_TIMEZONE', 'Asia/Tokyo'),
     'version'  => defined('TYPEDOCK_VERSION') ? TYPEDOCK_VERSION : '0.8.0',
     // External REST API default. Admins can also enable it from Settings -> API;

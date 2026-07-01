@@ -80,7 +80,7 @@ class SettingsController extends BaseAdminController
         $this->setOption('site.posts_archive_slug', $postsSlug, 'general');
         $this->setOption('site.posts_archive_label', $postsLabel, 'general');
 
-        $this->redirect('/admin/settings/general', 'Settings saved successfully.');
+        $this->redirect('/admin/settings/general', __('Settings saved successfully.'));
     }
 
     /**
@@ -133,7 +133,7 @@ class SettingsController extends BaseAdminController
             'og_image_id'      => trim((string) ($_POST['og_image_id'] ?? '')) ?: null,
             'twitter_card'     => $_POST['twitter_card'] ?? null,
         ]);
-        $this->redirect('/admin/settings/seo', 'SEO settings saved successfully.');
+        $this->redirect('/admin/settings/seo', __('SEO settings saved successfully.'));
     }
 
     public function mail(): void
@@ -167,14 +167,14 @@ class SettingsController extends BaseAdminController
         $this->setOption('mail.smtp.password', $password, 'mail');
         $this->setOption('mail.smtp.encryption', $this->mailEncryption((string) ($_POST['smtp_encryption'] ?? 'tls')), 'mail');
 
-        $this->redirect('/admin/settings/mail', 'Mail settings saved successfully.');
+        $this->redirect('/admin/settings/mail', __('Mail settings saved successfully.'));
     }
 
     public function testMail(): void
     {
         $to = trim((string) ($_POST['test_to'] ?? ''));
         if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
-            $this->redirect('/admin/settings/mail', 'Enter a valid recipient email address.', 'error');
+            $this->redirect('/admin/settings/mail', __('Enter a valid recipient email address.'), 'error');
             return;
         }
 
@@ -187,7 +187,7 @@ class SettingsController extends BaseAdminController
 
         $this->redirect(
             '/admin/settings/mail',
-            $ok ? 'Test email sent.' : 'Test email failed. Check SMTP host, credentials, and server logs.',
+            $ok ? __('Test email sent.') : __('Test email failed. Check SMTP host, credentials, and server logs.'),
             $ok ? 'success' : 'error'
         );
     }
@@ -213,7 +213,7 @@ class SettingsController extends BaseAdminController
     {
         $enabled = !empty($_POST['api_enabled']);
         $this->setOption('api.enabled', $enabled, 'api');
-        $this->redirect('/admin/settings/api', $enabled ? 'API enabled.' : 'API disabled.');
+        $this->redirect('/admin/settings/api', $enabled ? __('API enabled.') : __('API disabled.'));
     }
 
     public function createApiKey(): void
@@ -221,7 +221,7 @@ class SettingsController extends BaseAdminController
         $user = \Flight::get('current_user');
         $name = trim((string) ($_POST['name'] ?? ''));
         if ($name === '') {
-            $this->redirect('/admin/settings/api', 'API key name is required.', 'error');
+            $this->redirect('/admin/settings/api', __('API key name is required.'), 'error');
             return;
         }
 
@@ -240,19 +240,19 @@ class SettingsController extends BaseAdminController
             session_start();
         }
         $_SESSION['new_api_key'] = $created['key'];
-        $this->redirect('/admin/settings/api', 'API key created. Copy it now; it will not be shown again.');
+        $this->redirect('/admin/settings/api', __('API key created. Copy it now; it will not be shown again.'));
     }
 
     public function revokeApiKey(): void
     {
         $id = trim((string) ($_POST['id'] ?? ''));
         if ($id === '') {
-            $this->redirect('/admin/settings/api', 'Missing API key id.', 'error');
+            $this->redirect('/admin/settings/api', __('Missing API key id.'), 'error');
             return;
         }
 
         \Flight::apikey()->revoke($id);
-        $this->redirect('/admin/settings/api', 'API key revoked.');
+        $this->redirect('/admin/settings/api', __('API key revoked.'));
     }
 
     /**
@@ -367,11 +367,11 @@ class SettingsController extends BaseAdminController
     {
         $file = $_FILES['plugin_zip'] ?? null;
         if (!is_array($file) || ($file['error'] ?? \UPLOAD_ERR_NO_FILE) !== \UPLOAD_ERR_OK) {
-            $this->redirect('/admin/settings/modules', 'No file uploaded or upload failed.', 'error');
+            $this->redirect('/admin/settings/modules', __('No file uploaded or upload failed.'), 'error');
             return;
         }
         if (!is_uploaded_file((string) $file['tmp_name'])) {
-            $this->redirect('/admin/settings/modules', 'Invalid upload.', 'error');
+            $this->redirect('/admin/settings/modules', __('Invalid upload.'), 'error');
             return;
         }
 
@@ -382,11 +382,11 @@ class SettingsController extends BaseAdminController
                 overwrite: !empty($_POST['overwrite']),
             );
             $message = $result['replaced']
-                ? "Plugin '{$result['slug']}' was replaced. Enable it from the list below."
-                : "Plugin '{$result['slug']}' was installed. Enable it from the list below.";
+                ? __('Plugin {slug} was replaced. Enable it from the list below.', ['slug' => $result['slug']])
+                : __('Plugin {slug} was installed. Enable it from the list below.', ['slug' => $result['slug']]);
             $this->redirect('/admin/settings/modules', $message);
         } catch (\Throwable $e) {
-            $this->redirect('/admin/settings/modules', 'Install failed: ' . $e->getMessage(), 'error');
+            $this->redirect('/admin/settings/modules', __('Install failed: {message}', ['message' => $e->getMessage()]), 'error');
         }
     }
 
@@ -400,7 +400,7 @@ class SettingsController extends BaseAdminController
         $enabled = !empty($_POST['enabled']);
 
         if ($slug === '' || preg_match('/^[a-z][a-z0-9_-]{0,63}$/', $slug) !== 1) {
-            $this->redirect('/admin/settings/modules', 'Invalid plugin slug.', 'error');
+            $this->redirect('/admin/settings/modules', __('Invalid plugin slug.'), 'error');
             return;
         }
 
@@ -427,12 +427,16 @@ class SettingsController extends BaseAdminController
                 $publisher->unpublishPlugin($slug);
             }
         } catch (\Throwable $e) {
-            $assetNote = ' Asset publishing failed; run php cli/assets-publish.php.';
+            $assetNote = __(' Asset publishing failed; run php cli/assets-publish.php.');
         }
 
         $this->redirect(
             '/admin/settings/modules',
-            sprintf('%s %s.%s', ucfirst($slug), $enabled ? 'enabled' : 'disabled', $assetNote)
+            __('Plugin {slug} {state}.{note}', [
+                'slug' => $slug,
+                'state' => $enabled ? __('enabled') : __('disabled'),
+                'note' => $assetNote,
+            ])
         );
     }
 

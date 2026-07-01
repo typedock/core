@@ -27,13 +27,13 @@ class CategoryController extends BaseAdminController
             'parent_id'   => !empty($_POST['parent_id']) ? $_POST['parent_id'] : null,
             'locale'      => $_POST['locale'] ?? typedock_default_locale(),
         ]);
-        $this->redirect('/admin/categories', 'Category created successfully.');
+        $this->redirect('/admin/categories', __('Category created successfully.'));
     }
 
     public function destroy(string $id): void
     {
         $service = new CategoryService(\Flight::db());
         $service->delete($id);
-        $this->redirect('/admin/categories', 'Category deleted successfully.');
+        $this->redirect('/admin/categories', __('Category deleted successfully.'));
     }
 }

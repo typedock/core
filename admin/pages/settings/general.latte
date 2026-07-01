@@ -1,21 +1,21 @@
 {layout '../../layouts/admin-base.latte'}
 
-{block page_title}Site Settings{/block}
+{block page_title}{_'Site Settings'}{/block}
 
 {block content}
 <div class="page-header">
     <div>
-        <h1>Site Settings</h1>
-        <p class="subtitle">General site configuration.</p>
+        <h1>{_'Site Settings'}</h1>
+        <p class="subtitle">{_'General site configuration.'}</p>
     </div>
 </div>
 
 <nav class="tabs">
-    <a href="/admin/settings/general" class="is-active">General</a>
-    <a href="/admin/settings/seo">SEO</a>
-    <a href="/admin/settings/mail">Mail</a>
-    <a href="/admin/settings/api">API</a>
-    <a href="/admin/settings/modules">Modules</a>
+    <a href="/admin/settings/general" class="is-active">{_'General'}</a>
+    <a href="/admin/settings/seo">{_'SEO'}</a>
+    <a href="/admin/settings/mail">{_'Mail'}</a>
+    <a href="/admin/settings/api">{_'API'}</a>
+    <a href="/admin/settings/modules">{_'Modules'}</a>
 </nav>
 
 <div class="card max-w-3xl">
@@ -24,13 +24,13 @@
             <input type="hidden" name="_csrf_token" value="{$csrf_token}">
 
             <div class="form-group">
-                <label for="site_name">Site Name</label>
+                <label for="site_name">{_'Site Name'}</label>
                 <input type="text" id="site_name" name="site_name"
                        value="{$options['site.name'] ?? ''}" required>
             </div>
 
             <div class="form-group">
-                <label for="site_description">Site Description</label>
+                <label for="site_description">{_'Site Description'}</label>
                 <textarea id="site_description" name="site_description" rows="3">{$options['site.description'] ?? ''}</textarea>
             </div>
 
@@ -47,24 +47,27 @@
             </div>
 
             <fieldset class="form-fieldset">
-                <legend>Home page</legend>
+                <legend>{_'Home page'}</legend>
 
                 <div class="form-group">
-                    <label for="home_mode">What to show at <code>/</code></label>
+                    <label for="home_mode">{_'What to show at'} <code>/</code></label>
                     {var $homeMode = $options['site.home_mode'] ?? 'archive'}
                     <select id="home_mode" name="home_mode">
-                        <option value="archive" {$homeMode === 'archive' ? 'selected' : ''}>Latest posts (archive)</option>
-                        <option value="page" {$homeMode === 'page' ? 'selected' : ''}>A static page</option>
-                        <option value="source" {$homeMode === 'source' ? 'selected' : ''}>An External Source</option>
+                        <option value="archive" {$homeMode === 'archive' ? 'selected' : ''}>{_'Latest posts (archive)'}</option>
+                        <option value="page" {$homeMode === 'page' ? 'selected' : ''}>{_'A static page'}</option>
+                        <option value="source" {$homeMode === 'source' ? 'selected' : ''}>{_'An External Source'}</option>
                     </select>
-                    <small class="form-hint">When set to <strong>A static page</strong> or <strong>An External Source</strong>, pick the matching item below. Themes can still differentiate <code>/</code> and <code>/{$options['site.posts_archive_slug'] ?? 'blog'}</code> via a <code>home.latte</code> template.</small>
+                    <small class="form-hint">
+                        {_'When home mode is set to'} <strong>{_'A static page'}</strong> {_'or'} <strong>{_'An External Source'}</strong> {_'choose the matching item below.'}
+                        {_'Themes can still differentiate'} <code>/</code> {_'and'} <code>/{$options['site.posts_archive_slug'] ?? 'blog'}</code> {_'via a'} <code>home.latte</code> {_'template.'}
+                    </small>
                 </div>
 
                 <div class="form-group">
-                    <label for="home_page_id">Home page (when using a static page)</label>
+                    <label for="home_page_id">{_'Home page (when using a static page)'}</label>
                     {var $homePageId = $options['site.home_page_id'] ?? ''}
                     <select id="home_page_id" name="home_page_id">
-                        <option value="">— select a page —</option>
+                        <option value="">{_'— select a page —'}</option>
                         {foreach $pages as $p}
                             <option value="{$p['id']}" {$homePageId === $p['id'] ? 'selected' : ''}>{$p['title']}</option>
                         {/foreach}
@@ -72,10 +75,10 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="home_source_id">Home External Source</label>
+                    <label for="home_source_id">{_'Home External Source'}</label>
                     {var $homeSourceId = $options['site.home_source_id'] ?? ''}
                     <select id="home_source_id" name="home_source_id">
-                        <option value="">— select a source —</option>
+                        <option value="">{_'— select a source —'}</option>
                         {foreach $external_sources as $source}
                             <option value="{$source['id']}" {$homeSourceId === $source['id'] ? 'selected' : ''}>{$source['name']} (/{$source['slug']})</option>
                         {/foreach}
@@ -84,49 +87,49 @@
             </fieldset>
 
             <fieldset class="form-fieldset">
-                <legend>Posts archive</legend>
+                <legend>{_'Posts archive'}</legend>
 
                 <div class="form-group">
-                    <label for="posts_archive_slug">Posts URL path</label>
+                    <label for="posts_archive_slug">{_'Posts URL path'}</label>
                     <input type="text" id="posts_archive_slug" name="posts_archive_slug"
                            value="{$options['site.posts_archive_slug'] ?? 'blog'}"
                            placeholder="blog" pattern="[A-Za-z0-9_\-]+">
                     <small class="form-hint">
-                        URL segment for the posts archive and single post pages, e.g.
+                        {_'URL segment for the posts archive and single post pages, e.g.'}
                         <code>blog</code> → <code>/blog</code>, <code>/blog/hello-world</code>.
-                        Allowed characters: letters, digits, <code>-</code>, <code>_</code>.
-                        Reserved words (<code>admin</code>, <code>api</code>, <code>search</code>,
+                        {_'Allowed characters: letters, digits,'} <code>-</code>, <code>_</code>.
+                        {_'Reserved words'} (<code>admin</code>, <code>api</code>, <code>search</code>,
                         <code>category</code>, <code>tag</code>, <code>page</code>, <code>feed</code>)
-                        are rejected silently — the slug falls back to <code>blog</code>.
-                        <strong>Changing this does not create redirects from the old path.</strong>
-                        If you already published posts under the old slug,
-                        add redirects at <a href="/admin/redirects" class="text-brand-600 hover:underline">Redirects</a>
+                        {_'are rejected silently — the slug falls back to'} <code>blog</code>.
+                        <strong>{_'Changing this does not create redirects from the old path.'}</strong>
+                        {_'If you already published posts under the old slug,'}
+                        {_'add redirects at'} <a href="/admin/redirects" class="text-brand-600 hover:underline">{_'Redirects'}</a>
                         (e.g. <code>/blog/foo</code> → <code>/journal/foo</code>).
                     </small>
                 </div>
 
                 <div class="form-group">
-                    <label for="posts_archive_label">Posts label</label>
+                    <label for="posts_archive_label">{_'Posts label'}</label>
                     <input type="text" id="posts_archive_label" name="posts_archive_label"
                            value="{$options['site.posts_archive_label'] ?? 'Blog'}"
                            placeholder="Blog">
-                    <small class="form-hint">Human-readable label shown in breadcrumbs and sidebar widgets. Examples: <em>Blog</em>, <em>Journal</em>, <em>News</em>, <em>記事</em>.</small>
+                    <small class="form-hint">{_'Human-readable label shown in breadcrumbs and sidebar widgets. Examples:'} <em>Blog</em>, <em>Journal</em>, <em>News</em>, <em>記事</em>.</small>
                 </div>
             </fieldset>
 
             <div class="form-group">
-                <label for="scripts_head">&lt;head&gt; Additional Scripts</label>
+                <label for="scripts_head">&lt;head&gt; {_'Additional Scripts'}</label>
                 <textarea id="scripts_head" name="scripts_head" rows="5" placeholder="<script>...</script>" class="font-mono text-xs">{$options['scripts.head'] ?? ''}</textarea>
-                <small class="form-hint">Paste scripts such as Google Analytics here.</small>
+                <small class="form-hint">{_'Paste scripts such as Google Analytics here.'}</small>
             </div>
 
             <div class="form-group">
-                <label for="scripts_body">&lt;body&gt; Footer Scripts</label>
+                <label for="scripts_body">&lt;body&gt; {_'Footer Scripts'}</label>
                 <textarea id="scripts_body" name="scripts_body" rows="5" class="font-mono text-xs">{$options['scripts.body'] ?? ''}</textarea>
             </div>
 
             <div class="mt-6">
-                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <button type="submit" class="btn btn-primary">{_'Save Changes'}</button>
             </div>
         </form>
     </div>

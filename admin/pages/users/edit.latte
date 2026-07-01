@@ -1,16 +1,16 @@
 {layout '../../layouts/admin-base.latte'}
 
-{block page_title}{isset($user['id']) ? 'Edit User' : 'New User'}{/block}
+{block page_title}{if isset($user['id'])}{_'Edit User'}{else}{_'New User'}{/if}{/block}
 
 {block content}
 <div class="page-header">
     <div>
-        <h1>{isset($user['id']) ? 'Edit User' : 'New User'}</h1>
+        <h1>{if isset($user['id'])}{_'Edit User'}{else}{_'New User'}{/if}</h1>
         <p class="subtitle">
-            {if isset($user['id'])}Update account access and public profile.{else}Create a new user account.{/if}
+            {if isset($user['id'])}{_'Update account access and public profile.'}{else}{_'Create a new user account.'}{/if}
         </p>
     </div>
-    <a href="/admin/users" class="btn btn-secondary">← Back to list</a>
+    <a href="/admin/users" class="btn btn-secondary">← {_'Back to list'}</a>
 </div>
 
 <div class="card max-w-xl">
@@ -19,35 +19,35 @@
             <input type="hidden" name="_csrf_token" value="{$csrf_token}">
 
             <div class="form-group">
-                <label for="name">Account Name</label>
+                <label for="name">{_'Account Name'}</label>
                 <input type="text" id="name" name="name"
                        value="{$user['name'] ?? ''}" required>
             </div>
 
             <div class="form-group">
-                <label for="email">Email</label>
+                <label for="email">{_'Email'}</label>
                 <input type="email" id="email" name="email"
                        value="{$user['email'] ?? ''}" {isset($user['id']) ? 'readonly' : 'required'}>
                 {if isset($user['id'])}
-                <small class="form-hint">Email address cannot be changed.</small>
+                <small class="form-hint">{_'Email address cannot be changed.'}</small>
                 {/if}
             </div>
 
             <div class="form-group">
                 <label for="password">
-                    Password
-                    {if isset($user['id'])}<small>(leave blank to keep current)</small>{/if}
+                    {_'Password'}
+                    {if isset($user['id'])}<small>{_'(leave blank to keep current)'}</small>{/if}
                 </label>
                 <input type="password" id="password" name="password"
                        {isset($user['id']) ? '' : 'required'} autocomplete="new-password">
             </div>
 
             <div class="form-group">
-                <label for="role">Role</label>
+                <label for="role">{_'Role'}</label>
                 <select id="role" name="role">
-                    <option value="contributor" {($user['role'] ?? 'contributor')==='contributor' ? 'selected' : ''}>Contributor</option>
-                    <option value="editor"      {($user['role'] ?? '')==='editor' ? 'selected' : ''}>Editor</option>
-                    <option value="admin"       {($user['role'] ?? '')==='admin' ? 'selected' : ''}>Administrator</option>
+                    <option value="contributor" {($user['role'] ?? 'contributor')==='contributor' ? 'selected' : ''}>{_'Contributor'}</option>
+                    <option value="editor"      {($user['role'] ?? '')==='editor' ? 'selected' : ''}>{_'Editor'}</option>
+                    <option value="admin"       {($user['role'] ?? '')==='admin' ? 'selected' : ''}>{_'Administrator'}</option>
                 </select>
             </div>
 
@@ -56,66 +56,65 @@
                 <label class="checkbox-label">
                     <input type="checkbox" name="two_factor_enabled" value="1"
                            {!empty($user['two_factor_enabled']) ? 'checked' : ''}>
-                    Require two-factor authentication at sign-in
+                    {_'Require two-factor authentication at sign-in'}
                 </label>
                 <small class="form-hint">
-                    A 6-digit verification code is emailed to this user on every login.
-                    Make sure <a href="/admin/settings/mail">Mail settings</a> work before
-                    enabling — without delivery the user will be locked out.
+                    {_'A 6-digit verification code is emailed to this user on every login.'}
+                    {_'Make sure'} <a href="/admin/settings/mail">{_'Mail settings'}</a> {_'work before enabling — without delivery the user will be locked out.'}
                 </small>
             </div>
             {/if}
 
             <fieldset>
-                <legend>Public Profile</legend>
+                <legend>{_'Public Profile'}</legend>
 
                 <div class="form-group">
-                    <label for="display_name">Display Name</label>
+                    <label for="display_name">{_'Display Name'}</label>
                     <input type="text" id="display_name" name="display_name"
                            value="{$user['display_name'] ?? ''}"
-                           placeholder="Shown on posts and author pages">
+                           placeholder="{_'Shown on posts and author pages'}">
                 </div>
 
                 <div class="form-group">
-                    <label for="slug">Author Slug</label>
+                    <label for="slug">{_'Author Slug'}</label>
                     <input type="text" id="slug" name="slug"
                            value="{$user['slug'] ?? ''}"
                            placeholder="jane-doe">
                     {if !empty($user['slug'])}
-                    <small class="form-hint"><a href="/author/{$user['slug']}" target="_blank" rel="noopener">View on site</a></small>
+                    <small class="form-hint"><a href="/author/{$user['slug']}" target="_blank" rel="noopener">{_'View on site'}</a></small>
                     {/if}
                 </div>
 
                 <div class="form-group">
-                    <label for="bio">Bio</label>
+                    <label for="bio">{_'Bio'}</label>
                     <textarea id="bio" name="bio" rows="5">{$user['bio'] ?? ''}</textarea>
                 </div>
 
                 <div class="form-group" data-user-avatar data-avatar-url="{$user['avatar_url'] ?? ''}">
-                    <label>Avatar</label>
+                    <label>{_'Avatar'}</label>
                     <input type="hidden" id="avatar_media_id" name="avatar_media_id" value="{$user['avatar_media_id'] ?? ''}">
                     <div class="og-image-control">
-                        <button type="button" class="btn btn-secondary btn-sm" data-avatar-pick>Choose image</button>
-                        <button type="button" class="btn btn-ghost btn-sm" data-avatar-clear {if empty($user['avatar_media_id'])}hidden{/if}>Clear</button>
+                        <button type="button" class="btn btn-secondary btn-sm" data-avatar-pick>{_'Choose image'}</button>
+                        <button type="button" class="btn btn-ghost btn-sm" data-avatar-clear {if empty($user['avatar_media_id'])}hidden{/if}>{_'Clear'}</button>
                     </div>
                     <div class="og-image-preview" data-avatar-preview hidden></div>
                 </div>
 
                 <div class="form-group">
-                    <label for="website_url">Website URL</label>
+                    <label for="website_url">{_'Website URL'}</label>
                     <input type="url" id="website_url" name="website_url"
                            value="{$user['website_url'] ?? ''}"
                            placeholder="https://example.com">
                 </div>
 
                 <div class="form-group">
-                    <label for="social_links">Social Links <small>(JSON)</small></label>
+                    <label for="social_links">{_'Social Links'} <small>(JSON)</small></label>
                     <textarea id="social_links" name="social_links" rows="4" placeholder='{"twitter":"https://x.com/example","github":"https://github.com/example"}'>{$user['social_links'] ?? ''}</textarea>
                 </div>
             </fieldset>
 
             <div class="mt-6">
-                <button type="submit" class="btn btn-primary">{isset($user['id']) ? 'Save Changes' : 'Create User'}</button>
+                <button type="submit" class="btn btn-primary">{if isset($user['id'])}{_'Save Changes'}{else}{_'Create User'}{/if}</button>
             </div>
         </form>
     </div>

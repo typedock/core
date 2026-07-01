@@ -748,6 +748,26 @@
     color: var(--color-sidebar-muted);
 }
 .admin-user-info .logout-link:hover { @apply text-white; }
+.admin-sidebar-locale {
+    @apply border-t px-3 py-2.5;
+    border-color: var(--color-sidebar-bg-soft);
+}
+.admin-sidebar-locale label {
+    @apply mb-1 block text-[11px] font-medium uppercase tracking-normal;
+    color: var(--color-sidebar-muted);
+}
+.admin-sidebar-locale + .admin-user-info {
+    border-top-width: 0;
+}
+.admin-locale-select {
+    @apply h-7 w-full rounded border px-2 py-0 text-xs shadow-none;
+    background-color: var(--color-sidebar-bg-soft);
+    border-color: var(--color-sidebar-bg-soft);
+    color: var(--color-sidebar-fg);
+}
+.admin-locale-select:focus {
+    border-color: var(--color-brand-500);
+}
 
 .admin-content {
     margin-left: 15rem;

@@ -53,7 +53,7 @@ class UserController extends BaseAdminController
             $now, $now,
         ]);
 
-        $this->redirect('/admin/users', 'User created successfully.');
+        $this->redirect('/admin/users', __('User created successfully.'));
     }
 
     public function edit(string $id): void
@@ -115,18 +115,18 @@ class UserController extends BaseAdminController
         $params[] = $id;
 
         $pdo->prepare('UPDATE users SET ' . implode(', ', $setClauses) . ' WHERE id = ?')->execute($params);
-        $this->redirect('/admin/users', 'User updated successfully.');
+        $this->redirect('/admin/users', __('User updated successfully.'));
     }
 
     public function destroy(string $id): void
     {
         $currentUser = \Flight::get('current_user');
         if (($currentUser['id'] ?? null) === $id) {
-            $this->redirect('/admin/users', 'You cannot delete your own account.');
+            $this->redirect('/admin/users', __('You cannot delete your own account.'), 'error');
             return;
         }
         \Flight::db()->prepare('DELETE FROM users WHERE id = ?')->execute([$id]);
-        $this->redirect('/admin/users', 'User deleted successfully.');
+        $this->redirect('/admin/users', __('User deleted successfully.'));
     }
 
     private function resolveAuthorSlug(string $userId, string $slug, string $fallbackName): string

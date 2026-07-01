@@ -22,7 +22,7 @@
             onUploaded(media) {
                 hideEmptyState();
                 appendMediaItem(media);
-                showSuccess(`${media.original_filename || 'File'} uploaded.`);
+                showSuccess(t('uploadedMessage', '{filename} uploaded.').replace('{filename}', media.original_filename || t('fileLabel', 'File')));
             },
             onError(err, file) {
                 showError(`${file.name}: ${err.message}`);
@@ -51,21 +51,22 @@
         const csrf = document.querySelector('#media-upload-area').dataset.csrf || '';
         const isImage = (media.mime_type || '').startsWith('image/');
         const el = document.createElement('div');
+        const copyIdTitle = t('copyIdTitle', "Copy this item's ID (used by the SEO panel's OG image field)");
         el.className = 'media-item';
         el.dataset.id = media.id;
         el.innerHTML = `
             ${isImage
                 ? `<img src="${attr(media.url)}" alt="${attr(media.alt_text || '')}" loading="lazy">`
-                : `<div class="media-icon">${text(media.mime_type || 'file')}</div>`}
+                : `<div class="media-icon">${text(media.mime_type || t('fileLabel', 'file'))}</div>`}
             <div class="media-info">
                 <span class="media-name" title="${attr(media.original_filename || '')}">${text(media.original_filename || '')}</span>
             </div>
             <div class="media-actions">
-                <button class="btn btn-ghost btn-xs copy-url-btn" data-url="${attr(media.url)}">Copy URL</button>
-                <button class="btn btn-ghost btn-xs copy-url-btn" data-url="${attr(media.id)}" title="Copy this item's ID (used by the SEO panel's OG image field)">Copy ID</button>
+                <button class="btn btn-ghost btn-xs copy-url-btn" data-url="${attr(media.url)}">${text(t('copyUrlLabel', 'Copy URL'))}</button>
+                <button class="btn btn-ghost btn-xs copy-url-btn" data-url="${attr(media.id)}" title="${attr(copyIdTitle)}">${text(t('copyIdLabel', 'Copy ID'))}</button>
                 <form method="post" action="/admin/media/delete/${attr(media.id)}" class="inline ml-auto">
                     <input type="hidden" name="_csrf_token" value="${attr(csrf)}">
-                    <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Delete this item?')" aria-label="Delete">&times;</button>
+                    <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('${attr(t('deleteConfirm', 'Delete this item?'))}')" aria-label="${attr(t('deleteLabel', 'Delete'))}">&times;</button>
                 </form>
             </div>
         `;
@@ -81,10 +82,15 @@
         const label = btn.textContent;
         btn.addEventListener('click', () => {
             navigator.clipboard.writeText(btn.dataset.url).then(() => {
-                btn.textContent = 'Copied';
+                btn.textContent = t('copiedLabel', 'Copied');
                 setTimeout(() => { btn.textContent = label; }, 2000);
             });
         });
+    }
+
+    function t(key, fallback) {
+        const area = document.getElementById('media-upload-area');
+        return area?.dataset?.[key] || fallback;
     }
 
     function showError(message) {

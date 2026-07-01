@@ -1,21 +1,21 @@
 {layout '../../layouts/admin-base.latte'}
 
-{block page_title}Modules{/block}
+{block page_title}{_'Modules'}{/block}
 
 {block content}
 <div class="page-header">
     <div>
-        <h1>Modules and Plugins</h1>
-        <p class="subtitle">Modules ship with Core; plugins live under <code>plugins/</code> and toggle here.</p>
+        <h1>{_'Modules and Plugins'}</h1>
+        <p class="subtitle">{_'Modules ship with Core; plugins live under'} <code>plugins/</code> {_'and toggle here.'}</p>
     </div>
 </div>
 
 <nav class="tabs">
-    <a href="/admin/settings/general">General</a>
-    <a href="/admin/settings/seo">SEO</a>
-    <a href="/admin/settings/mail">Mail</a>
-    <a href="/admin/settings/api">API</a>
-    <a href="/admin/settings/modules" class="is-active">Modules</a>
+    <a href="/admin/settings/general">{_'General'}</a>
+    <a href="/admin/settings/seo">{_'SEO'}</a>
+    <a href="/admin/settings/mail">{_'Mail'}</a>
+    <a href="/admin/settings/api">{_'API'}</a>
+    <a href="/admin/settings/modules" class="is-active">{_'Modules'}</a>
 </nav>
 
 {if isset($flash_success) && $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
@@ -23,39 +23,39 @@
 
 <div class="space-y-6">
     <div class="card">
-        <div class="card-header"><h2>Install plugin from zip</h2></div>
+        <div class="card-header"><h2>{_'Install plugin from zip'}</h2></div>
         <div class="card-body">
             <p class="form-hint" style="margin-top:0">
-                Drop a zip exported from another TypeDock site or a plugin repo. The archive must contain a <code>plugin.json</code> at its root (or inside a single wrapper folder, like the <em>Download ZIP</em> button on GitHub produces).
+                {_'Drop a zip exported from another TypeDock site or a plugin repo. The archive must contain a'} <code>plugin.json</code> {_'at its root (or inside a single wrapper folder, like the'} <em>Download ZIP</em> {_'button on GitHub produces).'}
             </p>
             <form method="post" action="/admin/settings/modules/plugins/upload" enctype="multipart/form-data">
                 <input type="hidden" name="_csrf_token" value="{$csrf_token}">
                 <div class="form-group">
-                    <label for="plugin_zip">Plugin archive (.zip)</label>
+                    <label for="plugin_zip">{_'Plugin archive (.zip)'}</label>
                     <input type="file" id="plugin_zip" name="plugin_zip" accept=".zip,application/zip" required>
-                    <small class="form-hint">Plugins land disabled — flip the toggle below after install to activate.</small>
+                    <small class="form-hint">{_'Plugins land disabled — flip the toggle below after install to activate.'}</small>
                 </div>
                 <div class="form-group">
                     <label class="checkbox-label">
                         <input type="checkbox" name="overwrite" value="1">
-                        Overwrite if a plugin with the same slug already exists
+                        {_'Overwrite if a plugin with the same slug already exists'}
                     </label>
                 </div>
-                <button type="submit" class="btn btn-primary">Install</button>
+                <button type="submit" class="btn btn-primary">{_'Install'}</button>
             </form>
         </div>
     </div>
 
     {if !empty($plugin_issues)}
     <div class="card">
-        <div class="card-header"><h2>Plugin load diagnostics</h2></div>
+        <div class="card-header"><h2>{_'Plugin load diagnostics'}</h2></div>
         <table class="data-table border-0 rounded-none shadow-none">
-            <thead><tr><th>Plugin</th><th>Level</th><th>Message</th></tr></thead>
+            <thead><tr><th>{_'Plugin'}</th><th>{_'Level'}</th><th>{_'Message'}</th></tr></thead>
             <tbody>
                 {foreach $plugin_issues as $issue}
                     <tr>
                         <td class="font-medium">{$issue['slug']}</td>
-                        <td><span class="badge {$issue['level'] === 'error' ? 'badge-danger' : 'badge-warning'}">{$issue['level']}</span></td>
+                        <td><span class="badge {$issue['level'] === 'error' ? 'badge-danger' : 'badge-warning'}">{$issue['level']|translate}</span></td>
                         <td>{$issue['message']}</td>
                     </tr>
                 {/foreach}
@@ -67,16 +67,16 @@
     {if !empty($modules)}
     <div class="card">
         <div class="card-header">
-            <h2>Modules</h2>
-            <span class="text-xs text-slate-500">Core features; status mirrors <code>.env</code>.</span>
+            <h2>{_'Modules'}</h2>
+            <span class="text-xs text-slate-500">{_'Core features; status mirrors'} <code>.env</code>.</span>
         </div>
         <table class="data-table border-0 rounded-none shadow-none">
-            <thead><tr><th>Module</th><th>Status</th></tr></thead>
+            <thead><tr><th>{_'Module'}</th><th>{_'Status'}</th></tr></thead>
             <tbody>
                 {foreach $modules as $name => $enabled}
                 <tr>
                     <td class="font-medium">{$name}</td>
-                    <td><span class="badge {$enabled ? 'badge-success' : 'badge-muted'}">{$enabled ? 'Enabled' : 'Disabled'}</span></td>
+                    <td><span class="badge {$enabled ? 'badge-success' : 'badge-muted'}">{if $enabled}{_'Enabled'}{else}{_'Disabled'}{/if}</span></td>
                 </tr>
                 {/foreach}
             </tbody>
@@ -86,41 +86,41 @@
 
     <div class="card">
         <div class="card-header">
-            <h2>Plugins</h2>
-            <span class="text-xs text-slate-500">Toggle to enable; takes effect on next request.</span>
+            <h2>{_'Plugins'}</h2>
+            <span class="text-xs text-slate-500">{_'Toggle to enable; takes effect on next request.'}</span>
         </div>
         <table class="data-table border-0 rounded-none shadow-none">
             <thead>
                 <tr>
-                    <th>Plugin</th>
-                    <th>Source</th>
-                    <th>Version</th>
-                    <th>State</th>
-                    <th class="text-right">Actions</th>
+                    <th>{_'Plugin'}</th>
+                    <th>{_'Source'}</th>
+                    <th>{_'Version'}</th>
+                    <th>{_'State'}</th>
+                    <th class="text-right">{_'Actions'}</th>
                 </tr>
             </thead>
             <tbody>
                 {foreach $plugins as $p}
                 <tr>
                     <td class="font-medium">{$p['name']} <span class="text-xs text-slate-500">({$p['slug']})</span></td>
-                    <td><span class="badge badge-muted">{$p['source']}</span></td>
+                    <td><span class="badge badge-muted">{$p['source']|translate}</span></td>
                     <td class="text-xs text-slate-500">{$p['version']}</td>
                     <td>
                         <span class="badge {$p['enabled'] ? 'badge-success' : 'badge-muted'}">
-                            {$p['enabled'] ? 'Enabled' : 'Disabled'}
+                            {if $p['enabled']}{_'Enabled'}{else}{_'Disabled'}{/if}
                         </span>
-                        <div class="text-xs text-slate-500 mt-1">via {$p['state_source']}</div>
+                        <div class="text-xs text-slate-500 mt-1">{_'via'} {$p['state_source']|translate}</div>
                     </td>
                     <td class="text-right">
                         {if $p['docs_url']}
-                            <a href="{$p['docs_url']}" class="btn btn-ghost btn-sm">Docs</a>
+                            <a href="{$p['docs_url']}" class="btn btn-ghost btn-sm">{_'Docs'}</a>
                         {/if}
                         <form method="post" action="/admin/settings/modules/plugins/toggle" class="inline">
                             <input type="hidden" name="_csrf_token" value="{$csrf_token}">
                             <input type="hidden" name="slug" value="{$p['slug']}">
                             <input type="hidden" name="enabled" value="{$p['enabled'] ? '' : '1'}">
                             <button type="submit" class="btn btn-secondary btn-sm">
-                                {$p['enabled'] ? 'Disable' : 'Enable'}
+                                {if $p['enabled']}{_'Disable'}{else}{_'Enable'}{/if}
                             </button>
                         </form>
                     </td>

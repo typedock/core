@@ -1,45 +1,55 @@
 {layout '../../layouts/admin-base.latte'}
 
-{block page_title}Media Library{/block}
+{block page_title}{_'Media Library'}{/block}
 
 {block content}
 <div class="page-header">
     <div>
-        <h1>Media</h1>
-        <p class="subtitle">Images, documents, and assets uploaded to your site.</p>
+        <h1>{_'Media'}</h1>
+        <p class="subtitle">{_'Images, documents, and assets uploaded to your site.'}</p>
         {if isset($storage)}
-            <p class="media-storage-badge" title="Local storage is configured in config/filesystems.php. Cloud storage is configured by a storage provider plugin.">
-                <span class="badge badge-muted">{$storage['label']}</span>
+            <p class="media-storage-badge" title="{_'Local storage is configured in config/filesystems.php. Cloud storage is configured by a storage provider plugin.'}">
+                <span class="badge badge-muted">{$storage['label']|translate}</span>
                 <span class="font-mono text-xs text-slate-500">{$storage['details']}</span>
             </p>
         {/if}
     </div>
     <label for="media-upload" class="btn btn-primary">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        <span>Upload</span>
+        <span>{_'Upload'}</span>
     </label>
 </div>
 
-<div id="media-upload-area" data-upload-url="/admin/api/media/upload" data-csrf="{$csrf_token}">
+<div id="media-upload-area"
+     data-upload-url="/admin/api/media/upload"
+     data-csrf="{$csrf_token}"
+     data-copy-url-label="{_'Copy URL'}"
+     data-copy-id-label="{_'Copy ID'}"
+     data-delete-label="{_'Delete'}"
+     data-delete-confirm="{_'Delete this item?'}"
+     data-copy-id-title="{_'Copy this item\'s ID (used by the SEO panel\'s OG image field)'}"
+     data-file-label="{_'file'}"
+     data-uploaded-message="{_'{filename} uploaded.'}"
+     data-copied-label="{_'Copied'}">
     <input type="file" id="media-upload" multiple accept="image/*,.pdf" class="hidden">
     <label for="media-upload" class="upload-drop-zone block">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-2 h-8 w-8 text-slate-400"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        <p class="font-medium text-slate-700">Drag and drop files, or click to upload</p>
-        <p class="mt-1 text-xs text-slate-500">Images and PDF files</p>
+        <p class="font-medium text-slate-700">{_'Drag and drop files, or click to upload'}</p>
+        <p class="mt-1 text-xs text-slate-500">{_'Images and PDF files'}</p>
     </label>
 </div>
 
 {if empty($media)}
     <div class="empty-state">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.6"/><path d="m21 16-5-5-10 10"/></svg>
-        <h3>Media library is empty</h3>
-        <p>Upload your first image to use it in posts, pages, or SEO metadata.</p>
+        <h3>{_'Media library is empty'}</h3>
+        <p>{_'Upload your first image to use it in posts, pages, or SEO metadata.'}</p>
     </div>
 {else}
 <div class="media-grid" id="media-grid">
     {foreach $media as $item}
     <div class="media-item" data-id="{$item['id']}">
-        <a href="/admin/media/{$item['id']}" class="media-item-link" aria-label="Edit {$item['original_filename']}">
+        <a href="/admin/media/{$item['id']}" class="media-item-link" aria-label="{_'Edit'} {$item['original_filename']}">
         {if str_starts_with($item['mime_type'], 'image/')}
             <img src="{$item['url']}" alt="{$item['alt_text'] ?? ''}" loading="lazy">
         {else}
@@ -50,11 +60,11 @@
         </div>
         </a>
         <div class="media-actions">
-            <button class="btn btn-ghost btn-xs copy-url-btn" data-url="{$item['url']}">Copy URL</button>
-            <button class="btn btn-ghost btn-xs copy-url-btn" data-url="{$item['id']}" title="Copy this item's ID (used by the SEO panel's OG image field)">Copy ID</button>
+            <button class="btn btn-ghost btn-xs copy-url-btn" data-url="{$item['url']}">{_'Copy URL'}</button>
+            <button class="btn btn-ghost btn-xs copy-url-btn" data-url="{$item['id']}" title="{_'Copy this item\'s ID (used by the SEO panel\'s OG image field)'}">{_'Copy ID'}</button>
             <form method="post" action="/admin/media/delete/{$item['id']}" class="inline ml-auto">
                 <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-                <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Delete this item?')" aria-label="Delete">
+                <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm({_'Delete this item?'})" aria-label="{_'Delete'}">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                 </button>
             </form>
@@ -65,13 +75,13 @@
 {/if}
 
 {if isset($total_pages) && $total_pages > 1}
-<nav class="pagination-wrapper" aria-label="Media pagination">
+<nav class="pagination-wrapper" aria-label="{_'Media pagination'}">
     {if $page > 1}
-        <a class="btn btn-ghost btn-sm" href="?page={$page - 1}">&larr; Previous</a>
+        <a class="btn btn-ghost btn-sm" href="?page={$page - 1}">&larr; {_'Previous'}</a>
     {/if}
-    <span class="text-sm text-slate-500">Page {$page} of {$total_pages} &middot; {$total} items</span>
+    <span class="text-sm text-slate-500">{_'Page {page} of {total_pages} · {total} items', page: $page, total_pages: $total_pages, total: $total}</span>
     {if $page < $total_pages}
-        <a class="btn btn-ghost btn-sm" href="?page={$page + 1}">Next &rarr;</a>
+        <a class="btn btn-ghost btn-sm" href="?page={$page + 1}">{_'Next'} &rarr;</a>
     {/if}
 </nav>
 {/if}

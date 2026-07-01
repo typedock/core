@@ -1,12 +1,12 @@
 {layout '../../layouts/admin-base.latte'}
 
-{block page_title}Tags{/block}
+{block page_title}{_'Tags'}{/block}
 
 {block content}
 <div class="page-header">
     <div>
-        <h1>Tags</h1>
-        <p class="subtitle">Flat, non-hierarchical labels for posts.</p>
+        <h1>{_'Tags'}</h1>
+        <p class="subtitle">{_'Flat, non-hierarchical labels for posts.'}</p>
     </div>
 </div>
 
@@ -15,13 +15,13 @@
         {if empty($tags)}
             <div class="empty-state">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12 12 20l-8-8V4h8Z"/><circle cx="8" cy="8" r="1.5"/></svg>
-                <h3>No tags yet</h3>
-                <p>Create tags on the right to group posts by topic.</p>
+                <h3>{_'No tags yet'}</h3>
+                <p>{_'Create tags on the right to group posts by topic.'}</p>
             </div>
         {else}
         <table class="data-table">
             <thead>
-                <tr><th>Name</th><th>Slug</th><th>Posts</th><th class="text-right">Actions</th></tr>
+                <tr><th>{_'Name'}</th><th>{_'Slug'}</th><th>{_'Posts'}</th><th class="text-right">{_'Actions'}</th></tr>
             </thead>
             <tbody>
                 {foreach $tags as $tag}
@@ -30,10 +30,10 @@
                     <td><code>{$tag['slug']}</code></td>
                     <td class="text-slate-500">{$tag['post_count'] ?? 0}</td>
                     <td class="actions">
-                        <a href="/tag/{$tag['slug']}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">View</a>
+                        <a href="/tag/{$tag['slug']}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">{_'View'}</a>
                         <form method="post" action="/admin/tags/{$tag['id']}/delete" class="inline">
                             <input type="hidden" name="_csrf_token" value="{$csrf_token}">
-                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this item?')">Delete</button>
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm({_'Delete this item?'})">{_'Delete'}</button>
                         </form>
                     </td>
                 </tr>
@@ -45,19 +45,19 @@
 
     <aside>
         <div class="sidebar-panel">
-            <h3>Add New Tag</h3>
+            <h3>{_'Add New Tag'}</h3>
             <form method="post" action="/admin/tags" data-slug-form>
                 <input type="hidden" name="_csrf_token" value="{$csrf_token}">
                 <div class="form-group">
-                    <label>Name</label>
+                    <label>{_'Name'}</label>
                     <input type="text" name="name" required data-slug-name>
                 </div>
                 <div class="form-group">
-                    <label>Slug</label>
-                    <input type="text" name="slug" placeholder="Auto-generated" data-slug-input>
-                    <small class="form-hint">Preview: <code data-slug-preview></code></small>
+                    <label>{_'Slug'}</label>
+                    <input type="text" name="slug" placeholder="{_'Auto-generated'}" data-slug-input>
+                    <small class="form-hint">{_'Preview:'} <code data-slug-preview></code></small>
                 </div>
-                <button type="submit" class="btn btn-primary btn-block">Add Tag</button>
+                <button type="submit" class="btn btn-primary btn-block">{_'Add Tag'}</button>
             </form>
         </div>
     </aside>
