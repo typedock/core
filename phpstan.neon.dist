@@ -20,5 +20,8 @@ parameters:
         analyse:
             - storage (?)
             - vendor (?)
+            - plugins/*/vendor (?)
+            - plugins/*/vendor/*
+            - %currentWorkingDirectory%/plugins/*/vendor/*
             - public (?)
             - node_modules (?)
