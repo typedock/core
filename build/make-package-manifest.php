@@ -16,7 +16,7 @@ $managedPaths = [
     'README.md',
 ];
 $bundledThemes = ['default', 'kinari'];
-$bundledPlugins = ['form', 'redirect', 'social', 'image-optimizer', 'turnstile-captcha', 'advanced-blocks', 'backup', 'source-contentful', 'source-github', 'cloud-storage'];
+$bundledPlugins = ['form', 'redirect', 'social', 'image-optimizer', 'turnstile-captcha', 'advanced-blocks', 'backup', 'simple-ai-writing', 'source-contentful', 'source-github', 'source-github-docs', 'cloud-storage'];
 
 $fileHashes = [];
 foreach (array_merge($managedPaths, array_map(fn(string $s): string => 'themes/' . $s, $bundledThemes), array_map(fn(string $s): string => 'plugins/' . $s, $bundledPlugins)) as $path) {
@@ -26,7 +26,7 @@ ksort($fileHashes);
 
 $manifest = [
     'schema_version' => 1,
-    'version' => getenv('VERSION') ?: '0.8.0',
+    'version' => getenv('VERSION') ?: '1.0.0-rc5',
     'managed_paths' => $managedPaths,
     'bundled_themes' => $bundledThemes,
     'bundled_plugins' => $bundledPlugins,

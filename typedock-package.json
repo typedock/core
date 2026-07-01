@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "version": "0.8.0",
+  "version": "1.0.0-rc5",
   "managed_paths": [
     "vendor",
     "src",
@@ -25,8 +25,10 @@
     "turnstile-captcha",
     "advanced-blocks",
     "backup",
+    "simple-ai-writing",
     "source-contentful",
     "source-github",
+    "source-github-docs",
     "cloud-storage"
   ],
   "file_hashes": {}

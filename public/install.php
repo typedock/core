@@ -10,6 +10,9 @@ declare(strict_types=1);
 
 $root = dirname(__DIR__);
 define('TYPEDOCK_ROOT', $root);
+if (!defined('TYPEDOCK_VERSION')) {
+    define('TYPEDOCK_VERSION', '1.0.0-rc5');
+}
 
 require $root . '/vendor/autoload.php';
 
@@ -234,7 +237,7 @@ if ($method === 'POST') {
                 }
 
                 // 5. Lock.
-                $installer->lock(defined('TYPEDOCK_VERSION') ? TYPEDOCK_VERSION : '0.8.0');
+                $installer->lock(defined('TYPEDOCK_VERSION') ? TYPEDOCK_VERSION : '1.0.0-rc5');
 
                 // 6. Optional self-delete.
                 if (!empty($_POST['delete_installer'])) {
