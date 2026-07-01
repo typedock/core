@@ -94,9 +94,9 @@ class FrontendController
             "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
-             WHERE p.slug = ? AND p.post_type = 'post' AND p.status = 'published' LIMIT 1"
+             WHERE p.slug = ? AND p.post_type = 'post' AND p.status = 'published' AND p.locale = ? LIMIT 1"
         );
-        $stmt->execute([$slug]);
+        $stmt->execute([$slug, typedock_current_locale()]);
         $page = $stmt->fetch();
 
         if ($page === false) {
@@ -109,9 +109,11 @@ class FrontendController
     public function blogIndex(int $page = 1, bool $isHome = false): void
     {
         $pageService = new PostService(\Flight::db());
+        $locale      = typedock_current_locale();
         $result      = $pageService->list([
             'post_type' => 'post',
             'status'    => 'published',
+            'locale'    => $locale,
             'page'      => $page,
             'per_page'  => self::POSTS_PER_PAGE,
         ]);
@@ -151,9 +153,9 @@ class FrontendController
             "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
-             WHERE p.slug = ? AND p.post_type = 'post' AND p.status = 'published' LIMIT 1"
+             WHERE p.slug = ? AND p.post_type = 'post' AND p.status = 'published' AND p.locale = ? LIMIT 1"
         );
-        $stmt->execute([$slug]);
+        $stmt->execute([$slug, typedock_current_locale()]);
         $page = $stmt->fetch();
 
         if ($page === false) {
@@ -166,7 +168,8 @@ class FrontendController
     public function categoryArchive(string $slug, int $page = 1): void
     {
         $catService = new CategoryService(\Flight::db());
-        $category   = $catService->findBySlug($slug);
+        $locale     = typedock_current_locale();
+        $category   = $catService->findBySlug($slug, $locale);
 
         if ($category === null) {
             throw new \TypeDock\Exception\NotFoundException("Category not found: {$slug}");
@@ -179,9 +182,9 @@ class FrontendController
         $stmt = $pdo->prepare(
             "SELECT COUNT(*) FROM posts p
              JOIN post_categories pc ON pc.post_id = p.id
-             WHERE pc.category_id = ? AND p.status = 'published'"
+             WHERE pc.category_id = ? AND p.status = 'published' AND p.locale = ?"
         );
-        $stmt->execute([$category['id']]);
+        $stmt->execute([$category['id'], $locale]);
         $total = (int) $stmt->fetchColumn();
 
         $stmt = $pdo->prepare(
@@ -189,10 +192,10 @@ class FrontendController
              LEFT JOIN users u ON u.id = p.author_id
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
              JOIN post_categories pc ON pc.post_id = p.id
-             WHERE pc.category_id = ? AND p.status = 'published'
+             WHERE pc.category_id = ? AND p.status = 'published' AND p.locale = ?
              ORDER BY p.published_at DESC LIMIT ? OFFSET ?"
         );
-        $stmt->execute([$category['id'], $perPage, $offset]);
+        $stmt->execute([$category['id'], $locale, $perPage, $offset]);
         $posts = PostView::projectList($stmt->fetchAll());
 
         $this->setPageContext(null, 'archive', $category, 'archive');
@@ -215,7 +218,8 @@ class FrontendController
     public function tagArchive(string $slug, int $page = 1): void
     {
         $tagService = new TagService(\Flight::db());
-        $tag        = $tagService->findBySlug($slug);
+        $locale     = typedock_current_locale();
+        $tag        = $tagService->findBySlug($slug, $locale);
 
         if ($tag === null) {
             throw new \TypeDock\Exception\NotFoundException("Tag not found: {$slug}");
@@ -228,9 +232,9 @@ class FrontendController
         $stmt = $pdo->prepare(
             "SELECT COUNT(*) FROM posts p
              JOIN post_tags pt ON pt.post_id = p.id
-             WHERE pt.tag_id = ? AND p.status = 'published'"
+             WHERE pt.tag_id = ? AND p.status = 'published' AND p.locale = ?"
         );
-        $stmt->execute([$tag['id']]);
+        $stmt->execute([$tag['id'], $locale]);
         $total = (int) $stmt->fetchColumn();
 
         $stmt = $pdo->prepare(
@@ -238,10 +242,10 @@ class FrontendController
              LEFT JOIN users u ON u.id = p.author_id
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
              JOIN post_tags pt ON pt.post_id = p.id
-             WHERE pt.tag_id = ? AND p.status = 'published'
+             WHERE pt.tag_id = ? AND p.status = 'published' AND p.locale = ?
              ORDER BY p.published_at DESC LIMIT ? OFFSET ?"
         );
-        $stmt->execute([$tag['id'], $perPage, $offset]);
+        $stmt->execute([$tag['id'], $locale, $perPage, $offset]);
         $posts = PostView::projectList($stmt->fetchAll());
 
         $this->setPageContext(null, 'archive', $tag, 'archive');
@@ -271,6 +275,7 @@ class FrontendController
             $results = \Flight::search()->search($query, [
                 'page'     => $page,
                 'per_page' => self::POSTS_PER_PAGE,
+                'locale'   => typedock_current_locale(),
             ]);
         }
 
@@ -305,9 +310,9 @@ class FrontendController
 
         $stmt = $pdo->prepare(
             "SELECT COUNT(*) FROM posts
-             WHERE author_id = ? AND post_type = 'post' AND status = 'published'"
+             WHERE author_id = ? AND post_type = 'post' AND status = 'published' AND locale = ?"
         );
-        $stmt->execute([$author['id']]);
+        $stmt->execute([$author['id'], typedock_current_locale()]);
         $total = (int) $stmt->fetchColumn();
 
         $stmt = $pdo->prepare(
@@ -315,10 +320,10 @@ class FrontendController
              FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
-             WHERE p.author_id = ? AND p.post_type = 'post' AND p.status = 'published'
+             WHERE p.author_id = ? AND p.post_type = 'post' AND p.status = 'published' AND p.locale = ?
              ORDER BY p.published_at DESC LIMIT ? OFFSET ?"
         );
-        $stmt->execute([$author['id'], $perPage, $offset]);
+        $stmt->execute([$author['id'], typedock_current_locale(), $perPage, $offset]);
 
         $this->setPageContext(null, 'archive', null, 'author');
         $this->renderLatte('layouts/author.latte', [
@@ -347,7 +352,7 @@ class FrontendController
         $postType   = (string) ($page['post_type'] ?? 'page');
         $this->setPageContext($page, $postType, null, $isHome ? 'home' : 'single');
         $bodyContext = new \TypeDock\Component\RenderContext(
-            locale: (string) config('app.locale', 'en'),
+            locale: typedock_current_locale(),
             page: $page,
             currentUrl: (string) ($_SERVER['REQUEST_URI'] ?? '/'),
             contextType: $postType,
@@ -521,7 +526,7 @@ class FrontendController
                     if (!empty($def['fetch']) && is_array($def['fetch'])) {
                         $stash = (array) (\Flight::get('typedock.page_context') ?? []);
                         $ctx   = new \TypeDock\Component\RenderContext(
-                            locale: (string) config('app.locale', 'en'),
+                            locale: typedock_current_locale(),
                             page: is_array($stash['page'] ?? null) ? $stash['page'] : null,
                             currentUrl: (string) ($_SERVER['REQUEST_URI'] ?? '/'),
                             contextType: (string) ($stash['context_type'] ?? ''),
@@ -593,9 +598,9 @@ HTML;
             "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
-             WHERE p.slug = ? AND p.post_type = 'page' AND p.status = 'published' LIMIT 1"
+             WHERE p.slug = ? AND p.post_type = 'page' AND p.status = 'published' AND p.locale = ? LIMIT 1"
         );
-        $stmt->execute([$slug]);
+        $stmt->execute([$slug, typedock_current_locale()]);
         $row = $stmt->fetch();
         return $row !== false ? $row : null;
     }

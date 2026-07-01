@@ -39,9 +39,10 @@ class RelatedPostsProvider implements DataProvider
              WHERE pc.category_id IN ({$placeholders})
                AND p.id != ?
                AND p.status = 'published'
+               AND p.locale = ?
              ORDER BY p.published_at DESC LIMIT ?"
         );
-        $stmt->execute(array_merge($catIds, [$pageId, $count]));
+        $stmt->execute(array_merge($catIds, [$pageId, $context->locale !== '' ? $context->locale : typedock_current_locale(), $count]));
 
         return ['posts' => PostView::projectList($stmt->fetchAll())];
     }

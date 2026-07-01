@@ -11,7 +11,7 @@ class TagController extends BaseAdminController
     {
         $service = new TagService(\Flight::db());
         $this->render('pages/tags/index.latte', [
-            'tags'          => $service->list(),
+            'tags'          => $service->list(['locale' => typedock_default_locale()]),
             'flash_success' => $this->getFlash('success'),
             'flash_error'   => $this->getFlash('error'),
         ]);
@@ -23,7 +23,7 @@ class TagController extends BaseAdminController
         $service->create([
             'name'   => trim($_POST['name'] ?? ''),
             'slug'   => trim($_POST['slug'] ?? ''),
-            'locale' => $_POST['locale'] ?? 'en',
+            'locale' => $_POST['locale'] ?? typedock_default_locale(),
         ]);
         $this->redirect('/admin/tags', 'Tag created successfully.');
     }

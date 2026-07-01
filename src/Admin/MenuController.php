@@ -7,30 +7,28 @@ use TypeDock\Theme\ThemeLoader;
 
 class MenuController extends BaseAdminController
 {
-    // Menus are bound to theme-declared locations only — locale is stored as
-    // a constant until a first-class multilingual feature lands, at which
-    // point the UI can surface it.
-    private const LOCALE = 'en';
-
     public function index(): void
     {
         $locations = $this->loadLocations();
         $pdo       = \Flight::db();
+        $locale    = typedock_default_locale();
 
         $counts = [];
         foreach (array_keys($locations) as $key) {
             $stmt = $pdo->prepare(
                 'SELECT COUNT(*) FROM menu_items mi
                  JOIN menus m ON m.id = mi.menu_id
-                 WHERE m.location = ? AND m.locale = ?'
+                 WHERE m.id = ?'
             );
-            $stmt->execute([$key, self::LOCALE]);
+            $menu = $this->findMenu($pdo, $key, repairLegacy: false);
+            $stmt->execute([$menu['id'] ?? '']);
             $counts[$key] = (int) $stmt->fetchColumn();
         }
 
         $this->render('pages/menus/index.latte', [
             'locations'     => $locations,
             'counts'        => $counts,
+            'menu_locale'   => $locale,
             'flash_success' => $this->getFlash('success'),
             'flash_error'   => $this->getFlash('error'),
         ]);
@@ -51,13 +49,23 @@ class MenuController extends BaseAdminController
         $stmt->execute([$menu['id']]);
         $items = $stmt->fetchAll();
 
-        $pages = $pdo->query(
-            "SELECT id, title, slug FROM posts WHERE post_type = 'page' AND status = 'published' ORDER BY title"
-        )->fetchAll();
-        $posts = $pdo->query(
-            "SELECT id, title, slug FROM posts WHERE post_type = 'post' AND status = 'published' ORDER BY title"
-        )->fetchAll();
-        $categories = $pdo->query('SELECT id, name, slug FROM categories ORDER BY name')->fetchAll();
+        $locale = typedock_default_locale();
+
+        $stmt = $pdo->prepare(
+            "SELECT id, title, slug FROM posts WHERE post_type = 'page' AND status = 'published' AND locale = ? ORDER BY title"
+        );
+        $stmt->execute([$locale]);
+        $pages = $stmt->fetchAll();
+
+        $stmt = $pdo->prepare(
+            "SELECT id, title, slug FROM posts WHERE post_type = 'post' AND status = 'published' AND locale = ? ORDER BY title"
+        );
+        $stmt->execute([$locale]);
+        $posts = $stmt->fetchAll();
+
+        $stmt = $pdo->prepare('SELECT id, name, slug FROM categories WHERE locale = ? ORDER BY name');
+        $stmt->execute([$locale]);
+        $categories = $stmt->fetchAll();
 
         $parentCandidates = array_values(array_filter($items, fn($i) => $i['parent_id'] === null));
         $itemTree         = $this->buildItemTree($items);
@@ -67,6 +75,7 @@ class MenuController extends BaseAdminController
             'location_meta'     => $locations[$location],
             'locations'         => $locations,
             'menu'              => $menu,
+            'menu_locale'       => $locale,
             'items'             => $items,
             'item_tree'         => $itemTree,
             'pages'             => $pages,
@@ -159,12 +168,35 @@ class MenuController extends BaseAdminController
     /**
      * @return array<string, mixed>|null
      */
-    private function findMenu(\PDO $pdo, string $location): ?array
+    private function findMenu(\PDO $pdo, string $location, bool $repairLegacy = true): ?array
     {
+        $locale = typedock_default_locale();
         $stmt = $pdo->prepare('SELECT * FROM menus WHERE location = ? AND locale = ? LIMIT 1');
-        $stmt->execute([$location, self::LOCALE]);
+        $stmt->execute([$location, $locale]);
         $row = $stmt->fetch();
-        return $row === false ? null : $row;
+        if ($row !== false) {
+            return $row;
+        }
+
+        if ($locale === 'en') {
+            return null;
+        }
+
+        $stmt->execute([$location, 'en']);
+        $legacy = $stmt->fetch();
+        if ($legacy === false) {
+            return null;
+        }
+
+        if ($repairLegacy) {
+            $pdo->prepare('UPDATE menus SET locale = ?, updated_at = ? WHERE id = ?')
+                ->execute([$locale, (new \DateTimeImmutable())->format('Y-m-d H:i:s'), $legacy['id']]);
+            $stmt->execute([$location, $locale]);
+            $repaired = $stmt->fetch();
+            return $repaired === false ? $legacy : $repaired;
+        }
+
+        return $legacy;
     }
 
     /**
@@ -181,7 +213,7 @@ class MenuController extends BaseAdminController
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $pdo->prepare(
             'INSERT INTO menus (id, name, location, locale, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
-        )->execute([$id, $name, $location, self::LOCALE, $now, $now]);
+        )->execute([$id, $name, $location, typedock_default_locale(), $now, $now]);
 
         return (array) $this->findMenu($pdo, $location);
     }

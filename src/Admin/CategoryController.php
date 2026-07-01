@@ -11,7 +11,7 @@ class CategoryController extends BaseAdminController
     {
         $service = new CategoryService(\Flight::db());
         $this->render('pages/categories/index.latte', [
-            'categories'    => $service->list(),
+            'categories'    => $service->list(['locale' => typedock_default_locale()]),
             'flash_success' => $this->getFlash('success'),
             'flash_error'   => $this->getFlash('error'),
         ]);
@@ -25,7 +25,7 @@ class CategoryController extends BaseAdminController
             'slug'        => trim($_POST['slug'] ?? ''),
             'description' => trim($_POST['description'] ?? ''),
             'parent_id'   => !empty($_POST['parent_id']) ? $_POST['parent_id'] : null,
-            'locale'      => $_POST['locale'] ?? 'en',
+            'locale'      => $_POST['locale'] ?? typedock_default_locale(),
         ]);
         $this->redirect('/admin/categories', 'Category created successfully.');
     }

@@ -30,7 +30,7 @@ class PageController extends BaseAdminController
         $catService = new CategoryService(\Flight::db());
         $this->render('pages/posts/edit.latte', [
             'post'                => null,
-            'categories'          => $catService->list(),
+            'categories'          => $catService->list(['locale' => typedock_default_locale()]),
             'selected_categories' => [],
             'selected_tag_names'  => [],
             'form_action'         => '/admin/pages/create',
@@ -50,7 +50,10 @@ class PageController extends BaseAdminController
 
         $tagService = new TagService(\Flight::db());
         $tagNames   = array_filter(array_map('trim', explode(',', $_POST['tags_input'] ?? '')));
-        $data['tag_ids'] = $tagService->findOrCreateByNames($tagNames);
+        $data['tag_ids'] = $tagService->findOrCreateByNames(
+            $tagNames,
+            (string) ($data['locale'] ?? typedock_default_locale())
+        );
 
         $page = $this->service()->create($data);
         (new SeoService(\Flight::db()))->upsert('page', $page['id'], $this->collectSeoInput());
@@ -76,7 +79,7 @@ class PageController extends BaseAdminController
 
         $this->render('pages/posts/edit.latte', [
             'post'                => $page,
-            'categories'          => $catService->list(),
+            'categories'          => $catService->list(['locale' => (string) ($page['locale'] ?? typedock_default_locale())]),
             'selected_categories' => $selectedCats,
             'selected_tag_names'  => $selectedTags,
             'form_action'         => '/admin/pages/' . $id . '/edit',
@@ -102,7 +105,10 @@ class PageController extends BaseAdminController
 
         $tagService = new TagService(\Flight::db());
         $tagNames   = array_filter(array_map('trim', explode(',', $_POST['tags_input'] ?? '')));
-        $data['tag_ids'] = $tagService->findOrCreateByNames($tagNames);
+        $data['tag_ids'] = $tagService->findOrCreateByNames(
+            $tagNames,
+            (string) ($existing['locale'] ?? typedock_default_locale())
+        );
 
         $this->service()->update($id, $data);
         (new SeoService(\Flight::db()))->upsert('page', $id, $this->collectSeoInput());

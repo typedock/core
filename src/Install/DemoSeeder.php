@@ -41,6 +41,7 @@ final class DemoSeeder
         }
 
         $now = (new DateTimeImmutable())->format('Y-m-d H:i:s');
+        $locale = typedock_default_locale();
         $created = [
             'categories' => 0,
             'tags'       => 0,
@@ -58,16 +59,16 @@ final class DemoSeeder
         ];
         $categoryIds = [];
         foreach ($catSpecs as $spec) {
-            $existing = $this->findIdBySlug('categories', $spec['slug']);
+            $existing = $this->findIdBySlug('categories', $spec['slug'], $locale);
             if ($existing !== null) {
                 $categoryIds[$spec['slug']] = $existing;
                 continue;
             }
             $id = Uuid::uuid7()->toString();
             $this->pdo->prepare(
-                'INSERT INTO categories (id, slug, name, description, sort_order, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?)'
-            )->execute([$id, $spec['slug'], $spec['name'], $spec['description'], $spec['sort'], $now]);
+                'INSERT INTO categories (id, slug, name, description, locale, sort_order, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)'
+            )->execute([$id, $spec['slug'], $spec['name'], $spec['description'], $locale, $spec['sort'], $now]);
             $categoryIds[$spec['slug']] = $id;
             $created['categories']++;
         }
@@ -80,14 +81,14 @@ final class DemoSeeder
         ];
         $tagIds = [];
         foreach ($tagSpecs as $spec) {
-            $existing = $this->findIdBySlug('tags', $spec['slug']);
+            $existing = $this->findIdBySlug('tags', $spec['slug'], $locale);
             if ($existing !== null) {
                 $tagIds[$spec['slug']] = $existing;
                 continue;
             }
             $id = Uuid::uuid7()->toString();
-            $this->pdo->prepare('INSERT INTO tags (id, slug, name, created_at) VALUES (?, ?, ?, ?)')
-                ->execute([$id, $spec['slug'], $spec['name'], $now]);
+            $this->pdo->prepare('INSERT INTO tags (id, slug, name, locale, created_at) VALUES (?, ?, ?, ?, ?)')
+                ->execute([$id, $spec['slug'], $spec['name'], $locale, $now]);
             $tagIds[$spec['slug']] = $id;
             $created['tags']++;
         }
@@ -102,7 +103,7 @@ final class DemoSeeder
         ];
 
         foreach ($postSpecs as $spec) {
-            $existing = $this->findIdBySlug('posts', $spec['slug']);
+            $existing = $this->findIdBySlug('posts', $spec['slug'], $locale);
             if ($existing !== null) {
                 continue;
             }
@@ -116,7 +117,7 @@ final class DemoSeeder
             $this->pdo->prepare(
                 'INSERT INTO posts (id, slug, title, body, body_markdown, excerpt, post_type, status, locale, author_id, published_at, created_at, updated_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-            )->execute([$id, $spec['slug'], $spec['title'], $body, $bodyMarkdown, $spec['lede'], 'post', 'published', 'en', $authorId, $pub, $pub, $pub]);
+            )->execute([$id, $spec['slug'], $spec['title'], $body, $bodyMarkdown, $spec['lede'], 'post', 'published', $locale, $authorId, $pub, $pub, $pub]);
 
             foreach ($spec['cats'] as $catSlug) {
                 if (isset($categoryIds[$catSlug])) {
@@ -156,7 +157,7 @@ final class DemoSeeder
         ];
         $pageIds = [];
         foreach ($pageSpecs as $spec) {
-            $existing = $this->findIdBySlug('posts', $spec['slug']);
+            $existing = $this->findIdBySlug('posts', $spec['slug'], $locale);
             if ($existing !== null) {
                 $pageIds[$spec['slug']] = $existing;
                 continue;
@@ -167,7 +168,7 @@ final class DemoSeeder
             $this->pdo->prepare(
                 'INSERT INTO posts (id, slug, title, body, body_markdown, excerpt, post_type, status, locale, author_id, published_at, created_at, updated_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-            )->execute([$id, $spec['slug'], $spec['title'], $body, $bodyMarkdown, $spec['excerpt'], 'page', 'published', 'en', $authorId, $now, $now, $now]);
+            )->execute([$id, $spec['slug'], $spec['title'], $body, $bodyMarkdown, $spec['excerpt'], 'page', 'published', $locale, $authorId, $now, $now, $now]);
             $pageIds[$spec['slug']] = $id;
             $created['pages']++;
         }
@@ -194,14 +195,14 @@ final class DemoSeeder
             ],
         ];
         foreach ($menuSpecs as $spec) {
-            $existing = $this->findMenuId($spec['location']);
+            $existing = $this->findMenuId($spec['location'], $locale);
             if ($existing !== null) {
                 continue;
             }
             $menuId = Uuid::uuid7()->toString();
             $this->pdo->prepare(
                 'INSERT INTO menus (id, name, location, locale, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
-            )->execute([$menuId, $spec['name'], $spec['location'], 'en', $now, $now]);
+            )->execute([$menuId, $spec['name'], $spec['location'], $locale, $now, $now]);
             $created['menus']++;
 
             $sort = 0;
@@ -243,18 +244,23 @@ final class DemoSeeder
         return $id === false || $id === null ? null : (string) $id;
     }
 
-    private function findIdBySlug(string $table, string $slug): ?string
+    private function findIdBySlug(string $table, string $slug, ?string $locale = null): ?string
     {
-        $stmt = $this->pdo->prepare("SELECT id FROM {$table} WHERE slug = ? LIMIT 1");
-        $stmt->execute([$slug]);
+        if ($locale !== null) {
+            $stmt = $this->pdo->prepare("SELECT id FROM {$table} WHERE slug = ? AND locale = ? LIMIT 1");
+            $stmt->execute([$slug, $locale]);
+        } else {
+            $stmt = $this->pdo->prepare("SELECT id FROM {$table} WHERE slug = ? LIMIT 1");
+            $stmt->execute([$slug]);
+        }
         $id = $stmt->fetchColumn();
         return $id === false ? null : (string) $id;
     }
 
-    private function findMenuId(string $location): ?string
+    private function findMenuId(string $location, string $locale): ?string
     {
-        $stmt = $this->pdo->prepare('SELECT id FROM menus WHERE location = ? LIMIT 1');
-        $stmt->execute([$location]);
+        $stmt = $this->pdo->prepare('SELECT id FROM menus WHERE location = ? AND locale = ? LIMIT 1');
+        $stmt->execute([$location, $locale]);
         $id = $stmt->fetchColumn();
         return $id === false ? null : (string) $id;
     }

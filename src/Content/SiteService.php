@@ -24,6 +24,7 @@ class SiteService
         return match ($name) {
             'name'              => $this->options['site.name'] ?? config('app.name', 'TypeDock'),
             'url'               => config('app.url', 'http://localhost'),
+            'locale'            => typedock_current_locale(),
             'homeMode'          => $this->options['site.home_mode'] ?? 'archive',
             'homePageId'        => $this->options['site.home_page_id'] ?? null,
             'postsArchiveSlug'  => $this->postsArchiveSlug(),
@@ -36,7 +37,7 @@ class SiteService
     {
         return in_array(
             $name,
-            ['name', 'url', 'homeMode', 'homePageId', 'postsArchiveSlug', 'postsArchiveLabel'],
+            ['name', 'url', 'locale', 'homeMode', 'homePageId', 'postsArchiveSlug', 'postsArchiveLabel'],
             true
         );
     }
@@ -68,11 +69,12 @@ class SiteService
      */
     public function menu(string $location): array
     {
-        if (!isset($this->menuCache[$location])) {
-            $locale                          = (string) config('app.locale', 'en');
-            $this->menuCache[$location]      = $this->menuResolver->resolve($location, $locale === '' ? 'en' : $locale);
+        $locale = typedock_current_locale();
+        $key    = $locale . ':' . $location;
+        if (!isset($this->menuCache[$key])) {
+            $this->menuCache[$key] = $this->menuResolver->resolve($location, $locale);
         }
-        return $this->menuCache[$location];
+        return $this->menuCache[$key];
     }
 
     /**

@@ -46,9 +46,10 @@ class CategoryService
     /**
      * @return array<string, mixed>|null
      */
-    public function findBySlug(string $slug, string $locale = 'en'): ?array
+    public function findBySlug(string $slug, ?string $locale = null): ?array
     {
         $slug = TermSlugger::normalize($slug, $slug);
+        $locale = $this->normalizeLocale($locale);
         $stmt = $this->pdo->prepare('SELECT * FROM categories WHERE slug = ? AND locale = ? LIMIT 1');
         $stmt->execute([$slug, $locale]);
         $row = $stmt->fetch();
@@ -68,7 +69,8 @@ class CategoryService
             ? TermSlugger::normalize($slug, 'category-' . date('YmdHis'))
             : TermSlugger::fromName((string) ($data['name'] ?? ''), 'category');
 
-        $this->ensureUniqueSlug($slug, $data['locale'] ?? 'en');
+        $locale = $this->normalizeLocale(isset($data['locale']) ? (string) $data['locale'] : null);
+        $this->ensureUniqueSlug($slug, $locale);
 
         $stmt = $this->pdo->prepare(
             'INSERT INTO categories (id, slug, name, description, parent_id, locale, sort_order, created_at)
@@ -80,7 +82,7 @@ class CategoryService
             $data['name'] ?? '',
             $data['description'] ?? null,
             $data['parent_id'] ?? null,
-            $data['locale'] ?? 'en',
+            $locale,
             (int) ($data['sort_order'] ?? 0),
             $now,
         ]);
@@ -139,5 +141,11 @@ class CategoryService
                 ['slug' => ['This slug is already in use.']]
             );
         }
+    }
+
+    private function normalizeLocale(?string $locale): string
+    {
+        $locale = strtolower(trim((string) ($locale ?? typedock_default_locale())));
+        return $locale !== '' ? $locale : 'en';
     }
 }

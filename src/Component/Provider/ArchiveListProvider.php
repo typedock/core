@@ -18,10 +18,11 @@ class ArchiveListProvider implements DataProvider
                 "SELECT SUBSTR(published_at, 1, 7) as month, COUNT(*) as count
                  FROM posts
                  WHERE post_type = 'post' AND status = 'published'
+                   AND locale = ?
                  GROUP BY SUBSTR(published_at, 1, 7)
                  ORDER BY month DESC LIMIT 24"
             );
-            $stmt->execute();
+            $stmt->execute([$context->locale !== '' ? $context->locale : typedock_current_locale()]);
             $archives = $stmt->fetchAll();
         } catch (\Throwable) {
             $archives = [];
