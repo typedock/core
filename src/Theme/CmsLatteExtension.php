@@ -127,7 +127,7 @@ class CmsLatteExtension extends Extension
         $routeType = $override['route_type'] ?? ($stash['route_type'] ?? null);
 
         return new RenderContext(
-            locale: (string) config('app.locale', 'en'),
+            locale: typedock_current_locale(),
             page: is_array($page) ? $page : null,
             currentUrl: (string) ($_SERVER['REQUEST_URI'] ?? '/'),
             contextType: $contextType,

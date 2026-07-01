@@ -46,9 +46,10 @@ class TagService
     /**
      * @return array<string, mixed>|null
      */
-    public function findBySlug(string $slug, string $locale = 'en'): ?array
+    public function findBySlug(string $slug, ?string $locale = null): ?array
     {
         $slug = TermSlugger::normalize($slug, $slug);
+        $locale = $this->normalizeLocale($locale);
         $stmt = $this->pdo->prepare('SELECT * FROM tags WHERE slug = ? AND locale = ? LIMIT 1');
         $stmt->execute([$slug, $locale]);
         $row = $stmt->fetch();
@@ -68,12 +69,13 @@ class TagService
             ? TermSlugger::normalize($slug, 'tag-' . date('YmdHis'))
             : TermSlugger::fromName((string) ($data['name'] ?? ''), 'tag');
 
-        $this->ensureUniqueSlug($slug, $data['locale'] ?? 'en');
+        $locale = $this->normalizeLocale(isset($data['locale']) ? (string) $data['locale'] : null);
+        $this->ensureUniqueSlug($slug, $locale);
 
         $stmt = $this->pdo->prepare(
             'INSERT INTO tags (id, slug, name, locale, created_at) VALUES (?, ?, ?, ?, ?)'
         );
-        $stmt->execute([$id, $slug, $data['name'] ?? '', $data['locale'] ?? 'en', $now]);
+        $stmt->execute([$id, $slug, $data['name'] ?? '', $locale, $now]);
 
         return $this->find($id);
     }
@@ -89,8 +91,9 @@ class TagService
      * @param  array<string> $names
      * @return array<string>
      */
-    public function findOrCreateByNames(array $names, string $locale = 'en'): array
+    public function findOrCreateByNames(array $names, ?string $locale = null): array
     {
+        $locale = $this->normalizeLocale($locale);
         $ids = [];
         foreach ($names as $name) {
             $name = trim($name);
@@ -120,5 +123,11 @@ class TagService
                 ['slug' => ['This slug is already in use.']]
             );
         }
+    }
+
+    private function normalizeLocale(?string $locale): string
+    {
+        $locale = strtolower(trim((string) ($locale ?? typedock_default_locale())));
+        return $locale !== '' ? $locale : 'en';
     }
 }

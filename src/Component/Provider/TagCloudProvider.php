@@ -13,10 +13,10 @@ class TagCloudProvider implements DataProvider
         $limit = min((int) ($params['limit'] ?? 30), 100);
         $pdo   = \Flight::db();
         $stmt  = $pdo->prepare(
-            "SELECT t.id, t.slug, t.name, COUNT(pt.post_id) as post_count
+            "SELECT t.id, t.slug, t.name, COUNT(p.id) as post_count
              FROM tags t
              LEFT JOIN post_tags pt ON pt.tag_id = t.id
-             LEFT JOIN posts p ON p.id = pt.post_id AND p.status = 'published'
+             LEFT JOIN posts p ON p.id = pt.post_id AND p.status = 'published' AND p.locale = t.locale
              WHERE t.locale = ?
              GROUP BY t.id, t.slug, t.name
              ORDER BY post_count DESC, t.name ASC

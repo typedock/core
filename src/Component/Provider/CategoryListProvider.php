@@ -13,10 +13,10 @@ class CategoryListProvider implements DataProvider
         $pdo  = \Flight::db();
         $stmt = $pdo->prepare(
             'SELECT c.id, c.slug, c.name, c.parent_id,
-                    COUNT(pc.post_id) as post_count
+                    COUNT(p.id) as post_count
              FROM categories c
              LEFT JOIN post_categories pc ON pc.category_id = c.id
-             LEFT JOIN posts p ON p.id = pc.post_id AND p.status = \'published\'
+             LEFT JOIN posts p ON p.id = pc.post_id AND p.status = \'published\' AND p.locale = c.locale
              WHERE c.locale = ?
              GROUP BY c.id, c.slug, c.name, c.parent_id
              ORDER BY c.sort_order, c.name'

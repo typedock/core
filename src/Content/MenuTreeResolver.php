@@ -13,13 +13,18 @@ class MenuTreeResolver
      *
      * @return array<MenuItem>
      */
-    public function resolve(string $location, string $locale = 'en'): array
+    public function resolve(string $location, ?string $locale = null): array
     {
+        $locale = $this->normalizeLocale($locale);
         $stmt = $this->pdo->prepare(
             'SELECT id FROM menus WHERE location = ? AND locale = ? LIMIT 1'
         );
         $stmt->execute([$location, $locale]);
         $menu = $stmt->fetch();
+        if ($menu === false && $locale !== 'en') {
+            $stmt->execute([$location, 'en']);
+            $menu = $stmt->fetch();
+        }
         if ($menu === false) {
             return [];
         }
@@ -32,6 +37,12 @@ class MenuTreeResolver
 
         $flat = $this->resolveUrls($flat);
         return $this->buildTree($flat);
+    }
+
+    private function normalizeLocale(?string $locale): string
+    {
+        $locale = strtolower(trim((string) ($locale ?? typedock_current_locale())));
+        return $locale !== '' ? $locale : 'en';
     }
 
     /**

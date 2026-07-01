@@ -21,9 +21,10 @@ class LatestPostsProvider implements DataProvider
              LEFT JOIN users u ON u.id = p.author_id
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
              WHERE p.post_type = 'post' AND p.status = 'published'
+               AND p.locale = ?
              ORDER BY p.published_at DESC LIMIT ?"
         );
-        $stmt->execute([$count]);
+        $stmt->execute([$context->locale !== '' ? $context->locale : typedock_current_locale(), $count]);
         return ['posts' => PostView::projectList($stmt->fetchAll())];
     }
 }

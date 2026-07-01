@@ -111,8 +111,9 @@ class PostService
      *
      * @return array<string, mixed>|null
      */
-    public function findBySlug(string $slug, string $locale = 'en', ?string $status = null): ?array
+    public function findBySlug(string $slug, ?string $locale = null, ?string $status = null): ?array
     {
+        $locale = strtolower(trim((string) ($locale ?? typedock_default_locale()))) ?: 'en';
         $sql    = 'SELECT p.*, u.name as author_name FROM posts p LEFT JOIN users u ON u.id = p.author_id WHERE p.slug = ? AND p.locale = ?';
         $params = [$slug, $locale];
 
@@ -180,7 +181,7 @@ class PostService
             $data['parent_id'] ?? null,
             $data['template'] ?? null,
             $data['layout'] ?? null,
-            $data['locale'] ?? 'en',
+            strtolower(trim((string) ($data['locale'] ?? typedock_default_locale()))) ?: 'en',
             $data['translation_group_id'] ?? null,
             $publishedAt,
             $data['scheduled_at'] ?? null,

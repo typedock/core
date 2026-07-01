@@ -12,10 +12,14 @@ class SettingsController extends BaseAdminController
     public function general(): void
     {
         $pdo  = \Flight::db();
-        $stmt = $pdo->query(
-            "SELECT id, title FROM posts WHERE post_type = 'page' AND status = 'published' ORDER BY title ASC"
+        $stmt = $pdo->prepare(
+            "SELECT id, title FROM posts WHERE post_type = 'page' AND status = 'published' AND locale = ? ORDER BY title ASC"
         );
-        $pages = $stmt !== false ? $stmt->fetchAll() : [];
+        $pages = [];
+        if ($stmt !== false) {
+            $stmt->execute([typedock_default_locale()]);
+            $pages = $stmt->fetchAll();
+        }
         try {
             $sources = \Flight::external_sources()->activeSources();
         } catch (\Throwable) {
@@ -24,6 +28,7 @@ class SettingsController extends BaseAdminController
 
         $this->render('pages/settings/general.latte', [
             'options'       => $this->getOptions('general'),
+            'site_locale'   => $this->siteLocaleStatus(),
             'pages'         => $pages,
             'external_sources' => $sources,
             'flash_success' => $this->getFlash('success'),
@@ -76,6 +81,32 @@ class SettingsController extends BaseAdminController
         $this->setOption('site.posts_archive_label', $postsLabel, 'general');
 
         $this->redirect('/admin/settings/general', 'Settings saved successfully.');
+    }
+
+    /**
+     * @return array{current: string, default: string, source: string}
+     */
+    private function siteLocaleStatus(): array
+    {
+        $default = typedock_default_locale();
+        $current = typedock_current_locale();
+        $source = 'APP_LOCALE';
+
+        try {
+            $stmt = \Flight::db()->query('SELECT code FROM locales WHERE is_default = 1 LIMIT 1');
+            $row = $stmt ? $stmt->fetch() : false;
+            if ($row !== false && (string) ($row['code'] ?? '') !== '') {
+                $source = 'locales.is_default';
+            }
+        } catch (\Throwable) {
+            // The locales table may not exist during early install paths.
+        }
+
+        return [
+            'current' => $current,
+            'default' => $default,
+            'source'  => $source,
+        ];
     }
 
     public function seo(): void

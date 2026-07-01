@@ -12,15 +12,9 @@ class MenuProvider implements DataProvider
     {
         $location = (string) ($params['location'] ?? 'header');
         $pdo      = \Flight::db();
+        $locale   = strtolower(trim($context->locale !== '' ? $context->locale : typedock_current_locale()));
 
-        // Locale is stored but not surfaced in the admin UI yet — pin to 'en'
-        // so a site whose app.locale is set to e.g. 'ja' still resolves the
-        // single menu row that admin writes.
-        $stmt = $pdo->prepare(
-            "SELECT m.id FROM menus m WHERE m.location = ? AND m.locale = 'en' LIMIT 1"
-        );
-        $stmt->execute([$location]);
-        $menu = $stmt->fetch();
+        $menu = $this->findMenu($pdo, $location, $locale !== '' ? $locale : 'en');
 
         if ($menu === false) {
             return ['items' => [], 'menu' => null];
@@ -36,6 +30,21 @@ class MenuProvider implements DataProvider
         $items     = $this->buildTree($flatItems);
 
         return ['items' => $items, 'menu' => $menu];
+    }
+
+    /**
+     * @return array<string, mixed>|false
+     */
+    private function findMenu(\PDO $pdo, string $location, string $locale): array|false
+    {
+        $stmt = $pdo->prepare('SELECT m.id FROM menus m WHERE m.location = ? AND m.locale = ? LIMIT 1');
+        $stmt->execute([$location, $locale]);
+        $menu = $stmt->fetch();
+        if ($menu === false && $locale !== 'en') {
+            $stmt->execute([$location, 'en']);
+            $menu = $stmt->fetch();
+        }
+        return $menu;
     }
 
     /**

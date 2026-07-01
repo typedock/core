@@ -139,9 +139,9 @@ class FetchResolver
     private function fetch(string $source, array $params, ?string $sort, RenderContext $ctx): mixed
     {
         return match ($source) {
-            'posts'         => $this->fetchPosts($params, $sort),
-            'categories'    => $this->fetchCategories($params, $sort),
-            'tags'          => $this->fetchTags($params, $sort),
+            'posts'         => $this->fetchPosts($params, $sort, $ctx),
+            'categories'    => $this->fetchCategories($params, $sort, $ctx),
+            'tags'          => $this->fetchTags($params, $sort, $ctx),
             'menu'          => $this->fetchMenu($params, $ctx),
             'related_posts' => $this->fetchRelatedPosts($params, $ctx),
             'site_options'  => $this->fetchSiteOptions($params),
@@ -172,18 +172,18 @@ class FetchResolver
      * @param array<string, mixed> $params
      * @return array<object>
      */
-    private function fetchPosts(array $params, ?string $sort): array
+    private function fetchPosts(array $params, ?string $sort, RenderContext $ctx): array
     {
         $pdo   = \Flight::db();
-        $where = ["p.status = 'published'", "p.post_type = ?"];
-        $args  = [(string) ($params['post_type'] ?? 'post')];
+        $where = ["p.status = 'published'", "p.post_type = ?", 'p.locale = ?'];
+        $args  = [(string) ($params['post_type'] ?? 'post'), $ctx->locale !== '' ? $ctx->locale : typedock_current_locale()];
 
         if (!empty($params['category'])) {
-            $where[] = 'EXISTS (SELECT 1 FROM post_categories pc JOIN categories c ON c.id = pc.category_id WHERE pc.post_id = p.id AND c.slug = ?)';
+            $where[] = 'EXISTS (SELECT 1 FROM post_categories pc JOIN categories c ON c.id = pc.category_id WHERE pc.post_id = p.id AND c.slug = ? AND c.locale = p.locale)';
             $args[]  = (string) $params['category'];
         }
         if (!empty($params['tag'])) {
-            $where[] = 'EXISTS (SELECT 1 FROM post_tags pt JOIN tags t ON t.id = pt.tag_id WHERE pt.post_id = p.id AND t.slug = ?)';
+            $where[] = 'EXISTS (SELECT 1 FROM post_tags pt JOIN tags t ON t.id = pt.tag_id WHERE pt.post_id = p.id AND t.slug = ? AND t.locale = p.locale)';
             $args[]  = (string) $params['tag'];
         }
 
@@ -208,12 +208,19 @@ class FetchResolver
      * @param array<string, mixed> $params
      * @return array<array<string, mixed>>
      */
-    private function fetchCategories(array $params, ?string $sort): array
+    private function fetchCategories(array $params, ?string $sort, RenderContext $ctx): array
     {
         $pdo  = \Flight::db();
-        $sql  = 'SELECT c.*, (SELECT COUNT(*) FROM post_categories pc WHERE pc.category_id = c.id) AS post_count FROM categories c';
-        $where = [];
-        $args  = [];
+        $sql  = "SELECT c.*, (
+                    SELECT COUNT(*)
+                    FROM post_categories pc
+                    JOIN posts p ON p.id = pc.post_id
+                    WHERE pc.category_id = c.id
+                      AND p.status = 'published'
+                      AND p.locale = c.locale
+                 ) AS post_count FROM categories c";
+        $where = ['c.locale = ?'];
+        $args  = [$ctx->locale !== '' ? $ctx->locale : typedock_current_locale()];
 
         if (!empty($params['slugs']) && is_array($params['slugs'])) {
             $placeholders = implode(',', array_fill(0, count($params['slugs']), '?'));
@@ -221,13 +228,11 @@ class FetchResolver
             $args         = array_merge($args, array_values($params['slugs']));
         }
         if (!empty($params['parent'])) {
-            $where[] = 'c.parent_id = (SELECT id FROM categories WHERE slug = ? LIMIT 1)';
+            $where[] = 'c.parent_id = (SELECT id FROM categories WHERE slug = ? AND locale = c.locale LIMIT 1)';
             $args[]  = (string) $params['parent'];
         }
 
-        if ($where !== []) {
-            $sql .= ' WHERE ' . implode(' AND ', $where);
-        }
+        $sql .= ' WHERE ' . implode(' AND ', $where);
 
         $order = $this->buildOrderBy($sort, 'c', 'sort_order', 'ASC');
         $sql  .= " ORDER BY {$order}";
@@ -246,7 +251,7 @@ class FetchResolver
      * @param array<string, mixed> $params
      * @return array<array<string, mixed>>
      */
-    private function fetchTags(array $params, ?string $sort): array
+    private function fetchTags(array $params, ?string $sort, RenderContext $ctx): array
     {
         $pdo   = \Flight::db();
         $limit = max(1, (int) ($params['limit'] ?? 50));
@@ -257,10 +262,19 @@ class FetchResolver
         $order = $this->buildOrderBy($sort, 't', '', '') ?: $orderBy;
 
         $stmt = $pdo->prepare(
-            "SELECT t.*, (SELECT COUNT(*) FROM post_tags pt WHERE pt.tag_id = t.id) AS post_count
-             FROM tags t ORDER BY {$order} LIMIT ?"
+            "SELECT t.*, (
+                SELECT COUNT(*)
+                FROM post_tags pt
+                JOIN posts p ON p.id = pt.post_id
+                WHERE pt.tag_id = t.id
+                  AND p.status = 'published'
+                  AND p.locale = t.locale
+             ) AS post_count
+             FROM tags t
+             WHERE t.locale = ?
+             ORDER BY {$order} LIMIT ?"
         );
-        $stmt->execute([$limit]);
+        $stmt->execute([$ctx->locale !== '' ? $ctx->locale : typedock_current_locale(), $limit]);
         return $stmt->fetchAll();
     }
 
@@ -275,7 +289,7 @@ class FetchResolver
             return [];
         }
         $resolver = new \TypeDock\Content\MenuTreeResolver(\Flight::db());
-        return $resolver->resolve($location, $ctx->locale ?: 'en');
+        return $resolver->resolve($location, $ctx->locale !== '' ? $ctx->locale : typedock_current_locale());
     }
 
     /**
@@ -304,11 +318,11 @@ class FetchResolver
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
              JOIN {$joinTable} jt1 ON jt1.post_id = p.id
              JOIN {$joinTable} jt2 ON jt2.{$joinCol} = jt1.{$joinCol} AND jt2.post_id = ?
-             WHERE p.id != ? AND p.status = 'published'
+             WHERE p.id != ? AND p.status = 'published' AND p.locale = ?
              ORDER BY p.published_at DESC
              LIMIT ?"
         );
-        $stmt->execute([$currentId, $currentId, $limit]);
+        $stmt->execute([$currentId, $currentId, $ctx->locale !== '' ? $ctx->locale : typedock_current_locale(), $limit]);
         return \TypeDock\Content\PostView::projectList($stmt->fetchAll());
     }
 

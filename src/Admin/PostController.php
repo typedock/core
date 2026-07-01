@@ -53,7 +53,7 @@ class PostController extends BaseAdminController
         $catService = new CategoryService(\Flight::db());
         $this->render('pages/posts/edit.latte', [
             'post'                => null,
-            'categories'          => $catService->list(),
+            'categories'          => $catService->list(['locale' => typedock_default_locale()]),
             'selected_categories' => [],
             'selected_tag_names'  => [],
             'form_action'         => '/admin/posts/create',
@@ -106,7 +106,7 @@ class PostController extends BaseAdminController
 
         $this->render('pages/posts/edit.latte', [
             'post'                => $page,
-            'categories'          => $catService->list(),
+            'categories'          => $catService->list(['locale' => (string) ($page['locale'] ?? typedock_default_locale())]),
             'selected_categories' => $selectedCats,
             'selected_tag_names'  => $selectedTags,
             'form_action'         => '/admin/posts/' . $id . '/edit',
@@ -133,7 +133,10 @@ class PostController extends BaseAdminController
         // Handle tags
         $tagService = new TagService(\Flight::db());
         $tagNames   = array_filter(array_map('trim', explode(',', $_POST['tags_input'] ?? '')));
-        $data['tag_ids'] = $tagService->findOrCreateByNames($tagNames);
+        $data['tag_ids'] = $tagService->findOrCreateByNames(
+            $tagNames,
+            (string) ($existing['locale'] ?? typedock_default_locale())
+        );
 
         try {
             $this->service()->update($id, $data);
@@ -239,7 +242,7 @@ class PostController extends BaseAdminController
         $catService = new CategoryService(\Flight::db());
         $this->render('pages/posts/edit.latte', [
             'post'                => $post,
-            'categories'          => $catService->list(),
+            'categories'          => $catService->list(['locale' => (string) ($post['locale'] ?? typedock_default_locale())]),
             'selected_categories' => $_POST['category_ids'] ?? [],
             'selected_tag_names'  => array_filter(array_map('trim', explode(',', $_POST['tags_input'] ?? ''))),
             'form_action'         => $post ? '/admin/posts/' . $post['id'] . '/edit' : '/admin/posts/create',

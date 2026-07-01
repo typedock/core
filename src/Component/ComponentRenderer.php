@@ -29,7 +29,7 @@ class ComponentRenderer
         }
 
         $context ??= new RenderContext(
-            locale: config('app.locale', 'en'),
+            locale: typedock_current_locale(),
             currentUrl: $_SERVER['REQUEST_URI'] ?? '/'
         );
 

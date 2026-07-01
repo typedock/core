@@ -34,6 +34,18 @@
                 <textarea id="site_description" name="site_description" rows="3">{$options['site.description'] ?? ''}</textarea>
             </div>
 
+            <div class="form-group">
+                <label>Site Locale</label>
+                <div class="cluster-sm">
+                    <span class="badge badge-info">{$site_locale['current'] ?? 'en'}</span>
+                    <span class="text-xs text-slate-500">
+                        Default: <code>{$site_locale['default'] ?? 'en'}</code>
+                        · Source: <code>{$site_locale['source'] ?? 'APP_LOCALE'}</code>
+                    </span>
+                </div>
+                <small class="form-hint">Used for public content, menus, taxonomy, and theme rendering. Admin interface language is configured separately.</small>
+            </div>
+
             <fieldset class="form-fieldset">
                 <legend>Home page</legend>
 

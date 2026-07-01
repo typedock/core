@@ -215,6 +215,43 @@ if (!function_exists('site_option')) {
     }
 }
 
+if (!function_exists('typedock_default_locale')) {
+    /**
+     * Canonical locale for single-locale public content. Falls back safely
+     * during install/migration before Flight services or the locales table
+     * are available.
+     */
+    function typedock_default_locale(): string
+    {
+        try {
+            $locale = (string) \Flight::locales()->defaultLocale();
+        } catch (\Throwable) {
+            $locale = (string) config('app.locale', 'en');
+        }
+
+        $locale = strtolower(trim($locale));
+        return $locale !== '' ? $locale : 'en';
+    }
+}
+
+if (!function_exists('typedock_current_locale')) {
+    /**
+     * Current request locale when locale routing is enabled, otherwise the
+     * site default locale. Admin UI language is intentionally separate.
+     */
+    function typedock_current_locale(): string
+    {
+        try {
+            $locale = (string) \Flight::locales()->current();
+        } catch (\Throwable) {
+            $locale = typedock_default_locale();
+        }
+
+        $locale = strtolower(trim($locale));
+        return $locale !== '' ? $locale : typedock_default_locale();
+    }
+}
+
 if (!function_exists('posts_archive_slug')) {
     /**
      * The URL path segment used for the posts archive + single posts.
