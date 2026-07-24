@@ -7,7 +7,7 @@ use DateTimeImmutable;
 use PDO;
 use Ramsey\Uuid\Uuid;
 use RuntimeException;
-use TypeDock\Core\Database\SqlitePragmas;
+use TypeDock\Core\Database\ConnectionFactory;
 use TypeDock\Core\Migration\Migrator;
 
 /**
@@ -78,7 +78,7 @@ final class Installer
     /**
      * Test a DB connection with the given config. Returns null on success, message on failure.
      *
-     * @param array{driver:string,host?:string,port?:int|string,database?:string,username?:string,password?:string,sqlite_path?:string,charset?:string} $db
+     * @param array<string,mixed> $db
      */
     public function testDatabase(array $db): ?string
     {
@@ -96,7 +96,7 @@ final class Installer
                     }
                 }
             }
-            $this->makePdo($db);
+            $this->makePdo($db)->query('SELECT 1');
             return null;
         } catch (\Throwable $e) {
             return $e->getMessage();
@@ -108,7 +108,7 @@ final class Installer
      * when DB_DRIVER is not set, signalling the wizard should use its own
      * defaults.
      *
-     * @return array{driver:string,host:string,port:int,database:string,username:string,password:string,charset:string,sqlite_path:string}|null
+     * @return array<string,mixed>|null
      */
     public function dbFromEnv(): ?array
     {
@@ -128,6 +128,18 @@ final class Installer
             'sqlite_path' => (string) ($sqlitePath !== false && $sqlitePath !== ''
                 ? $sqlitePath
                 : $this->root . '/storage/database.sqlite'),
+            'libsql_url' => (string) (
+                getenv('LIBSQL_DATABASE_URL')
+                ?: getenv('TURSO_DATABASE_URL')
+                ?: getenv('BUNNY_DATABASE_URL')
+                ?: ''
+            ),
+            'libsql_auth_token' => (string) (
+                getenv('LIBSQL_AUTH_TOKEN')
+                ?: getenv('TURSO_AUTH_TOKEN')
+                ?: getenv('BUNNY_DATABASE_AUTH_TOKEN')
+                ?: ''
+            ),
         ];
     }
 
@@ -213,7 +225,7 @@ final class Installer
     /**
      * Insert the initial admin user.
      *
-     * @param array{driver:string,host?:string,port?:int|string,database?:string,username?:string,password?:string,sqlite_path?:string,charset?:string} $db
+     * @param array<string,mixed> $db
      */
     public function createAdmin(array $db, string $email, string $name, string $password): string
     {
@@ -247,7 +259,7 @@ final class Installer
      * `slot_placements` defaults declared in that theme's theme.json so a fresh
      * site has something to render before the operator touches the admin.
      *
-     * @param array{driver:string,host?:string,port?:int|string,database?:string,username?:string,password?:string,sqlite_path?:string,charset?:string} $db
+     * @param array<string,mixed> $db
      */
     public function activateTheme(array $db, string $themeName = 'default'): void
     {
@@ -263,7 +275,7 @@ final class Installer
      *
      * Safe to re-run: each key is upserted in place.
      *
-     * @param array{driver:string,host?:string,port?:int|string,database?:string,username?:string,password?:string,sqlite_path?:string,charset?:string} $db
+     * @param array<string,mixed> $db
      * @param array{name?:string,description?:string,home_mode?:string,home_page_id?:string|null,posts_archive_slug?:string,posts_archive_label?:string} $site
      */
     public function seedSiteOptions(array $db, array $site): void
@@ -302,7 +314,7 @@ final class Installer
      * re-run `cli/seed.php` after a fresh `cli/install.php --with-demo`
      * without truncating their work.
      *
-     * @param array{driver:string,host?:string,port?:int|string,database?:string,username?:string,password?:string,sqlite_path?:string,charset?:string} $db
+     * @param array<string,mixed> $db
      * @return array<string, int> per-resource count of rows actually created
      */
     public function seedDemoContent(array $db, ?string $authorId = null): array
@@ -345,27 +357,7 @@ final class Installer
      */
     private function makePdo(array $db): PDO
     {
-        $driver  = $db['driver'] ?? 'mysql';
-        $charset = $db['charset'] ?? 'utf8mb4';
-
-        $dsn = match ($driver) {
-            'sqlite' => 'sqlite:' . ($db['sqlite_path'] ?? $this->root . '/storage/database.sqlite'),
-            'pgsql'  => sprintf('pgsql:host=%s;port=%d;dbname=%s', $db['host'] ?? '127.0.0.1', (int) ($db['port'] ?? 5432), $db['database'] ?? ''),
-            default  => sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $db['host'] ?? '127.0.0.1', (int) ($db['port'] ?? 3306), $db['database'] ?? '', $charset),
-        };
-
-        $pdo = new PDO(
-            $dsn,
-            $driver === 'sqlite' ? null : ($db['username'] ?? ''),
-            $driver === 'sqlite' ? null : ($db['password'] ?? ''),
-            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-        );
-
-        if ($driver === 'sqlite') {
-            SqlitePragmas::apply($pdo, $db);
-        }
-
-        return $pdo;
+        return ConnectionFactory::create($db, $this->root);
     }
 
 }

@@ -4,28 +4,12 @@ declare(strict_types=1);
 define('TYPEDOCK_ROOT', dirname(__DIR__));
 require TYPEDOCK_ROOT . '/vendor/autoload.php';
 
-use TypeDock\Core\Database\SqlitePragmas;
+use TypeDock\Core\Database\ConnectionFactory;
 
 typedock_load_config(TYPEDOCK_ROOT);
 
-$db     = require TYPEDOCK_ROOT . '/config/database.php';
-$driver = $db['driver'] ?? 'mysql';
-
-$dsn = match ($driver) {
-    'sqlite' => 'sqlite:' . $db['sqlite_path'],
-    'pgsql'  => sprintf('pgsql:host=%s;port=%d;dbname=%s', $db['host'], $db['port'], $db['database']),
-    default  => sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $db['host'], $db['port'], $db['database'], $db['charset']),
-};
-
-$pdo = new PDO(
-    $dsn,
-    $driver === 'sqlite' ? null : $db['username'],
-    $driver === 'sqlite' ? null : $db['password'],
-    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-);
-if ($driver === 'sqlite') {
-    SqlitePragmas::apply($pdo, $db);
-}
+$db  = require TYPEDOCK_ROOT . '/config/database.php';
+$pdo = ConnectionFactory::create($db, TYPEDOCK_ROOT);
 
 $schemaDir = TYPEDOCK_ROOT . '/schema';
 if (!is_dir($schemaDir)) {

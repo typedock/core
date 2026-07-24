@@ -132,7 +132,7 @@ final class ExternalSourceService
                 $now,
             ]);
             if ($this->shouldStoreCredentials($row, $secrets)) {
-                $this->saveCredentials($id, $secrets, $now);
+                $this->saveCredentials($id, $secrets, $now, false);
             }
             $this->pdo->commit();
         } catch (\Throwable $e) {
@@ -161,6 +161,7 @@ final class ExternalSourceService
         $now = $this->now();
         $secrets = $this->normalizeSecrets($data);
         $hasNewDeliveryToken = ($secrets['delivery_token'] ?? '') !== '';
+        $credentialsExist = $hasNewDeliveryToken && $this->credentialsExist($id);
 
         if ($hasNewDeliveryToken) {
             $this->validateProviderCredentialFields($row, $secrets);
@@ -194,7 +195,7 @@ final class ExternalSourceService
             ]);
 
             if ($hasNewDeliveryToken) {
-                $this->saveCredentials($id, $secrets, $now);
+                $this->saveCredentials($id, $secrets, $now, $credentialsExist);
             }
             $this->pdo->commit();
         } catch (\Throwable $e) {
@@ -561,15 +562,27 @@ final class ExternalSourceService
         return $this->cipher->decrypt(is_string($payload) ? $payload : null);
     }
 
+    private function credentialsExist(string $sourceId): bool
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT source_id FROM external_source_credentials WHERE source_id = ? LIMIT 1'
+        );
+        $stmt->execute([$sourceId]);
+        return $stmt->fetchColumn() !== false;
+    }
+
     /**
      * @param array<string, mixed> $secrets
      */
-    private function saveCredentials(string $sourceId, array $secrets, string $now): void
+    private function saveCredentials(
+        string $sourceId,
+        array $secrets,
+        string $now,
+        bool $exists,
+    ): void
     {
         $payload = $this->cipher->encrypt($secrets);
-        $exists = $this->pdo->prepare('SELECT source_id FROM external_source_credentials WHERE source_id = ? LIMIT 1');
-        $exists->execute([$sourceId]);
-        if ($exists->fetch() !== false) {
+        if ($exists) {
             $stmt = $this->pdo->prepare('UPDATE external_source_credentials SET payload = ?, updated_at = ? WHERE source_id = ?');
             $stmt->execute([$payload, $now, $sourceId]);
             return;

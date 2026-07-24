@@ -35,6 +35,7 @@ class PluginLoader
             return;
         }
 
+        $candidates = [];
         foreach (glob($pluginsDir . '/*/plugin.json') ?: [] as $manifestPath) {
             $slug = basename(dirname($manifestPath));
             if (preg_match(self::SLUG_REGEX, $slug) !== 1) {
@@ -45,10 +46,25 @@ class PluginLoader
                 \Flight::plugin_diagnostics()->error($slug, 'Invalid manifest JSON.');
                 continue;
             }
-            if (!$this->isPluginEnabled($slug, defaultEnabled: (bool) ($manifest['default_enabled'] ?? false))) {
+            $candidates[] = [
+                'slug' => $slug,
+                'manifest_path' => $manifestPath,
+                'manifest' => $manifest,
+            ];
+        }
+
+        $dbEnabledFlags = $this->readDbEnabledFlags(array_column($candidates, 'slug'));
+        foreach ($candidates as $candidate) {
+            $slug = $candidate['slug'];
+            $manifest = $candidate['manifest'];
+            if (!$this->isPluginEnabled(
+                $slug,
+                defaultEnabled: (bool) ($manifest['default_enabled'] ?? false),
+                dbState: $dbEnabledFlags[$slug] ?? null,
+            )) {
                 continue;
             }
-            $this->loadDropInPlugin($slug, $manifestPath, $manifest);
+            $this->loadDropInPlugin($slug, $candidate['manifest_path'], $manifest);
         }
     }
 
@@ -60,9 +76,13 @@ class PluginLoader
      *   2. `PLUGIN_<UPPER>` env
      *   3. default false
      */
-    private function isPluginEnabled(string $slug, ?string $envKey = null, bool $defaultEnabled = false): bool
+    private function isPluginEnabled(
+        string $slug,
+        ?string $envKey = null,
+        bool $defaultEnabled = false,
+        ?bool $dbState = null,
+    ): bool
     {
-        $dbState = $this->readDbEnabledFlag($slug);
         if ($dbState !== null) {
             return $dbState;
         }
@@ -70,19 +90,51 @@ class PluginLoader
         return (bool) env($envKey, $defaultEnabled);
     }
 
-    private function readDbEnabledFlag(string $slug): ?bool
+    /**
+     * Load every discovered plugin's DB override in one query.
+     *
+     * Missing, malformed, or unavailable rows intentionally fall through to
+     * each plugin's environment/default state.
+     *
+     * @param list<string> $slugs
+     * @return array<string,bool>
+     */
+    private function readDbEnabledFlags(array $slugs): array
     {
+        if ($slugs === []) {
+            return [];
+        }
+
         try {
-            $stmt = \Flight::db()->prepare('SELECT value FROM site_options WHERE key_name = ?');
-            $stmt->execute(['plugin.' . $slug . '.enabled']);
-            $row = $stmt->fetch();
-            if ($row === false) {
-                return null;
+            $keys = array_map(
+                static fn(string $slug): string => 'plugin.' . $slug . '.enabled',
+                $slugs,
+            );
+            $placeholders = implode(', ', array_fill(0, count($keys), '?'));
+            $stmt = \Flight::db()->prepare(
+                "SELECT key_name, value FROM site_options WHERE key_name IN ({$placeholders})"
+            );
+            $stmt->execute($keys);
+
+            $states = [];
+            foreach ($stmt->fetchAll() as $row) {
+                $key = (string) ($row['key_name'] ?? '');
+                if (!str_starts_with($key, 'plugin.') || !str_ends_with($key, '.enabled')) {
+                    continue;
+                }
+                $slug = substr($key, strlen('plugin.'), -strlen('.enabled'));
+                if (!in_array($slug, $slugs, true)) {
+                    continue;
+                }
+                $decoded = json_decode((string) ($row['value'] ?? ''), true);
+                if (is_bool($decoded)) {
+                    $states[$slug] = $decoded;
+                }
             }
-            $decoded = json_decode((string) $row['value'], true);
-            return is_bool($decoded) ? $decoded : null;
+
+            return $states;
         } catch (\Throwable) {
-            return null;
+            return [];
         }
     }
 

@@ -52,7 +52,7 @@ $errors = [];
 $data   = $_SESSION['install_data'] ?? [];
 
 $normalizeDbDriver = static function (string $driver): string {
-    return in_array($driver, ['mysql', 'pgsql', 'sqlite'], true) ? $driver : 'mysql';
+    return in_array($driver, ['mysql', 'pgsql', 'sqlite', 'libsql'], true) ? $driver : 'mysql';
 };
 
 $dbDefaultsFor = static function (string $driver) use ($root): array {
@@ -66,6 +66,8 @@ $dbDefaultsFor = static function (string $driver) use ($root): array {
             'password'    => '',
             'charset'     => 'utf8mb4',
             'sqlite_path' => $root . '/storage/database.sqlite',
+            'libsql_url' => '',
+            'libsql_auth_token' => '',
         ],
         'sqlite' => [
             'driver'      => 'sqlite',
@@ -76,6 +78,20 @@ $dbDefaultsFor = static function (string $driver) use ($root): array {
             'password'    => '',
             'charset'     => 'utf8mb4',
             'sqlite_path' => $root . '/storage/database.sqlite',
+            'libsql_url' => '',
+            'libsql_auth_token' => '',
+        ],
+        'libsql' => [
+            'driver'      => 'libsql',
+            'host'        => '',
+            'port'        => '',
+            'database'    => '',
+            'username'    => '',
+            'password'    => '',
+            'charset'     => 'utf8mb4',
+            'sqlite_path' => $root . '/storage/database.sqlite',
+            'libsql_url' => '',
+            'libsql_auth_token' => '',
         ],
         default => [
             'driver'      => 'mysql',
@@ -86,6 +102,8 @@ $dbDefaultsFor = static function (string $driver) use ($root): array {
             'password'    => '',
             'charset'     => 'utf8mb4',
             'sqlite_path' => $root . '/storage/database.sqlite',
+            'libsql_url' => '',
+            'libsql_auth_token' => '',
         ],
     };
 };
@@ -126,6 +144,8 @@ if ($method === 'POST') {
                 'password'    => (string) ($_POST['db_password'] ?? ''),
                 'charset'     => 'utf8mb4',
                 'sqlite_path' => trim((string) ($_POST['db_sqlite_path'] ?? $defaults['sqlite_path'])),
+                'libsql_url' => trim((string) ($_POST['db_libsql_url'] ?? $defaults['libsql_url'])),
+                'libsql_auth_token' => trim((string) ($_POST['db_libsql_auth_token'] ?? '')),
             ];
             $err = $installer->testDatabase($db);
             if ($err !== null) {
@@ -212,6 +232,8 @@ if ($method === 'POST') {
                     'DB_USERNAME'       => $db['username'] ?? '',
                     'DB_PASSWORD'       => $db['password'] ?? '',
                     'DB_SQLITE_PATH'    => $db['sqlite_path'] ?? '',
+                    'LIBSQL_DATABASE_URL' => $db['libsql_url'] ?? '',
+                    'LIBSQL_AUTH_TOKEN'   => $db['libsql_auth_token'] ?? '',
                 ]);
 
                 // Reload into $_ENV so phinx.php / config/*.php see the new values this request.
@@ -264,6 +286,7 @@ $dbDriverDefaults = [
     'mysql'  => $dbDefaultsFor('mysql'),
     'pgsql'  => $dbDefaultsFor('pgsql'),
     'sqlite' => $dbDefaultsFor('sqlite'),
+    'libsql' => $dbDefaultsFor('libsql'),
 ];
 $languageOptions = [
     'en' => 'English',
@@ -520,10 +543,12 @@ form p:last-child { margin-bottom: 0; }
       <option value="mysql" <?= $currentDriver === 'mysql' ? 'selected' : '' ?>>MySQL / MariaDB</option>
       <option value="pgsql" <?= $currentDriver === 'pgsql' ? 'selected' : '' ?>>PostgreSQL</option>
       <option value="sqlite" <?= $currentDriver === 'sqlite' ? 'selected' : '' ?>>SQLite</option>
+      <option value="libsql" <?= $currentDriver === 'libsql' ? 'selected' : '' ?>>Remote libSQL / Turso / Bunny (experimental)</option>
     </select>
     <div class="hint" data-driver-hint="mysql">Use MySQL/MariaDB for most shared hosting accounts.</div>
     <div class="hint" data-driver-hint="pgsql" hidden>Use PostgreSQL when your host provides a PostgreSQL database.</div>
     <div class="hint" data-driver-hint="sqlite" hidden>Use SQLite for local testing or small single-file installs.</div>
+    <div class="hint" data-driver-hint="libsql" hidden>Experimental remote-only libSQL over HTTPS for Turso and Bunny Database. No native SDK or FFI is required.</div>
 
     <fieldset data-db-fields="server">
       <legend>Database server</legend>
@@ -550,6 +575,17 @@ form p:last-child { margin-bottom: 0; }
       <label for="db_sqlite_path">Database file path</label>
       <input id="db_sqlite_path" type="text" name="db_sqlite_path" value="<?= $e($db['sqlite_path']) ?>" data-db-default-field="sqlite_path">
       <div class="hint">The default location is inside TypeDock storage and will be created if possible.</div>
+    </fieldset>
+
+    <fieldset data-db-fields="libsql">
+      <legend>Remote libSQL / Turso / Bunny Database</legend>
+
+      <label for="db_libsql_url">Database URL</label>
+      <input id="db_libsql_url" type="text" name="db_libsql_url" value="<?= $e($db['libsql_url']) ?>" placeholder="libsql://db.turso.io or https://id.lite.bunnydb.net/v2/pipeline" data-db-default-field="libsql_url" autocomplete="off">
+
+      <label for="db_libsql_auth_token">Authentication token</label>
+      <input id="db_libsql_auth_token" type="password" name="db_libsql_auth_token" value="<?= $e($db['libsql_auth_token']) ?>" autocomplete="new-password">
+      <div class="hint">Remote-only mode uses the Hrana HTTP API and does not create or retain a local database file.</div>
     </fieldset>
 
     <p><button type="submit">Test connection and continue</button></p>
@@ -619,7 +655,11 @@ form p:last-child { margin-bottom: 0; }
   <h2>Review &amp; install</h2>
   <table>
     <tr><th>Driver</th><td><?= $e($db['driver'] ?? '') ?></td></tr>
-    <tr><th>Database</th><td><?= $e(($db['driver'] ?? '') === 'sqlite' ? ($db['sqlite_path'] ?? '') : ($db['database'] ?? '')) ?></td></tr>
+    <tr><th>Database</th><td><?= $e(match ($db['driver'] ?? '') {
+        'sqlite' => $db['sqlite_path'] ?? '',
+        'libsql' => $db['libsql_url'] ?? '',
+        default => $db['database'] ?? '',
+    }) ?></td></tr>
     <tr><th>Site</th><td><?= $e($site['name'] ?? '') ?> (<?= $e($site['url'] ?? '') ?>)</td></tr>
     <tr><th>Admin</th><td><?= $e($admin['email'] ?? '') ?></td></tr>
   </table>
@@ -671,10 +711,17 @@ form p:last-child { margin-bottom: 0; }
 
   const updateVisibility = () => {
     const isSqlite = driver.value === 'sqlite';
+    const isLibsql = driver.value === 'libsql';
     document.querySelectorAll('[data-db-fields="server"]').forEach((group) => {
-      group.hidden = isSqlite;
+      group.hidden = isSqlite || isLibsql;
       group.querySelectorAll('input, select, textarea').forEach((input) => {
-        input.disabled = isSqlite;
+        input.disabled = isSqlite || isLibsql;
+      });
+    });
+    document.querySelectorAll('[data-db-fields="libsql"]').forEach((group) => {
+      group.hidden = !isLibsql;
+      group.querySelectorAll('input, select, textarea').forEach((input) => {
+        input.disabled = !isLibsql;
       });
     });
     document.querySelectorAll('[data-db-fields="sqlite"]').forEach((group) => {

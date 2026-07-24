@@ -14,6 +14,17 @@ return [
         ? TYPEDOCK_ROOT . '/storage/database.sqlite'
         : __DIR__ . '/../storage/database.sqlite'
     ),
+    // Experimental remote-only libSQL driver using Hrana over HTTP.
+    // Generic variables take precedence over provider-specific aliases.
+    'libsql_url' => env('LIBSQL_DATABASE_URL', '')
+        ?: env('TURSO_DATABASE_URL', '')
+        ?: env('BUNNY_DATABASE_URL', ''),
+    'libsql_auth_token' => env('LIBSQL_AUTH_TOKEN', '')
+        ?: env('TURSO_AUTH_TOKEN', '')
+        ?: env('BUNNY_DATABASE_AUTH_TOKEN', ''),
+    'libsql_http_timeout'    => env('LIBSQL_HTTP_TIMEOUT', 15),
+    'libsql_connect_timeout' => env('LIBSQL_CONNECT_TIMEOUT', 5),
+    'libsql_allow_insecure'  => env('LIBSQL_ALLOW_INSECURE', false),
     'sqlite' => [
         'tuning'       => env('SQLITE_TUNING', 'balanced'), // off|safe|balanced|custom
         'foreign_keys' => env('SQLITE_FOREIGN_KEYS', true),

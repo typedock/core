@@ -32,7 +32,7 @@ return [
     'APP_KEY'        => '',
     'SESSION_SECRET' => '',
 
-    // --- Database (mysql / pgsql / sqlite) ---
+    // --- Database (mysql / pgsql / sqlite / experimental libsql) ---
     'DB_DRIVER'      => 'mysql',
     'DB_HOST'        => '127.0.0.1',
     'DB_PORT'        => '3306',
@@ -42,6 +42,20 @@ return [
     'DB_CHARSET'     => 'utf8mb4',
     'DB_PREFIX'      => '',
     'DB_SQLITE_PATH' => '',
+
+    // --- Experimental remote-only libSQL (Turso / Bunny Database) ---
+    // Uses Hrana over HTTP; no native SDK, local database, or FFI is required.
+    'LIBSQL_DATABASE_URL'    => '',
+    'LIBSQL_AUTH_TOKEN'      => '',
+    'LIBSQL_HTTP_TIMEOUT'    => '15',
+    'LIBSQL_CONNECT_TIMEOUT' => '5',
+    'LIBSQL_ALLOW_INSECURE'  => 'false',
+
+    // Provider-specific aliases are accepted when the generic values are empty:
+    'TURSO_DATABASE_URL'        => '',
+    'TURSO_AUTH_TOKEN'          => '',
+    'BUNNY_DATABASE_URL'        => '',
+    'BUNNY_DATABASE_AUTH_TOKEN' => '',
 
     // --- SQLite tuning ---
     // balanced applies WAL + synchronous=NORMAL when the host allows it.

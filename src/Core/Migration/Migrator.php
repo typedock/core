@@ -5,6 +5,7 @@ namespace TypeDock\Core\Migration;
 
 use PDO;
 use RuntimeException;
+use TypeDock\Core\Database\ConnectionFactory;
 use TypeDock\Core\Migration\Grammar\Grammar;
 use TypeDock\Core\Migration\Grammar\MySqlGrammar;
 use TypeDock\Core\Migration\Grammar\PostgresGrammar;
@@ -28,12 +29,14 @@ final class Migrator
         string $driver,
         private readonly string $migrationsPath,
     ) {
-        $grammar = self::grammarFor($driver);
-        $this->schema = new Schema($pdo, $driver, $grammar);
+        $schemaDriver = ConnectionFactory::schemaDriver($driver);
+        $grammar = self::grammarFor($schemaDriver);
+        $this->schema = new Schema($pdo, $schemaDriver, $grammar);
     }
 
     public static function grammarFor(string $driver): Grammar
     {
+        $driver = ConnectionFactory::schemaDriver($driver);
         return match ($driver) {
             'mysql' => new MySqlGrammar(),
             'pgsql' => new PostgresGrammar(),

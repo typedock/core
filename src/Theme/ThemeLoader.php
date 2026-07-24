@@ -98,23 +98,20 @@ class ThemeLoader
                 }
             }
 
-            // Update active theme in site_options (portable upsert)
+            // Replace the active theme using write-only statements so remote
+            // libSQL can include the whole activation in one atomic batch.
             $themeJson = json_encode($themeName);
-            $check = $pdo->prepare("SELECT key_name FROM site_options WHERE key_name = 'theme.active'");
-            $check->execute();
-            if ($check->fetchColumn() !== false) {
-                $pdo->prepare("UPDATE site_options SET value = ?, updated_at = ? WHERE key_name = 'theme.active'")
-                    ->execute([$themeJson, $now]);
-            } else {
-                $pdo->prepare(
-                    "INSERT INTO site_options (key_name, value, group_name, updated_at)
-                     VALUES ('theme.active', ?, 'general', ?)"
-                )->execute([$themeJson, $now]);
-            }
+            $pdo->prepare("DELETE FROM site_options WHERE key_name = 'theme.active'")->execute();
+            $pdo->prepare(
+                "INSERT INTO site_options (key_name, value, group_name, updated_at)
+                 VALUES ('theme.active', ?, 'general', ?)"
+            )->execute([$themeJson, $now]);
 
             $pdo->commit();
         } catch (\Throwable $e) {
-            $pdo->rollBack();
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             throw $e;
         }
 
