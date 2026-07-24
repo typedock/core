@@ -57,6 +57,26 @@ make dev-mysql
 make dev-postgres
 ```
 
+For one-container local profiling with SPX, build the dedicated profiling
+image. It includes nginx and stores reports inside the disposable container:
+
+```bash
+docker build -f Dockerfile.profile -t typedock/profile .
+docker run --rm \
+  --env-file docker.env \
+  -e TYPEDOCK_PREVIEW=true \
+  -e SPX_HTTP_KEY=dev \
+  -p 127.0.0.1:8080:8080 \
+  typedock/profile
+```
+
+Open
+`http://localhost:8080/?SPX_KEY=dev&SPX_UI_URI=/`, enable profiling for the
+browser session, and then load the TypeDock route to measure. The profiling
+image and UI are for local use only and must not be exposed publicly. To keep
+reports after the container exits, add
+`--mount type=volume,source=typedock-spx,target=/app/storage/spx`.
+
 ### Option B: Shared Hosting
 
 Download `typedock-shared.zip` from a release and unzip it locally. The archive contains two folders:

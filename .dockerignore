@@ -36,7 +36,9 @@ docs-internal/
 bin/
 build/
 dist/
-docker/
+docker/*
+!docker/profile/
+!docker/profile/**
 docker-compose.yml
 docker.env
 docker.env.example
