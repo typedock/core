@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace TypeDock\Middleware;
 
+use TypeDock\Security\AdminCspPolicy;
+
 /**
  * Adds the OWASP-recommended baseline of HTTP response headers and strips
  * server fingerprinting headers that PHP / nginx emit by default.
@@ -18,6 +20,10 @@ namespace TypeDock\Middleware;
  */
 class SecurityHeadersMiddleware
 {
+    public function __construct(
+        private readonly ?AdminCspPolicy $adminCsp = null,
+    ) {}
+
     public function handle(): void
     {
         if (headers_sent()) {
@@ -44,25 +50,8 @@ class SecurityHeadersMiddleware
         }
 
         if ($isAdmin) {
-            header('Content-Security-Policy: ' . self::adminCsp());
+            $policy = $this->adminCsp ?? new AdminCspPolicy();
+            header('Content-Security-Policy: ' . $policy->toHeaderValue());
         }
     }
-
-    private static function adminCsp(): string
-    {
-        return implode('; ', [
-            "default-src 'self'",
-            "script-src 'self' 'unsafe-inline'",
-            "style-src 'self' 'unsafe-inline'",
-            "img-src 'self' data: blob:",
-            "font-src 'self' data:",
-            "connect-src 'self'",
-            "frame-src 'self'",
-            "frame-ancestors 'self'",
-            "base-uri 'self'",
-            "form-action 'self'",
-            "object-src 'none'",
-        ]);
-    }
-
 }

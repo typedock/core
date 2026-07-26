@@ -172,6 +172,7 @@ Plugins live under `plugins/<slug>/` and declare a `plugin.json` manifest. They 
 - Plugin database tables use the `plugin_{slug}_*` prefix.
 - `provides` claims detect provider collisions before one plugin silently replaces another.
 - Plugin admin UIs render inside an iframe so their CSS and JavaScript do not leak into the core admin.
+- External origins needed by admin pages are declared per plugin in `plugin.json` under `admin_csp`. Only HTTPS origins (plus WSS for `connect-src`) can extend the admin fetch directives; plugins cannot relax `object-src`, `form-action`, `base-uri`, or `frame-ancestors`.
 
 ## CLI
 
