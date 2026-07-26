@@ -37,6 +37,7 @@ RUN install-php-extensions \
         pdo_mysql \
         pdo_pgsql \
         pdo_sqlite \
+        curl \
         gd \
         intl \
         zip \

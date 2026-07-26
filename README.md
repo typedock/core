@@ -107,7 +107,7 @@ TypeDock is intended as an **alternative**, not a replacement. It deliberately p
 - **Bundled plugins** - `form`, `redirect`, `social`, `image-optimizer`, `turnstile-captcha`, `advanced-blocks`, `backup`, `cloud-storage`, `source-contentful`, `source-github`, `source-github-docs`, and `simple-ai-writing`.
 - **External Source** - Read-only content from Contentful, GitHub Issues, GitHub Docs, or generic JSON HTTP APIs. Credentials are encrypted at rest using `APP_KEY`.
 - **SEO and feeds** - Meta tags, canonical URLs, Open Graph/Twitter metadata, sitemap, RSS, and search.
-- **Multi-DB** - MySQL 8, PostgreSQL 14, and SQLite 3.35+ using the same migrations.
+- **Multi-DB** - MySQL 8, PostgreSQL 14, and SQLite 3.35+ using the same migrations, plus an opt-in experimental remote-only libSQL driver for Turso and Bunny Database.
 - **Security baseline** - CSP, X-Frame-Options, X-Content-Type-Options, Referrer/Permissions-Policy, HSTS on HTTPS, HttpOnly + SameSite session cookies, and OWASP ZAP tooling.
 
 ## Start Here
@@ -115,6 +115,7 @@ TypeDock is intended as an **alternative**, not a replacement. It deliberately p
 - [Theme development](docs/theme-development.md)
 - [Theme template reference](docs/theme-template-reference.md)
 - [API reference](docs/api.md)
+- [Experimental remote libSQL driver (Turso / Bunny)](docs/experimental-libsql.md)
 - [Upgrade model](docs/upgrade.md)
 
 ## Project Layout
@@ -136,6 +137,11 @@ typedock/
 ## Configuration
 
 TypeDock reads a single `config.php` at the project root, similar in spirit to `wp-config.php`. Environment variables override `config.php`, so the same project can run on shared hosting, Docker, or a PaaS-style environment.
+
+The optional `DB_DRIVER=libsql` path targets remote-only Turso and Bunny
+Database deployments through Hrana over HTTP. It works on PHP 8.2 without FFI
+or a native SDK, but is not part of TypeDock's stable three-database support
+matrix.
 
 ## Plugins
 
@@ -173,7 +179,7 @@ The most helpful release-candidate feedback is concrete installation and authori
 
 ## Tech Stack
 
-PHP 8.2+ / [FlightPHP](https://flightphp.com/) 3.17+ / [Latte](https://latte.nette.org/) 3.1+ / [Ramsey UUID](https://uuid.ramsey.dev/) v7 / [Tiptap](https://tiptap.dev/) 3 / [PHPMailer](https://github.com/PHPMailer/PHPMailer) / MySQL 8+ / PostgreSQL 14+ / SQLite 3.35+
+PHP 8.2+ / [FlightPHP](https://flightphp.com/) 3.17+ / [Latte](https://latte.nette.org/) 3.1+ / [Ramsey UUID](https://uuid.ramsey.dev/) v7 / [Tiptap](https://tiptap.dev/) 3 / [PHPMailer](https://github.com/PHPMailer/PHPMailer) / MySQL 8+ / PostgreSQL 14+ / SQLite 3.35+ / experimental remote libSQL
 
 ## Contributing
 

@@ -4,7 +4,7 @@ declare(strict_types=1);
 define('TYPEDOCK_ROOT', dirname(__DIR__));
 require TYPEDOCK_ROOT . '/vendor/autoload.php';
 
-use TypeDock\Core\Database\SqlitePragmas;
+use TypeDock\Core\Database\ConnectionFactory;
 use TypeDock\Core\Migration\Migrator;
 
 typedock_load_config(TYPEDOCK_ROOT);
@@ -29,7 +29,7 @@ foreach ($argv as $arg) {
 }
 
 $db = require TYPEDOCK_ROOT . '/config/database.php';
-$pdo = makePdoForCli($db, TYPEDOCK_ROOT);
+$pdo = ConnectionFactory::create($db, TYPEDOCK_ROOT);
 
 $migrator = new Migrator($pdo, $db['driver'], TYPEDOCK_ROOT . '/migrations');
 
@@ -60,32 +60,4 @@ try {
 } catch (\Throwable $e) {
     fwrite(STDERR, "\nError: " . $e->getMessage() . "\n");
     exit(1);
-}
-
-/**
- * @param array<string,mixed> $db
- */
-function makePdoForCli(array $db, string $root): PDO
-{
-    $driver  = (string) ($db['driver'] ?? 'mysql');
-    $charset = (string) ($db['charset'] ?? 'utf8mb4');
-
-    $dsn = match ($driver) {
-        'sqlite' => 'sqlite:' . ($db['sqlite_path'] ?? $root . '/storage/database.sqlite'),
-        'pgsql'  => sprintf('pgsql:host=%s;port=%d;dbname=%s', $db['host'] ?? '127.0.0.1', (int) ($db['port'] ?? 5432), $db['database'] ?? ''),
-        default  => sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $db['host'] ?? '127.0.0.1', (int) ($db['port'] ?? 3306), $db['database'] ?? '', $charset),
-    };
-
-    $pdo = new PDO(
-        $dsn,
-        $driver === 'sqlite' ? null : (string) ($db['username'] ?? ''),
-        $driver === 'sqlite' ? null : (string) ($db['password'] ?? ''),
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-    );
-
-    if ($driver === 'sqlite') {
-        SqlitePragmas::apply($pdo, $db);
-    }
-
-    return $pdo;
 }

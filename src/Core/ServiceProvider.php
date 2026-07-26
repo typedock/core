@@ -17,7 +17,7 @@ use TypeDock\Storage\LocalStorage;
 use TypeDock\Component\ComponentRegistry;
 use TypeDock\Component\ComponentRenderer;
 use TypeDock\Component\CoreComponentRegistrar;
-use TypeDock\Core\Database\SqlitePragmas;
+use TypeDock\Core\Database\ConnectionFactory;
 use TypeDock\Admin\PluginAdminMenu;
 use TypeDock\Admin\EditorExtensionRegistry;
 use TypeDock\Core\PluginDiagnostics;
@@ -29,7 +29,6 @@ use TypeDock\Mail\MailService;
 use TypeDock\Media\MediaService;
 use TypeDock\ExternalSource\ExternalSourceAdapterRegistry;
 use TypeDock\ExternalSource\ExternalSourceService;
-use flight\database\SimplePdo;
 
 class ServiceProvider
 {
@@ -157,44 +156,7 @@ class ServiceProvider
                 return $pdo;
             }
 
-            $db     = config('database');
-            $driver = $db['driver'] ?? 'mysql';
-
-            $dsn = match ($driver) {
-                'sqlite' => 'sqlite:' . ($db['sqlite_path'] ?? TYPEDOCK_ROOT . '/storage/database.sqlite'),
-                'pgsql'  => sprintf(
-                    'pgsql:host=%s;port=%d;dbname=%s',
-                    $db['host'] ?? '127.0.0.1',
-                    (int) ($db['port'] ?? 5432),
-                    $db['database'] ?? 'typedock'
-                ),
-                default => sprintf(
-                    'mysql:host=%s;port=%d;dbname=%s;charset=%s',
-                    $db['host'] ?? '127.0.0.1',
-                    (int) ($db['port'] ?? 3306),
-                    $db['database'] ?? 'typedock',
-                    $db['charset'] ?? 'utf8mb4'
-                ),
-            };
-
-            $pdoOptions = [
-                \PDO::ATTR_ERRMODE            => \PDO::ERRMODE_EXCEPTION,
-                \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
-                \PDO::ATTR_EMULATE_PREPARES   => false,
-            ];
-
-            $pdo = new SimplePdo(
-                $dsn,
-                $driver === 'sqlite' ? null : ($db['username'] ?? 'root'),
-                $driver === 'sqlite' ? null : ($db['password'] ?? ''),
-                $pdoOptions
-            );
-
-            if ($driver === 'sqlite') {
-                SqlitePragmas::apply($pdo, $db);
-            }
-
-            return $pdo;
+            return $pdo = ConnectionFactory::create(config('database'), TYPEDOCK_ROOT);
         });
     }
 

@@ -4,7 +4,8 @@ declare(strict_types=1);
 define('TYPEDOCK_ROOT', dirname(__DIR__));
 require TYPEDOCK_ROOT . '/vendor/autoload.php';
 
-use TypeDock\Core\Database\SqlitePragmas;
+use TypeDock\Core\Database\ConnectionFactory;
+use TypeDock\Core\Database\LibsqlPdo;
 
 typedock_load_config(TYPEDOCK_ROOT);
 
@@ -48,22 +49,8 @@ if (!is_array($json)) {
 }
 
 /** ---- DB connection ---- */
-$db     = require TYPEDOCK_ROOT . '/config/database.php';
-$driver = $db['driver'] ?? 'mysql';
-$dsn    = match ($driver) {
-    'sqlite' => 'sqlite:' . $db['sqlite_path'],
-    'pgsql'  => sprintf('pgsql:host=%s;port=%d;dbname=%s', $db['host'], $db['port'], $db['database']),
-    default  => sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $db['host'], $db['port'], $db['database'], $db['charset']),
-};
-$pdo = new PDO(
-    $dsn,
-    $driver === 'sqlite' ? null : $db['username'],
-    $driver === 'sqlite' ? null : $db['password'],
-    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-);
-if ($driver === 'sqlite') {
-    SqlitePragmas::apply($pdo, $db);
-}
+$db  = require TYPEDOCK_ROOT . '/config/database.php';
+$pdo = ConnectionFactory::create($db, TYPEDOCK_ROOT);
 
 /** ---- Detect kind ---- */
 $basename = strtolower(basename($path));
@@ -87,9 +74,10 @@ echo "Mode:   " . ($dryRun ? 'DRY RUN' : ($overwrite ? 'OVERWRITE' : 'SKIP-IF-EX
 echo str_repeat('-', 60) . "\n";
 
 $counts = ['imported' => 0, 'skipped' => 0, 'updated' => 0, 'errored' => 0];
+$useTransaction = !$dryRun && !($pdo instanceof LibsqlPdo);
 
 try {
-    if (!$dryRun) {
+    if ($useTransaction) {
         $pdo->beginTransaction();
     }
 
@@ -126,11 +114,11 @@ try {
             break;
     }
 
-    if (!$dryRun) {
+    if ($useTransaction) {
         $pdo->commit();
     }
 } catch (\Throwable $e) {
-    if (!$dryRun && $pdo->inTransaction()) {
+    if ($useTransaction && $pdo->inTransaction()) {
         $pdo->rollBack();
     }
     fwrite(STDERR, "Fatal: " . $e->getMessage() . "\n");
