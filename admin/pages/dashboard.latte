@@ -16,6 +16,32 @@
     </div>
 </div>
 
+{if $queue !== null}
+<div class="alert alert-warning">
+    {include 'icon-alert'}
+    <div>
+        {if $queue['overdue'] > 0}
+            <p><strong>{_'{n} scheduled post(s) are past their publish time.', n: $queue['overdue']}</strong></p>
+        {/if}
+        {if $queue['failed'] > 0}
+            <p><strong>{_'{n} background job(s) failed.', n: $queue['failed']}</strong>
+            {if $queue['last_failure'] !== null}
+                <code>{$queue['last_failure']['handler']}</code> — {$queue['last_failure']['last_error']}
+            {/if}</p>
+        {/if}
+        <p class="text-sm">
+            {if $queue['heartbeat_at'] !== null}
+                {_'Background work last ran at {at}.', at: $queue['heartbeat_at']}
+            {else}
+                {_'Background work has never run on this site.'}
+            {/if}
+            {_'Without cron, it only runs while an admin has this dashboard open. Add:'}
+            <code>* * * * * php {$queue['cli_path']} --max-time=55</code>
+        </p>
+    </div>
+</div>
+{/if}
+
 <div class="stats-grid">
     <div class="stat-card">
         <div class="stat-icon">

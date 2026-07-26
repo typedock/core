@@ -184,7 +184,25 @@ php cli/import.php          # Import a previous export
 php cli/assets-publish.php  # Copy theme/plugin assets into public/
 php cli/upgrade.php         # Upgrade preflight + agent handoff context
 php cli/seed.php            # Insert demo content
+php cli/queue-work.php      # Run background jobs (scheduled publishing, etc.)
 ```
+
+### Background jobs
+
+Scheduled publishing and other deferred work run through a small job queue.
+Out of the box it needs no setup: every admin page load nudges the worker, so
+background work happens whenever someone is in the admin.
+
+For work that must happen on time whether or not anyone is logged in, add a
+cron entry. The worker exits as soon as the queue is empty, so a per-minute
+entry never stacks up:
+
+```
+* * * * * php /path/to/typedock/cli/queue-work.php --max-time=55
+```
+
+On a VPS or container you can run it as a service instead — `--max-time=0`
+stays resident and works continuously.
 
 ## Useful Feedback Right Now
 

@@ -390,4 +390,9 @@ return [
     '{noun} published.' => '{noun}を公開しました。',
     '{noun} published. View: {url}' => '{noun}を公開しました。表示: {url}',
     '{noun} saved.' => '{noun}を保存しました。',
+    '{n} scheduled post(s) are past their publish time.' => '公開予定時刻を過ぎた予約投稿が {n} 件あります。',
+    '{n} background job(s) failed.' => 'バックグラウンドジョブが {n} 件失敗しました。',
+    'Background work last ran at {at}.' => 'バックグラウンド処理の最終実行: {at}',
+    'Background work has never run on this site.' => 'このサイトではバックグラウンド処理がまだ一度も実行されていません。',
+    'Without cron, it only runs while an admin has this dashboard open. Add:' => 'cron を設定していない場合、管理画面を開いている間しか実行されません。次の行を登録してください:',
 ];

@@ -77,3 +77,38 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 });
+
+// Background worker tick.
+//
+// On hosting without cron this is the only thing that moves the job queue, so
+// every admin page load nudges the worker once — at most once a minute per
+// tab. Sites running cron or a resident worker get this for free: the tick
+// simply finds nothing left to do. Anonymous pages (login) carry no marker
+// meta and never tick.
+(function () {
+    var endpoint = document.querySelector('meta[name="typedock-queue-tick"]');
+    var token    = document.querySelector('meta[name="csrf-token"]');
+    if (!endpoint || !token || !token.content) return;
+
+    var KEY = 'typedock:queue-tick';
+    var now = Date.now();
+    try {
+        if (now - Number(sessionStorage.getItem(KEY) || 0) < 60000) return;
+        sessionStorage.setItem(KEY, String(now));
+    } catch (e) {
+        // Storage blocked (private mode): fall through and tick every load.
+    }
+
+    // After load, never before — the tick must not delay the page the user
+    // actually asked for.
+    window.addEventListener('load', function () {
+        fetch(endpoint.content, {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': token.content },
+            credentials: 'same-origin',
+            keepalive: true
+        }).catch(function () {
+            // Offline or session expired — the next page load tries again.
+        });
+    });
+})();

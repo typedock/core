@@ -12,6 +12,7 @@ use TypeDock\Admin\MenuController;
 use TypeDock\Admin\CategoryController;
 use TypeDock\Admin\TagController;
 use TypeDock\Admin\UserController;
+use TypeDock\Admin\QueueController;
 use TypeDock\Admin\SettingsController;
 use TypeDock\Admin\SystemUpdateController;
 use TypeDock\Admin\SlotController;
@@ -426,6 +427,11 @@ class Router
         \Flight::route('GET /admin/api/link-card', function () use ($auth) {
             $auth->requireAuthJson();
             (new \TypeDock\Admin\LinkCardController())->resolve();
+        });
+        \Flight::route('POST /admin/api/queue/tick', function () use ($auth, $csrf) {
+            $auth->requireAuthJson();
+            $csrf->verifyOrFail();
+            (new QueueController())->tick();
         });
     }
 
