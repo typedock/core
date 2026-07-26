@@ -30,6 +30,7 @@ Gzipped exports (`export.xml.gz`) work without unpacking them first.
 | Page parents | Resolved after the import, so a child listed before its parent still links up |
 | Hand-written excerpts | Excerpt (auto-generated "[…]" ones are skipped) |
 | Inline images | Downloaded into the media library, thumbnails and all |
+| Featured images | Set as the post's social/OG image |
 
 Trashed posts, attachments and custom post types are not imported. Neither are
 comments, custom fields, menus or users — the same line other CMS migration
@@ -50,6 +51,14 @@ An image that cannot be fetched after several tries is left pointing at your
 old site rather than at a broken link, and the media row keeps the source URL
 so you can retry or upload a replacement.
 
+Featured images resolve whether the export lists the image before or after the
+post that uses it. If an export references an image it does not contain — which
+happens when a site is exported in parts — those are counted and reported,
+rather than leaving you with silently empty thumbnails.
+
+Only images something actually points at are downloaded. A WordPress export
+lists the entire media library, and most of it is usually unused.
+
 Pass `--skip-media` to keep every image on the old site instead.
 
 ## Links and redirects
@@ -65,14 +74,12 @@ When the import finishes, download the **redirect map** from the progress
 page: a CSV of every old URL and where it lives now, ready for your web
 server, CDN, or the Redirect plugin.
 
-## What does not come across yet
-
-The featured image (`_thumbnail_id`) is not migrated.
-
 ## Re-running is safe
 
-Every post is matched on its WordPress post ID, so importing the same file
-twice updates the existing content instead of duplicating it. Imports do not
+Every post is matched on its WordPress post ID *and the site it came from*, so
+importing the same file twice updates the existing content instead of
+duplicating it — and importing two different WordPress sites into one TypeDock
+install does not have their post IDs collide. Imports do not
 create revisions, so re-running will not bury your editing history.
 
 To undo an import completely, delete the rows it created:

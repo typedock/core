@@ -214,7 +214,7 @@ class MediaService
 
         $id          = \Ramsey\Uuid\Uuid::uuid7()->toString();
         $now         = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
-        $folder      = '/import/' . date('Y') . '/' . date('m');
+        $folder      = '/import/' . self::sourceDateFolder($path);
         $storagePath = ltrim($folder . '/' . $id . '.' . $ext, '/');
 
         $this->pdo->prepare(
@@ -235,6 +235,73 @@ class MediaService
         ]);
 
         return $this->find($id);
+    }
+
+    /**
+     * Reserve a row for an asset the source system identifies by id.
+     *
+     * The id is what a featured image or a gallery points at, so it has to be
+     * a key we can look up later rather than something held in memory for the
+     * duration of an import that may span dozens of requests.
+     *
+     * Deduplication still runs on the URL underneath, so an image used both in
+     * a post body and as its featured image is one row and one download.
+     *
+     * @return array<string, mixed>|null Null when the URL is not something we store.
+     */
+    public function registerExternal(
+        string $importerKey,
+        string $externalId,
+        string $sourceUrl,
+        ?string $batchId = null,
+    ): ?array {
+        $existing = $this->findByExternalId($importerKey, $externalId);
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $row = $this->reserve($sourceUrl, $batchId);
+        if ($row === null) {
+            return null;
+        }
+
+        // `AND external_id IS NULL` guards the case where two source assets
+        // share one URL: the row keeps the first id rather than silently
+        // changing which asset it answers to.
+        $this->pdo->prepare(
+            'UPDATE media SET external_source = ?, external_id = ? WHERE id = ? AND external_id IS NULL'
+        )->execute([$importerKey, $externalId, $row['id']]);
+
+        return $this->find((string) $row['id']);
+    }
+
+    /** @return array<string, mixed>|null */
+    public function findByExternalId(string $importerKey, string $externalId): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT id FROM media WHERE external_source = ? AND external_id = ? LIMIT 1'
+        );
+        $stmt->execute([$importerKey, $externalId]);
+        $id = $stmt->fetchColumn();
+
+        return $id === false ? null : $this->find((string) $id);
+    }
+
+    /**
+     * Keep imported files under the year/month they had on the source site.
+     *
+     * An asset uploaded in 2003 can belong to a post dated 2010, so the source
+     * path is the only honest answer — and keeping it makes old media URLs
+     * mappable to new ones. Falls back to today when the source URL says
+     * nothing.
+     */
+    private static function sourceDateFolder(string $sourcePath): string
+    {
+        if (preg_match('#/(\d{4})/(\d{2})(?:/|$)#', $sourcePath, $m) === 1) {
+            return $m[1] . '/' . $m[2];
+        }
+
+        return date('Y') . '/' . date('m');
     }
 
     /**

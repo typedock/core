@@ -48,7 +48,7 @@ final class WxrImporter implements ImporterInterface
         $unmapped = 0;
         $context  = new WxrContext();
 
-        foreach ($this->items($file, 0, $context) as $item) {
+        foreach ($this->items($file, $context) as $item) {
             $postType = $this->wpValue($item, 'post_type');
             $status   = $this->wpValue($item, 'status');
 
@@ -98,8 +98,21 @@ final class WxrImporter implements ImporterInterface
     public function documents(string $file, int $skip = 0): \Generator
     {
         $context = new WxrContext();
+        $index   = 0;
 
-        foreach ($this->items($file, $skip, $context) as $item) {
+        foreach ($this->items($file, $context) as $item) {
+            // `$skip` counts documents the caller has processed, not `<item>`
+            // elements — a file full of trashed posts and menu entries would
+            // otherwise resume at the wrong place. Importability is decided
+            // from a few cheap fields so that skipped items never pay for HTML
+            // conversion, which is the expensive part.
+            if (!$this->isImportable($item)) {
+                continue;
+            }
+            if ($index++ < $skip) {
+                continue;
+            }
+
             $document = $this->toDocument($item, $context);
             if ($document !== null) {
                 yield $document;
@@ -108,16 +121,29 @@ final class WxrImporter implements ImporterInterface
     }
 
     /**
-     * Every `<item>` in file order, starting from $skip.
-     *
-     * Resumption counts items rather than bytes: XMLReader does not expose a
-     * byte offset, and `next('item')` walks past a subtree without expanding
-     * it, so skipping stays cheap enough that a handful of resumes costs
-     * nothing measurable.
+     * Whether toDocument() will produce something for this item. Must stay in
+     * step with it: a disagreement makes resumption skip or repeat documents.
+     */
+    private function isImportable(\SimpleXMLElement $item): bool
+    {
+        $postType = $this->wpValue($item, 'post_type');
+
+        if ($postType === 'attachment') {
+            $url = $this->wpValue($item, 'attachment_url') ?: trim((string) $item->guid);
+
+            return $url !== '' && preg_match('#^https?://#i', $url) === 1;
+        }
+
+        return in_array($postType, ['post', 'page'], true)
+            && !in_array($this->wpValue($item, 'status'), self::SKIP_STATUSES, true);
+    }
+
+    /**
+     * Every `<item>` in file order.
      *
      * @return \Generator<int, \SimpleXMLElement>
      */
-    private function items(string $file, int $skip, WxrContext $context): \Generator
+    private function items(string $file, WxrContext $context): \Generator
     {
         $this->guardAgainstDoctype($file);
 
@@ -152,11 +178,7 @@ final class WxrImporter implements ImporterInterface
                 return;
             }
 
-            $index = 0;
             do {
-                if ($index++ < $skip) {
-                    continue;
-                }
                 $node = $reader->expand($dom);
                 if ($node === false) {
                     continue;
@@ -236,6 +258,10 @@ final class WxrImporter implements ImporterInterface
         $postType = $this->wpValue($item, 'post_type');
         $status   = $this->wpValue($item, 'status');
 
+        if ($postType === 'attachment') {
+            return $this->toAttachment($item, $context);
+        }
+
         if (!in_array($postType, ['post', 'page'], true) || in_array($status, self::SKIP_STATUSES, true)) {
             return null;
         }
@@ -257,15 +283,18 @@ final class WxrImporter implements ImporterInterface
 
         [$mappedStatus, $publishedAt, $scheduledAt] = $this->mapStatus($status, $this->wpValue($item, 'post_date'));
 
+        $thumbnailId = $this->metaValue($item, '_thumbnail_id');
+
         return new ImportDocument(
-            externalId: $this->wpValue($item, 'post_id'),
+            externalId: $this->qualify($this->wpValue($item, 'post_id'), $context),
             type: $postType,
             title: trim((string) $item->title),
             slug: $this->wpValue($item, 'post_name'),
             status: $mappedStatus,
             blocks: $converted['blocks'],
             excerpt: $this->excerptOf($item),
-            parentExternalId: $parent,
+            parentExternalId: $parent !== null ? $this->qualify($parent, $context) : null,
+            featuredExternalId: $thumbnailId !== '' ? $this->qualify($thumbnailId, $context) : null,
             publishedAt: $publishedAt,
             scheduledAt: $scheduledAt,
             authorEmail: $author['email'] ?? null,
@@ -276,6 +305,64 @@ final class WxrImporter implements ImporterInterface
             warnings: $warnings,
             unmappedNodes: $converted['unmapped'],
         );
+    }
+
+    /**
+     * An attachment becomes a media row, not a post.
+     *
+     * `wp:attachment_url` is the right answer and `guid` is the fallback,
+     * because exports produced by older or patched WordPress installs are
+     * missing the former often enough to matter.
+     */
+    private function toAttachment(\SimpleXMLElement $item, WxrContext $context): ?ImportDocument
+    {
+        $url = $this->wpValue($item, 'attachment_url');
+        if ($url === '') {
+            $url = trim((string) $item->guid);
+        }
+        if ($url === '' || preg_match('#^https?://#i', $url) !== 1) {
+            return null;
+        }
+
+        return new ImportDocument(
+            externalId: $this->qualify($this->wpValue($item, 'post_id'), $context),
+            type: 'attachment',
+            title: trim((string) $item->title),
+            slug: $this->wpValue($item, 'post_name'),
+            status: 'draft',
+            blocks: [],
+            sourceUrl: $url,
+        );
+    }
+
+    /**
+     * Namespace a source id by the site it came from.
+     *
+     * WordPress post ids are only unique within one installation, so importing
+     * two different sites would otherwise have post 5 from the second quietly
+     * overwrite post 5 from the first.
+     */
+    private function qualify(string $id, WxrContext $context): string
+    {
+        if ($id === '') {
+            return $id;
+        }
+
+        $host = $context->baseUrl !== null ? parse_url($context->baseUrl, PHP_URL_HOST) : null;
+
+        return is_string($host) && $host !== '' ? $host . ':' . $id : $id;
+    }
+
+    private function metaValue(\SimpleXMLElement $item, string $key): string
+    {
+        foreach ($item->children(self::WP_NS)->postmeta as $meta) {
+            $fields = $meta->children(self::WP_NS);
+            if (trim((string) $fields->meta_key) === $key) {
+                return trim((string) $fields->meta_value);
+            }
+        }
+
+        return '';
     }
 
     /**

@@ -47,11 +47,19 @@ final class ImportWriter
         $this->tags          = new TagService($this->pdo);
     }
 
+    public const TYPE_ATTACHMENT = 'attachment';
+
     /**
-     * @return array{action:'created'|'updated', post_id:string}
+     * @return array{action:'created'|'updated'|'attachment', post_id:string}
      */
     public function write(ImportDocument $doc, string $importerKey, string $batchId): array
     {
+        if ($doc->type === self::TYPE_ATTACHMENT) {
+            $this->registerAttachment($doc, $importerKey, $batchId);
+
+            return ['action' => 'attachment', 'post_id' => ''];
+        }
+
         $existingId = $this->findExisting($importerKey, $doc->externalId);
         $blocks     = $this->applyRawHtmlPolicy($doc->blocks);
 
@@ -91,6 +99,22 @@ final class ImportWriter
     public function droppedRawHtml(): int
     {
         return $this->droppedRawHtml;
+    }
+
+    /**
+     * Record an asset so that references to it resolve, whether they arrived
+     * before it or after. No download is queued here: an export lists the
+     * whole media library, and fetching thousands of images nothing points at
+     * is not what someone asked for. The resolve pass queues the ones that
+     * turn out to be used and drops the rest.
+     */
+    private function registerAttachment(ImportDocument $doc, string $importerKey, string $batchId): void
+    {
+        if ($this->media === null || !$this->options->fetchMedia || $doc->sourceUrl === '') {
+            return;
+        }
+
+        $this->media->registerExternal($importerKey, $doc->externalId, $doc->sourceUrl, $batchId);
     }
 
     /**
@@ -160,6 +184,84 @@ final class ImportWriter
         }
 
         return $resolved;
+    }
+
+    /**
+     * Attach featured images now that every document has been read.
+     *
+     * Runs at the end for the same reason parents do: the asset a post points
+     * at may be listed after it. Unlike the classic implementation this needs
+     * no in-memory map — the reference is on the post row and the asset has a
+     * key of its own — so it works identically whether the import ran in one
+     * request or forty.
+     *
+     * References with no matching asset are counted rather than ignored. A
+     * broken body image is obvious; a missing featured image is an empty
+     * thumbnail that nobody notices for months.
+     *
+     * @return array{resolved:int, unresolved:int}
+     */
+    public function resolvePendingFeatured(string $importerKey, string $batchId): array
+    {
+        if ($this->media === null || !$this->options->fetchMedia) {
+            return ['resolved' => 0, 'unresolved' => 0];
+        }
+
+        $stmt = $this->pdo->prepare(
+            'SELECT id, post_type, external_featured_id FROM posts
+              WHERE import_batch_id = ? AND external_featured_id IS NOT NULL'
+        );
+        $stmt->execute([$batchId]);
+
+        $seo        = new \TypeDock\Seo\SeoService($this->pdo);
+        $referenced = [];
+        $unresolved = 0;
+
+        foreach ($stmt->fetchAll() as $row) {
+            $asset = $this->media->findByExternalId($importerKey, (string) $row['external_featured_id']);
+            if ($asset === null) {
+                $unresolved++;
+                continue;
+            }
+
+            $referenced[] = (string) $asset['id'];
+            $this->queueDownload($asset, $batchId);
+
+            // Merge rather than replace: a re-import must not blank a meta
+            // description someone wrote by hand.
+            $type     = (string) $row['post_type'];
+            $existing = $seo->findByTarget($type, (string) $row['id']) ?? [];
+            $seo->upsert($type, (string) $row['id'], array_merge($existing, [
+                'og_image_id' => (string) $asset['id'],
+            ]));
+        }
+
+        $this->discardUnusedAttachments($batchId, $referenced);
+
+        return ['resolved' => count($referenced), 'unresolved' => $unresolved];
+    }
+
+    /**
+     * Drop asset rows nothing ended up pointing at.
+     *
+     * They are identifiable because only assets carry an `external_id` —
+     * images found in a post body are keyed by URL alone. Leaving them would
+     * fill the media library with entries that have no file and never will.
+     *
+     * @param array<int, string> $keepIds
+     */
+    private function discardUnusedAttachments(string $batchId, array $keepIds): void
+    {
+        $sql    = "DELETE FROM media
+                    WHERE import_batch_id = ? AND status = 'pending' AND external_id IS NOT NULL";
+        $params = [$batchId];
+
+        if ($keepIds !== []) {
+            $sql .= ' AND id NOT IN (' . implode(', ', array_fill(0, count($keepIds), '?')) . ')';
+            $params = array_merge($params, $keepIds);
+        }
+
+        $this->pdo->prepare($sql)->execute($params);
     }
 
     /**
@@ -256,12 +358,13 @@ final class ImportWriter
     {
         $this->pdo->prepare(
             'UPDATE posts SET external_source = ?, external_id = ?, external_parent_id = ?,
-                              external_url = ?, import_batch_id = ?
+                              external_featured_id = ?, external_url = ?, import_batch_id = ?
               WHERE id = ?'
         )->execute([
             $importerKey,
             $doc->externalId,
             $doc->parentExternalId,
+            $doc->featuredExternalId,
             $doc->sourceUrl !== '' ? $doc->sourceUrl : null,
             $batchId,
             $postId,

@@ -20,8 +20,11 @@ namespace TypeDock\Import;
 final class ImportDocument
 {
     /**
-     * @param string                                          $externalId Stable id in the source system, e.g. "1234"
-     * @param string                                          $type       'post' | 'page'
+     * @param string $externalId Stable id in the source system. Importers must qualify it so that
+     *                           two different source sites cannot collide — the WordPress importer
+     *                           uses "host:1234".
+     * @param string $type       'post' | 'page' | 'attachment'. An attachment carries only
+     *                           $externalId and $sourceUrl; it becomes a media row, not a post.
      * @param array<int, array<string, mixed>>                $blocks     Tiptap nodes
      * @param array<int, array{slug:string,name:string,ancestors?:array<int,array{slug:string,name:string}>}> $categories
      *                                                                       Ancestors run root-first so the writer can
@@ -41,6 +44,11 @@ final class ImportDocument
         public readonly array $blocks,
         public readonly ?string $excerpt = null,
         public readonly ?string $parentExternalId = null,
+        /**
+         * The source system's id for this document's featured image. Left
+         * unresolved: the asset it names may not have been read yet.
+         */
+        public readonly ?string $featuredExternalId = null,
         public readonly ?string $publishedAt = null,
         public readonly ?string $scheduledAt = null,
         public readonly ?string $authorEmail = null,

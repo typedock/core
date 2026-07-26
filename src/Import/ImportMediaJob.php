@@ -137,6 +137,7 @@ final class ImportMediaJob implements JobHandler
             $error    = curl_error($ch);
             $status   = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
             $location = (string) curl_getinfo($ch, CURLINFO_REDIRECT_URL);
+            $declared = (int) curl_getinfo($ch, CURLINFO_CONTENT_LENGTH_DOWNLOAD);
             curl_close($ch);
             fclose($handle);
 
@@ -155,9 +156,18 @@ final class ImportMediaJob implements JobHandler
                 throw new \RuntimeException("Download failed: HTTP {$status}");
             }
 
-            if ((int) filesize($tmpFile) === 0) {
+            $written = (int) filesize($tmpFile);
+            if ($written === 0) {
                 @unlink($tmpFile);
                 throw new \RuntimeException('Download produced an empty file.');
+            }
+
+            // A connection dropped mid-transfer still leaves a readable file,
+            // and a half-written JPEG imports without complaint. Retrying is
+            // the right outcome, so check what the server said it would send.
+            if ($declared > 0 && $declared !== $written) {
+                @unlink($tmpFile);
+                throw new \RuntimeException("Download truncated: expected {$declared} bytes, got {$written}.");
             }
 
             return $tmpFile;

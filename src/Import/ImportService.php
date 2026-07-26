@@ -93,7 +93,7 @@ final class ImportService
      * Ingest documents until the file is exhausted or the deadline passes.
      *
      * @param float|null $deadline microtime(true) value to stop at; null runs to completion.
-     * @return array{processed:int, created:int, updated:int, failed:int, done:bool}
+     * @return array{processed:int, created:int, updated:int, failed:int, attachments:int, done:bool}
      */
     public function advance(string $importId, ?float $deadline = null): array
     {
@@ -102,7 +102,7 @@ final class ImportService
             throw new \RuntimeException("Import not found: {$importId}");
         }
         if ((string) $row['status'] === 'done') {
-            return ['processed' => 0, 'created' => 0, 'updated' => 0, 'failed' => 0, 'done' => true];
+            return ['processed' => 0, 'created' => 0, 'updated' => 0, 'failed' => 0, 'attachments' => 0, 'done' => true];
         }
 
         $this->acquireLeaseOrFail($importId);
@@ -114,18 +114,23 @@ final class ImportService
         $summary     = $this->decode($row['summary']);
         $processed   = (int) $row['processed'];
 
-        $writer  = new ImportWriter($this->pdo, $options, $this->media, $this->queue);
-        $created = 0;
-        $updated = 0;
-        $failed  = 0;
-        $exhausted = false;
+        $writer      = new ImportWriter($this->pdo, $options, $this->media, $this->queue);
+        $created     = 0;
+        $updated     = 0;
+        $failed      = 0;
+        $attachments = 0;
+        $exhausted   = false;
 
         try {
             $documents = $importer->documents($file, $processed);
             foreach ($documents as $document) {
                 try {
                     $result = $writer->write($document, $importerKey, $importId);
-                    $result['action'] === 'created' ? $created++ : $updated++;
+                    match ($result['action']) {
+                        'created'    => $created++,
+                        'updated'    => $updated++,
+                        'attachment' => $attachments++,
+                    };
                 } catch (\Throwable $e) {
                     // One malformed post must not abandon the other 4,999.
                     $failed++;
@@ -151,7 +156,12 @@ final class ImportService
             $exhausted = !$documents->valid();
         } catch (\Throwable $e) {
             $summary['error'] = $e->getMessage();
-            $this->persist($importId, $processed, 'failed', $this->tally($summary, $created, $updated, $failed));
+            $this->persist(
+                $importId,
+                $processed,
+                'failed',
+                $this->tally($summary, $created, $updated, $failed, $attachments)
+            );
             throw $e;
         }
 
@@ -161,6 +171,16 @@ final class ImportService
 
         if ($exhausted) {
             $summary['parents_resolved'] = $writer->resolvePendingParents($importerKey, $importId);
+
+            $featured = $writer->resolvePendingFeatured($importerKey, $importId);
+            $summary['featured_resolved']   = $featured['resolved'];
+            $summary['featured_unresolved'] = $featured['unresolved'];
+            if ($featured['unresolved'] > 0) {
+                $summary = $this->addWarning($summary, sprintf(
+                    '%d featured image(s) point at assets that are not in this export.',
+                    $featured['unresolved']
+                ));
+            }
 
             // Only now is it known what every document became, which is what
             // turns an old permalink into a working local link.
@@ -174,15 +194,16 @@ final class ImportService
             $importId,
             $processed,
             $exhausted ? 'done' : 'ready',
-            $this->tally($summary, $created, $updated, $failed)
+            $this->tally($summary, $created, $updated, $failed, $attachments)
         );
 
         return [
-            'processed' => $processed,
-            'created'   => $created,
-            'updated'   => $updated,
-            'failed'    => $failed,
-            'done'      => $exhausted,
+            'processed'   => $processed,
+            'created'     => $created,
+            'updated'     => $updated,
+            'failed'      => $failed,
+            'attachments' => $attachments,
+            'done'        => $exhausted,
         ];
     }
 
@@ -344,11 +365,12 @@ final class ImportService
      * @param array<string, mixed> $summary
      * @return array<string, mixed>
      */
-    private function tally(array $summary, int $created, int $updated, int $failed): array
+    private function tally(array $summary, int $created, int $updated, int $failed, int $attachments): array
     {
-        $summary['created'] = (int) ($summary['created'] ?? 0) + $created;
-        $summary['updated'] = (int) ($summary['updated'] ?? 0) + $updated;
-        $summary['failed']  = (int) ($summary['failed'] ?? 0) + $failed;
+        $summary['created']     = (int) ($summary['created'] ?? 0) + $created;
+        $summary['updated']     = (int) ($summary['updated'] ?? 0) + $updated;
+        $summary['failed']      = (int) ($summary['failed'] ?? 0) + $failed;
+        $summary['attachments'] = (int) ($summary['attachments'] ?? 0) + $attachments;
 
         return $summary;
     }
