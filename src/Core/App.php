@@ -103,7 +103,7 @@ class App
         // Security headers first so every response — including redirects and
         // error pages emitted by later middleware — carries them.
         \Flight::before('start', function (): void {
-            (new SecurityHeadersMiddleware())->handle();
+            (new SecurityHeadersMiddleware(\Flight::admin_csp()))->handle();
         });
 
         // Cache-Control policy. Registered right after the security headers

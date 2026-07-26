@@ -13,6 +13,7 @@ use TypeDock\Auth\PermissionChecker;
 use TypeDock\Contract\CaptchaProvider;
 use TypeDock\Search\LikeSearchEngine;
 use TypeDock\Security\NullCaptchaProvider;
+use TypeDock\Security\AdminCspPolicy;
 use TypeDock\Storage\LocalStorage;
 use TypeDock\Component\ComponentRegistry;
 use TypeDock\Component\ComponentRenderer;
@@ -37,6 +38,7 @@ class ServiceProvider
         $this->registerDatabase();
         $this->registerLatte();
         $this->registerLocale();
+        $this->registerSecurity();
         $this->registerAuth();
         $this->registerStorage();
         $this->registerSearch();
@@ -45,6 +47,17 @@ class ServiceProvider
         $this->registerMedia();
         $this->registerMail();
         $this->registerExternalSources();
+    }
+
+    private function registerSecurity(): void
+    {
+        \Flight::map('admin_csp', function (): AdminCspPolicy {
+            static $policy = null;
+            if ($policy !== null) {
+                return $policy;
+            }
+            return $policy = new AdminCspPolicy();
+        });
     }
 
     private function registerLocale(): void

@@ -4,15 +4,16 @@ declare(strict_types=1);
 namespace TypeDock\Core;
 
 use TypeDock\Contract\PluginInterface;
+use TypeDock\Security\AdminCspPolicy;
 
 /**
  * Discovers and boots drop-in plugins under `plugins/<slug>/` from their
  * `plugin.json` manifest. Manifest fields: slug, main_class, version,
- * provides[], min_core_version, autoload.psr-4. Plugins carry their own
- * source code and templates alongside the manifest and do NOT live inside
- * `src/`. Enable rule: DB admin toggle first, then `PLUGIN_<SLUG_UPPER>`
- * env. Boot pipeline: autoload setup → class instantiation → provides()
- * conflict check → register().
+ * provides[], min_core_version, autoload.psr-4, and optional admin_csp.
+ * Plugins carry their own source code and templates alongside the manifest
+ * and do NOT live inside `src/`. Enable rule: DB admin toggle first, then
+ * `PLUGIN_<SLUG_UPPER>` env. Boot pipeline: manifest validation → autoload
+ * setup → class instantiation → provides() conflict check → register().
  */
 class PluginLoader
 {
@@ -179,6 +180,18 @@ class PluginLoader
             return;
         }
 
+        $adminCsp = $manifest['admin_csp'] ?? [];
+        if (!is_array($adminCsp)) {
+            $diag->error($slug, 'Manifest admin_csp must be an object.');
+            return;
+        }
+        try {
+            AdminCspPolicy::validatePluginSources($adminCsp);
+        } catch (\InvalidArgumentException $e) {
+            $diag->error($slug, 'Invalid admin_csp: ' . $e->getMessage());
+            return;
+        }
+
         $pluginDir = dirname($manifestPath);
         $this->registerManifestAutoload($manifest, $pluginDir);
 
@@ -217,6 +230,8 @@ class PluginLoader
             $diag->error($slug, 'Plugin registration failed: ' . $e->getMessage());
             return;
         }
+        \Flight::admin_csp()->addPluginSources($adminCsp);
+
         if (!$context->hasAdminSurface() && $this->resolveReadmePath($manifest, $pluginDir) === null) {
             $diag->warn($slug, 'Plugin has no admin UI and no README.md; add plugin.json readme or a root README.md so admins know how to use it.');
         }

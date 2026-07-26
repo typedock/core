@@ -6,6 +6,10 @@
     "main_class": "TypeDock\\Plugin\\TurnstileCaptcha\\TurnstileCaptchaPlugin",
     "min_core_version": "0.1",
     "provides": ["captcha"],
+    "admin_csp": {
+        "script-src": ["https://challenges.cloudflare.com"],
+        "frame-src": ["https://challenges.cloudflare.com"]
+    },
     "autoload": {
         "psr-4": {
             "TypeDock\\Plugin\\TurnstileCaptcha\\": "src/"
