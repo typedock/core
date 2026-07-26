@@ -1,0 +1,142 @@
+{layout '../../layouts/admin-base.latte'}
+
+{block page_title}{_'Import'}{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <h1>{_'Importing'} {$import['source_name']}</h1>
+        <p class="subtitle">{_'You can close this tab — the work continues in the background.'}</p>
+    </div>
+    <a href="/admin/import" class="btn btn-secondary">{_'All imports'}</a>
+</div>
+
+{if isset($flash_success) && $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if isset($flash_error) && $flash_error}<div class="alert alert-danger">{$flash_error}</div>{/if}
+
+<div class="card"
+     id="import-progress"
+     data-import-id="{$import['id']}"
+     data-tick-url="/admin/api/import/{$import['id']}/tick">
+    <div class="card-header">
+        <h2>{_'Progress'}</h2>
+        <span class="badge badge-muted" data-field="status">{$progress['status']|translate}</span>
+    </div>
+    <table class="data-table border-0 rounded-none shadow-none">
+        <tbody>
+            <tr>
+                <td class="font-medium">{_'Items processed'}</td>
+                <td data-field="processed">{$progress['processed']}</td>
+            </tr>
+            <tr>
+                <td class="font-medium">{_'Created / updated'}</td>
+                <td>
+                    <span data-field="created">{$progress['summary']['created'] ?? 0}</span>
+                    /
+                    <span data-field="updated">{$progress['summary']['updated'] ?? 0}</span>
+                </td>
+            </tr>
+            <tr>
+                <td class="font-medium">{_'Images'}</td>
+                <td>
+                    <span data-field="media_ready">{$progress['media']['ready']}</span> {_'fetched'},
+                    <span data-field="media_pending">{$progress['media']['pending']}</span> {_'queued'},
+                    <span data-field="media_failed">{$progress['media']['failed']}</span> {_'failed'}
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+{* Rendered hidden only while there is still work to do; JS reveals it when the
+   last tick reports finished. An import that is already done shows it without
+   any script running. *}
+<div class="card" id="import-done"
+     {if $progress['status'] !== 'done' || $progress['media']['pending'] > 0}style="display:none"{/if}>
+    <div class="card-header"><h2>{_'Finished'}</h2></div>
+    <div class="card-body">
+        <p>{_'Review the imported content, then decide what to publish.'}</p>
+        <div class="flex items-center gap-2">
+            <a href="/admin/posts" class="btn btn-primary">{_'View posts'}</a>
+            <a href="/admin/import/{$import['id']}/redirects.csv" class="btn btn-secondary">{_'Download redirect map (CSV)'}</a>
+        </div>
+        <p class="form-hint">{_'The redirect map lists every old URL and where it lives now — feed it to your web server, CDN, or the Redirect plugin.'}</p>
+    </div>
+</div>
+
+{if !empty($progress['summary']['warnings'])}
+<div class="card">
+    <div class="card-header"><h2>{_'Warnings'}</h2></div>
+    <div class="card-body">
+        <ul class="text-sm">
+            {foreach $progress['summary']['warnings'] as $warning}<li>{$warning}</li>{/foreach}
+        </ul>
+    </div>
+</div>
+{/if}
+
+<div class="card">
+    <div class="card-header"><h2>{_'Undo'}</h2></div>
+    <div class="card-body">
+        <form method="post" action="/admin/import/{$import['id']}/undo"
+              onsubmit="return confirm('{_'Delete everything this import created?'}')">
+            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+            <button type="submit" class="btn btn-danger">{_'Remove everything this import created'}</button>
+            <small class="form-hint">{_'Only content from this import is touched. Anything you wrote yourself stays.'}</small>
+        </form>
+    </div>
+</div>
+{/block}
+
+{block scripts}
+<script n:syntax="off">
+// Drives the import from the browser. On hosting without cron this is what
+// makes it run at all; where a worker is already running, these ticks simply
+// find the work has been done.
+(function () {
+    var panel = document.getElementById('import-progress');
+    var token = document.querySelector('meta[name="csrf-token"]');
+    if (!panel || !token) return;
+
+    var done = document.getElementById('import-done');
+
+    function set(field, value) {
+        var el = panel.querySelector('[data-field="' + field + '"]');
+        if (el) el.textContent = value;
+    }
+
+    function tick() {
+        fetch(panel.dataset.tickUrl, {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': token.content },
+            credentials: 'same-origin'
+        }).then(function (res) {
+            if (!res.ok) throw new Error('tick failed');
+            return res.json();
+        }).then(function (data) {
+            var p = data.progress;
+            set('status', p.status);
+            set('processed', p.processed);
+            set('created', p.summary.created || 0);
+            set('updated', p.summary.updated || 0);
+            set('media_ready', p.media.ready);
+            set('media_pending', p.media.pending);
+            set('media_failed', p.media.failed);
+
+            var finished = p.status === 'done' && p.media.pending === 0;
+            if (finished) {
+                if (done) done.style.display = '';
+                return;
+            }
+            // Images retry on a backoff, so when nothing is runnable right now
+            // wait a little rather than hammering the endpoint.
+            setTimeout(tick, data.queue.pending > 0 ? 500 : 5000);
+        }).catch(function () {
+            setTimeout(tick, 10000);
+        });
+    }
+
+    tick();
+})();
+</script>
+{/block}

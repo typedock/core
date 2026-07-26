@@ -27,7 +27,10 @@ use TypeDock\Locale\LocaleService;
 use TypeDock\Locale\Translator;
 use TypeDock\Mail\MailService;
 use TypeDock\Media\MediaService;
+use TypeDock\Core\Queue\JobQueue;
+use TypeDock\Core\Queue\JobRunner;
 use TypeDock\Import\ImporterRegistry;
+use TypeDock\Import\ImportService;
 use TypeDock\ExternalSource\ExternalSourceAdapterRegistry;
 use TypeDock\ExternalSource\ExternalSourceService;
 
@@ -305,6 +308,33 @@ class ServiceProvider
             // Core ships no importer of its own — formats arrive as plugins.
             $registry = new ImporterRegistry();
             return $registry;
+        });
+
+        \Flight::map('job_queue', function (): JobQueue {
+            static $queue = null;
+            if ($queue !== null) {
+                return $queue;
+            }
+            $queue = new JobQueue(\Flight::db());
+            return $queue;
+        });
+
+        \Flight::map('imports', function (): ImportService {
+            static $service = null;
+            if ($service !== null) {
+                return $service;
+            }
+            $service = new ImportService(
+                \Flight::db(),
+                \Flight::importers(),
+                \Flight::media_service(),
+                \Flight::job_queue(),
+            );
+            return $service;
+        });
+
+        \Flight::map('job_runner', function (): JobRunner {
+            return JobRunner::withCoreHandlers(\Flight::db(), \Flight::media_service(), \Flight::imports());
         });
     }
 

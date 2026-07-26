@@ -2,6 +2,10 @@
 
 Imports posts, pages, categories and tags from a WordPress export file (WXR).
 
+The usual way in is **Import** in the admin sidebar: it reports what the file
+contains before writing anything, shows progress, and can undo the whole
+import afterwards. Everything below is the command-line equivalent.
+
 ```bash
 # See what the file contains — writes nothing
 php cli/import.php --importer=wordpress export.xml --dry-run
@@ -48,12 +52,22 @@ so you can retry or upload a replacement.
 
 Pass `--skip-media` to keep every image on the old site instead.
 
+## Links and redirects
+
+Links between posts you imported are rewritten to point at their new homes.
+This happens after the last item lands, because only then is it known whether
+a link's target became a post or a page, and what slug it ended up with.
+
+Links to pages you did *not* import stay as they are — the dry run counts
+them.
+
+When the import finishes, download the **redirect map** from the progress
+page: a CSV of every old URL and where it lives now, ready for your web
+server, CDN, or the Redirect plugin.
+
 ## What does not come across yet
 
 The featured image (`_thumbnail_id`) is not migrated.
-
-Absolute links back to the old site are left as they are. The dry run tells
-you how many there are.
 
 ## Re-running is safe
 

@@ -3,8 +3,6 @@ declare(strict_types=1);
 
 namespace TypeDock\Admin;
 
-use TypeDock\Core\Queue\JobRunner;
-
 class QueueController extends BaseAdminController
 {
     /**
@@ -18,7 +16,7 @@ class QueueController extends BaseAdminController
      */
     public function tick(): void
     {
-        $result = JobRunner::withCoreHandlers(\Flight::db(), \Flight::media_service())->run();
+        $result = \Flight::job_runner()->run();
 
         \Flight::json($result);
     }

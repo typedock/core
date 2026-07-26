@@ -1,0 +1,116 @@
+{layout '../../layouts/admin-base.latte'}
+
+{block page_title}{_'Import'}{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <h1>{_'Import content'}</h1>
+        <p class="subtitle">{_'Bring posts, pages and images across from another CMS.'}</p>
+    </div>
+</div>
+
+{if isset($flash_success) && $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if isset($flash_error) && $flash_error}<div class="alert alert-danger">{$flash_error}</div>{/if}
+
+{if empty($importers)}
+    <div class="alert alert-warning">
+        {include 'icon-alert'}
+        <div>
+            <p><strong>{_'No importers are installed.'}</strong></p>
+            <p class="text-sm">{_'Enable an importer plugin under Settings → Modules — the WordPress importer ships with TypeDock.'}</p>
+        </div>
+    </div>
+{else}
+<div class="space-y-6">
+    <div class="card">
+        <div class="card-header"><h2>{_'Upload an export file'}</h2></div>
+        <div class="card-body">
+            <form method="post" action="/admin/import/upload" enctype="multipart/form-data">
+                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                <div class="form-group">
+                    <label for="export_file">{_'Export file (.xml or .xml.gz)'}</label>
+                    <input type="file" id="export_file" name="export_file" accept=".xml,.gz" required>
+                    <small class="form-hint">
+                        {_'This server accepts uploads up to {limit}.', limit: $upload_limit}
+                        {_'A larger export can be copied straight into'} <code>{$upload_dir}</code>
+                        {_'over FTP or SSH — it will show up in the list below.'}
+                    </small>
+                </div>
+                <button type="submit" class="btn btn-primary">{_'Upload'}</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h2>{_'Available files'}</h2></div>
+        {if empty($files)}
+            <div class="card-body">
+                <div class="empty-state">
+                    <h3>{_'No export files yet'}</h3>
+                    <p>{_'Upload one above, or drop it into'} <code>{$upload_dir}</code>.</p>
+                </div>
+            </div>
+        {else}
+            <form method="post" action="/admin/import/scan">
+                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                <table class="data-table border-0 rounded-none shadow-none">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>{_'File'}</th>
+                            <th>{_'Size'}</th>
+                            <th>{_'Uploaded'}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {foreach $files as $i => $file}
+                        <tr>
+                            <td><input type="radio" name="file" value="{$file['name']}" {if $i === 0}checked{/if} required></td>
+                            <td class="font-medium">{$file['name']}</td>
+                            <td>{= number_format($file['size'] / 1048576, 1)} MB</td>
+                            <td class="text-slate-500">{$file['modified']|date:'Y/m/d H:i'}</td>
+                        </tr>
+                        {/foreach}
+                    </tbody>
+                </table>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="importer">{_'Format'}</label>
+                        <select id="importer" name="importer" required>
+                            {foreach $importers as $key => $label}
+                                <option value="{$key}">{$label}</option>
+                            {/foreach}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">{_'Check this file'}</button>
+                    <small class="form-hint">{_'Nothing is written until you confirm on the next screen.'}</small>
+                </div>
+            </form>
+        {/if}
+    </div>
+
+    {if !empty($recent)}
+    <div class="card">
+        <div class="card-header"><h2>{_'Recent imports'}</h2></div>
+        <table class="data-table border-0 rounded-none shadow-none">
+            <thead>
+                <tr><th>{_'File'}</th><th>{_'Format'}</th><th>{_'Status'}</th><th>{_'Items'}</th><th>{_'Started'}</th></tr>
+            </thead>
+            <tbody>
+                {foreach $recent as $row}
+                <tr>
+                    <td><a href="/admin/import/{$row['id']}" class="font-medium">{$row['source_name']}</a></td>
+                    <td>{$row['importer']}</td>
+                    <td><span class="badge {$row['status'] === 'done' ? 'badge-success' : ($row['status'] === 'failed' ? 'badge-danger' : 'badge-muted')}">{$row['status']|translate}</span></td>
+                    <td>{$row['processed']}</td>
+                    <td class="text-slate-500">{$row['created_at']|date:'Y/m/d H:i'}</td>
+                </tr>
+                {/foreach}
+            </tbody>
+        </table>
+    </div>
+    {/if}
+</div>
+{/if}
+{/block}

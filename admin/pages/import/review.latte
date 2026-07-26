@@ -1,0 +1,116 @@
+{layout '../../layouts/admin-base.latte'}
+
+{block page_title}{_'Import'}{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <h1>{_'Review before importing'}</h1>
+        <p class="subtitle">{$file} — {_'nothing has been written yet.'}</p>
+    </div>
+    <a href="/admin/import" class="btn btn-secondary">{_'Choose another file'}</a>
+</div>
+
+<div class="space-y-6">
+    <div class="card">
+        <div class="card-header"><h2>{_'What is in this file'}</h2></div>
+        <table class="data-table border-0 rounded-none shadow-none">
+            <tbody>
+                {foreach $scan->counts as $label => $count}
+                <tr><td class="font-medium">{$label|translate}</td><td>{$count}</td></tr>
+                {/foreach}
+            </tbody>
+        </table>
+    </div>
+
+    {if $scan->unmappedNodes > 0 || !empty($scan->warnings)}
+    <div class="alert alert-warning">
+        {include 'icon-alert'}
+        <div>
+            {if $scan->unmappedNodes > 0}
+                {if $allow_raw_html}
+                    <p><strong>{_'{n} element(s) cannot become blocks and will be kept as raw HTML.', n: $scan->unmappedNodes}</strong></p>
+                {else}
+                    <p><strong>{_'{n} element(s) cannot become blocks, and your account may not publish raw HTML — they will be dropped.', n: $scan->unmappedNodes}</strong></p>
+                    <p class="text-sm">{_'Ask an administrator with the raw HTML permission to run this import if you need them.'}</p>
+                {/if}
+            {/if}
+            {if !empty($scan->warnings)}
+            <ul class="text-sm">
+                {foreach $scan->warnings as $warning}<li>{$warning}</li>{/foreach}
+            </ul>
+            {/if}
+        </div>
+    </div>
+    {/if}
+
+    {if !empty($authors)}
+    <div class="card">
+        <div class="card-header"><h2>{_'Authors'}</h2></div>
+        <table class="data-table border-0 rounded-none shadow-none">
+            <thead><tr><th>{_'In the file'}</th><th>{_'Email'}</th><th>{_'Here'}</th></tr></thead>
+            <tbody>
+                {foreach $authors as $author}
+                <tr>
+                    <td class="font-medium">{$author['name']}</td>
+                    <td class="text-slate-500">{$author['email'] ?? '—'}</td>
+                    <td>
+                        {if $author['matched']}
+                            <span class="badge badge-success">{_'Matched by email'}</span>
+                        {else}
+                            <span class="badge badge-muted">{_'Attributed to you'}</span>
+                        {/if}
+                    </td>
+                </tr>
+                {/foreach}
+            </tbody>
+        </table>
+    </div>
+    {/if}
+
+    <div class="card">
+        <div class="card-header"><h2>{_'Options'}</h2></div>
+        <div class="card-body">
+            <form method="post" action="/admin/import/start">
+                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                <input type="hidden" name="importer" value="{$importer}">
+                <input type="hidden" name="file" value="{$file}">
+                <input type="hidden" name="source_site_url" value="{$scan->sourceSiteUrl ?? ''}">
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="fetch_media" value="1" checked>
+                        {_'Copy images into the media library'}
+                    </label>
+                    <small class="form-hint">{_'Leave this off to keep images on the old site. You can only do this once — turn it off and the old site has to stay online.'}</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="rewrite_links" value="1" checked {if $scan->sourceSiteUrl === null}disabled{/if}>
+                        {_'Point internal links at the imported copies'}
+                    </label>
+                    <small class="form-hint">
+                        {if $scan->sourceSiteUrl !== null}
+                            {_'Links to {url} become local links where the target was imported too.', url: $scan->sourceSiteUrl}
+                        {else}
+                            {_'This file does not say which site it came from, so links cannot be matched.'}
+                        {/if}
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="as_draft" value="1">
+                        {_'Import everything as a draft'}
+                    </label>
+                    <small class="form-hint">{_'Nothing goes live until you publish it. Safest for a first run.'}</small>
+                </div>
+
+                <button type="submit" class="btn btn-primary">{_'Start import'}</button>
+                <small class="form-hint">{_'You can undo the whole import afterwards.'}</small>
+            </form>
+        </div>
+    </div>
+</div>
+{/block}

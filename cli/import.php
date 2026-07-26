@@ -176,13 +176,8 @@ function runContentImport(string $importerKey, string $path, bool $dryRun, bool 
     (new \TypeDock\Core\ServiceProvider())->register();
     (new \TypeDock\Core\PluginLoader())->load();
 
-    $queue   = new \TypeDock\Core\Queue\JobQueue(\Flight::db());
-    $service = new \TypeDock\Import\ImportService(
-        \Flight::db(),
-        \Flight::importers(),
-        \Flight::media_service(),
-        $queue
-    );
+    $queue   = \Flight::job_queue();
+    $service = \Flight::imports();
 
     echo "TypeDock Content Import\n";
     echo "Source:   {$path}\n";
@@ -219,7 +214,13 @@ function runContentImport(string $importerKey, string $path, bool $dryRun, bool 
     }
     echo "\n";
 
-    $options  = new \TypeDock\Import\ImportOptions(asDraft: $asDraft, fetchMedia: $fetchMedia);
+    $options = new \TypeDock\Import\ImportOptions(
+        asDraft: $asDraft,
+        fetchMedia: $fetchMedia,
+        // Known from the scan we just ran; the rewrite itself happens once
+        // every document has landed.
+        sourceSiteUrl: $scan->sourceSiteUrl,
+    );
     $importId = $service->create($importerKey, $path, $options);
 
     try {
@@ -243,7 +244,7 @@ function runContentImport(string $importerKey, string $path, bool $dryRun, bool 
     // command-line import finishes complete.
     if ($fetchMedia && $queue->dueCount() > 0) {
         echo "\nDownloading images…\n";
-        $runner = \TypeDock\Core\Queue\JobRunner::withCoreHandlers(\Flight::db(), \Flight::media_service());
+        $runner = \Flight::job_runner();
         do {
             $tick = $runner->run(60);
             printf("  fetched=%d failed=%d remaining=%d\n", $tick['ran'], $tick['failed'], $tick['pending']);

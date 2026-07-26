@@ -32,6 +32,9 @@ final class ImportWriter
     /** @var array<string, true> Media ids already queued for download this run. */
     private array $queuedMedia = [];
 
+    /** Blocks dropped because the importing user may not publish raw HTML. */
+    private int $droppedRawHtml = 0;
+
     public function __construct(
         private readonly \PDO $pdo,
         private readonly ImportOptions $options,
@@ -50,11 +53,12 @@ final class ImportWriter
     public function write(ImportDocument $doc, string $importerKey, string $batchId): array
     {
         $existingId = $this->findExisting($importerKey, $doc->externalId);
+        $blocks     = $this->applyRawHtmlPolicy($doc->blocks);
 
         $data = [
             'title'        => $doc->title !== '' ? $doc->title : '(untitled)',
             'slug'         => $this->resolveSlug($doc, $existingId),
-            'body'         => ['type' => 'doc', 'content' => $this->attachMedia($doc->blocks, $batchId)],
+            'body'         => ['type' => 'doc', 'content' => $this->attachMedia($blocks, $batchId)],
             'excerpt'      => $doc->excerpt,
             'post_type'    => $doc->type === PostService::TYPE_PAGE ? PostService::TYPE_PAGE : PostService::TYPE_POST,
             'status'       => $this->options->asDraft ? PostService::STATUS_DRAFT : $doc->status,
@@ -81,6 +85,48 @@ final class ImportWriter
         $this->stampProvenance($postId, $importerKey, $doc, $batchId);
 
         return ['action' => $action, 'post_id' => $postId];
+    }
+
+    /** How many raw-HTML blocks this run refused to write. */
+    public function droppedRawHtml(): int
+    {
+        return $this->droppedRawHtml;
+    }
+
+    /**
+     * Enforce the `content:unfiltered_html` capability on imported content.
+     *
+     * The importer's promise is that nothing is lost silently — but a
+     * `custom_html` block written on behalf of someone who is not allowed to
+     * publish raw HTML would be an end-run around that permission. So the
+     * blocks are dropped and *counted*, and the dry run warns before the
+     * import starts rather than after.
+     *
+     * @param  array<int, array<string, mixed>> $blocks
+     * @return array<int, array<string, mixed>>
+     */
+    private function applyRawHtmlPolicy(array $blocks): array
+    {
+        if ($this->options->allowRawHtml) {
+            return $blocks;
+        }
+
+        $kept = [];
+        foreach ($blocks as $block) {
+            if (is_array($block)
+                && ($block['type'] ?? '') === 'componentBlock'
+                && ($block['attrs']['component'] ?? '') === 'custom_html'
+            ) {
+                $this->droppedRawHtml++;
+                continue;
+            }
+            if (is_array($block) && isset($block['content']) && is_array($block['content'])) {
+                $block['content'] = $this->applyRawHtmlPolicy($block['content']);
+            }
+            $kept[] = $block;
+        }
+
+        return $kept;
     }
 
     /**
@@ -209,12 +255,14 @@ final class ImportWriter
     private function stampProvenance(string $postId, string $importerKey, ImportDocument $doc, string $batchId): void
     {
         $this->pdo->prepare(
-            'UPDATE posts SET external_source = ?, external_id = ?, external_parent_id = ?, import_batch_id = ?
+            'UPDATE posts SET external_source = ?, external_id = ?, external_parent_id = ?,
+                              external_url = ?, import_batch_id = ?
               WHERE id = ?'
         )->execute([
             $importerKey,
             $doc->externalId,
             $doc->parentExternalId,
+            $doc->sourceUrl !== '' ? $doc->sourceUrl : null,
             $batchId,
             $postId,
         ]);

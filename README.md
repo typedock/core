@@ -189,13 +189,21 @@ php cli/queue-work.php      # Run background jobs (scheduled publishing, etc.)
 
 ### Importing from WordPress
 
+Go to **Import** in the admin, upload your WordPress export, and check what
+the file contains before anything is written. Exports too large for your
+host's upload limit can be copied into `storage/import/` over FTP instead.
+
+The same thing from the command line:
+
 ```bash
 php cli/import.php --importer=wordpress export.xml --dry-run   # report only
 php cli/import.php --importer=wordpress export.xml             # import
 ```
 
-Posts, pages, categories and tags come across, and images are copied into the
-media library. Re-running the same file updates rather than duplicates. See
+Posts, pages, categories and tags come across, images are copied into the
+media library, and links between imported posts are rewritten to point at
+their new homes. Re-running the same file updates rather than duplicates, and
+an import can be undone in one click. See
 [the plugin's README](plugins/import-wordpress/README.md) for the full list of
 what is and is not migrated.
 

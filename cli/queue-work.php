@@ -5,7 +5,6 @@ define('TYPEDOCK_ROOT', dirname(__DIR__));
 require TYPEDOCK_ROOT . '/vendor/autoload.php';
 
 use TypeDock\Core\PluginLoader;
-use TypeDock\Core\Queue\JobRunner;
 use TypeDock\Core\ServiceProvider;
 
 typedock_load_config(TYPEDOCK_ROOT);
@@ -38,7 +37,7 @@ foreach ($argv as $arg) {
 (new ServiceProvider())->register();
 (new PluginLoader())->load();
 
-$runner = JobRunner::withCoreHandlers(\Flight::db(), \Flight::media_service());
+$runner = \Flight::job_runner();
 
 if ($maxTime > 0) {
     // Cron mode. Returns as soon as the queue is empty, so a per-minute cron

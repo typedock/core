@@ -58,6 +58,19 @@ final class ImportService
         return $id;
     }
 
+    /**
+     * Hand the import to the background worker. The browser tick, cron and a
+     * resident worker all pick it up from here.
+     */
+    public function enqueue(string $importId): void
+    {
+        if ($this->queue === null) {
+            throw new \RuntimeException('This ImportService was built without a job queue.');
+        }
+
+        $this->queue->push('import.ingest', ['import_id' => $importId], $importId);
+    }
+
     /** @return array<string, mixed>|null */
     public function find(string $id): ?array
     {
@@ -142,8 +155,19 @@ final class ImportService
             throw $e;
         }
 
+        if ($writer->droppedRawHtml() > 0) {
+            $summary['dropped_raw_html'] = (int) ($summary['dropped_raw_html'] ?? 0) + $writer->droppedRawHtml();
+        }
+
         if ($exhausted) {
             $summary['parents_resolved'] = $writer->resolvePendingParents($importerKey, $importId);
+
+            // Only now is it known what every document became, which is what
+            // turns an old permalink into a working local link.
+            if ($options->rewriteLinks && $options->sourceSiteUrl !== null) {
+                $summary['links_rewritten'] = (new LinkRewriter($this->pdo))
+                    ->rewriteBatch($importId, $options->sourceSiteUrl);
+            }
         }
 
         $this->persist(
@@ -188,6 +212,100 @@ final class ImportService
             ->execute(['cancelled', $this->now(), $importId]);
 
         return $stmt->rowCount();
+    }
+
+    /**
+     * Everything the progress view needs, in one query per source.
+     *
+     * @return array{status:string, processed:int, summary:array<string,mixed>,
+     *               media:array{pending:int, ready:int, failed:int}}
+     */
+    public function progress(string $importId): array
+    {
+        $row = $this->find($importId);
+        if ($row === null) {
+            throw new \RuntimeException("Import not found: {$importId}");
+        }
+
+        $stmt = $this->pdo->prepare(
+            'SELECT status, COUNT(*) AS n FROM media WHERE import_batch_id = ? GROUP BY status'
+        );
+        $stmt->execute([$importId]);
+
+        $media = ['pending' => 0, 'ready' => 0, 'failed' => 0];
+        foreach ($stmt->fetchAll() as $mediaRow) {
+            $status = (string) $mediaRow['status'];
+            if (array_key_exists($status, $media)) {
+                $media[$status] = (int) $mediaRow['n'];
+            }
+        }
+
+        return [
+            'status'    => (string) $row['status'],
+            'processed' => (int) $row['processed'],
+            'summary'   => $this->decode($row['summary']),
+            'media'     => $media,
+        ];
+    }
+
+    /**
+     * Old URL → new URL for every post the import created.
+     *
+     * Emitted as a CSV the operator feeds to whatever handles redirects on
+     * their side — a plugin, a host control panel, or Cloudflare — rather than
+     * TypeDock reaching into another plugin's tables.
+     *
+     * @return array<int, array{0:string, 1:string}>
+     */
+    public function redirectMap(string $importId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT slug, post_type, external_url FROM posts
+              WHERE import_batch_id = ? AND external_url IS NOT NULL
+              ORDER BY external_url'
+        );
+        $stmt->execute([$importId]);
+
+        $rows = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $from = self::sourcePath((string) $row['external_url']);
+            if ($from === null) {
+                continue;
+            }
+            $rows[] = [
+                $from,
+                (string) $row['post_type'] === \TypeDock\Content\PostService::TYPE_PAGE
+                    ? '/' . $row['slug']
+                    : post_path((string) $row['slug']),
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * The request path a redirect should match, or null when there is nothing
+     * useful to redirect.
+     *
+     * The query string matters here: WordPress permalinks like `/?p=123` have
+     * no path at all, and emitting their path alone would produce a rule that
+     * redirects the site's own home page.
+     */
+    private static function sourcePath(string $url): ?string
+    {
+        $parts = parse_url($url);
+        if ($parts === false) {
+            return null;
+        }
+
+        $path  = (string) ($parts['path'] ?? '');
+        $query = (string) ($parts['query'] ?? '');
+
+        if ($path === '' || $path === '/') {
+            return $query !== '' ? '/?' . $query : null;
+        }
+
+        return $path;
     }
 
     private function importerOrFail(string $key): ImporterInterface
