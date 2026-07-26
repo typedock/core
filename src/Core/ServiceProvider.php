@@ -27,6 +27,7 @@ use TypeDock\Locale\LocaleService;
 use TypeDock\Locale\Translator;
 use TypeDock\Mail\MailService;
 use TypeDock\Media\MediaService;
+use TypeDock\Import\ImporterRegistry;
 use TypeDock\ExternalSource\ExternalSourceAdapterRegistry;
 use TypeDock\ExternalSource\ExternalSourceService;
 
@@ -44,6 +45,7 @@ class ServiceProvider
         $this->registerThemeSettings();
         $this->registerMedia();
         $this->registerMail();
+        $this->registerImporters();
         $this->registerExternalSources();
     }
 
@@ -290,6 +292,19 @@ class ServiceProvider
             }
             $renderer = new ThemeStyleRenderer(\Flight::theme_settings());
             return $renderer;
+        });
+    }
+
+    private function registerImporters(): void
+    {
+        \Flight::map('importers', function (): ImporterRegistry {
+            static $registry = null;
+            if ($registry !== null) {
+                return $registry;
+            }
+            // Core ships no importer of its own — formats arrive as plugins.
+            $registry = new ImporterRegistry();
+            return $registry;
         });
     }
 

@@ -10,9 +10,6 @@ declare(strict_types=1);
 
 $root = dirname(__DIR__);
 define('TYPEDOCK_ROOT', $root);
-if (!defined('TYPEDOCK_VERSION')) {
-    define('TYPEDOCK_VERSION', '1.0.0-rc5');
-}
 
 require $root . '/vendor/autoload.php';
 

@@ -15,6 +15,8 @@ array_shift($argv);
 
 $dryRun    = false;
 $overwrite = false;
+$asDraft   = false;
+$importer  = null;
 $path      = null;
 
 foreach ($argv as $arg) {
@@ -22,6 +24,10 @@ foreach ($argv as $arg) {
         $dryRun = true;
     } elseif ($arg === '--overwrite') {
         $overwrite = true;
+    } elseif ($arg === '--as-draft') {
+        $asDraft = true;
+    } elseif (str_starts_with($arg, '--importer=')) {
+        $importer = substr($arg, 11);
     } elseif ($arg === '--help' || $arg === '-h') {
         printUsage();
         exit(0);
@@ -40,6 +46,13 @@ if ($path === null) {
 if (!is_file($path)) {
     fwrite(STDERR, "File not found: {$path}\n");
     exit(1);
+}
+
+// Content import from another CMS goes through the Import subsystem; without
+// --importer this stays the counterpart of cli/export.php (TypeDock's own
+// JSON dumps of options, menus, slots and redirects).
+if ($importer !== null) {
+    exit(runContentImport($importer, $path, $dryRun, $asDraft));
 }
 
 $json = json_decode((string) file_get_contents($path), true);
@@ -141,6 +154,82 @@ function printUsage(): void
 {
     echo "Usage: php cli/import.php <path-to-export.json> [--dry-run] [--overwrite]\n";
     echo "  Detects kind (site_options|menus|slots|redirects) by filename.\n";
+    echo "\n";
+    echo "       php cli/import.php --importer=<key> <export-file> [--dry-run] [--as-draft]\n";
+    echo "  Import content from another CMS, e.g. --importer=wordpress export.xml\n";
+    echo "  --dry-run   Report what the file contains without writing anything.\n";
+    echo "  --as-draft  Import everything as a draft instead of honouring the source status.\n";
+}
+
+/**
+ * Import content through a registered ImporterInterface.
+ *
+ * Boots services and plugins the same way a web request does — importers ship
+ * as plugins, so nothing is registered without the plugin loader.
+ */
+function runContentImport(string $importerKey, string $path, bool $dryRun, bool $asDraft): int
+{
+    (new \TypeDock\Core\ServiceProvider())->register();
+    (new \TypeDock\Core\PluginLoader())->load();
+
+    $service = new \TypeDock\Import\ImportService(\Flight::db(), \Flight::importers());
+
+    echo "TypeDock Content Import\n";
+    echo "Source:   {$path}\n";
+    echo "Importer: {$importerKey}\n";
+    echo str_repeat('-', 60) . "\n";
+
+    try {
+        $scan = $service->scan($importerKey, $path);
+    } catch (\Throwable $e) {
+        fwrite(STDERR, 'Error: ' . $e->getMessage() . "\n");
+        return 1;
+    }
+
+    foreach ($scan->counts as $label => $count) {
+        printf("  %-12s %d\n", $label, $count);
+    }
+    if ($scan->unmappedNodes > 0) {
+        echo "\n  {$scan->unmappedNodes} element(s) cannot be turned into blocks and will be kept as raw HTML.\n";
+    }
+    foreach (array_slice($scan->warnings, 0, 20) as $warning) {
+        echo "  ! {$warning}\n";
+    }
+    if (count($scan->warnings) > 20) {
+        echo '  ! … and ' . (count($scan->warnings) - 20) . " more\n";
+    }
+
+    if ($dryRun) {
+        echo "\n(dry run — nothing written)\n";
+        return 0;
+    }
+
+    echo "\nImages are left pointing at the source site: fetching them into the media\n";
+    echo "library is not implemented yet. Keep the original site online for now.\n\n";
+
+    $options  = new \TypeDock\Import\ImportOptions(asDraft: $asDraft);
+    $importId = $service->create($importerKey, $path, $options);
+
+    try {
+        do {
+            $result = $service->advance($importId);
+            printf(
+                "  processed=%d created=%d updated=%d failed=%d\n",
+                $result['processed'],
+                $result['created'],
+                $result['updated'],
+                $result['failed']
+            );
+        } while (!$result['done']);
+    } catch (\Throwable $e) {
+        fwrite(STDERR, 'Error: ' . $e->getMessage() . "\n");
+        return 1;
+    }
+
+    echo "\nImport {$importId} complete.\n";
+    echo "Undo with: DELETE FROM posts WHERE import_batch_id = '{$importId}';\n";
+
+    return $result['failed'] > 0 ? 1 : 0;
 }
 
 function detectKindFromShape(array $rows): ?string

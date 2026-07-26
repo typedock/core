@@ -198,18 +198,24 @@ class PostService
     /**
      * Update an existing page.
      *
+     * `$createRevision` exists for bulk writers — re-running an import would
+     * otherwise stack a meaningless revision onto every post in the site. Only
+     * ImportWriter passes false; every editorial path keeps the default so
+     * history stays intact.
+     *
      * @param  array<string, mixed> $data
      * @return array<string, mixed>
      */
-    public function update(string $id, array $data): array
+    public function update(string $id, array $data, bool $createRevision = true): array
     {
         $page = $this->find($id);
         if ($page === null) {
             throw new \TypeDock\Exception\NotFoundException("Page not found: {$id}");
         }
 
-        // Save revision before updating
-        $this->saveRevision($page);
+        if ($createRevision) {
+            $this->saveRevision($page);
+        }
 
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 

@@ -70,6 +70,7 @@ final class MigrationsTest extends TestCase
             'external_source_credentials',
             'locales',
             'jobs',
+            'imports',
             'migrations',
         ];
 

@@ -98,7 +98,11 @@ class SlugValidator
         return $slug;
     }
 
-    private function ensureUnique(string $base, \PDO $pdo, ?string $excludeId = null): string
+    /**
+     * Append `-2`, `-3`, … until the slug is free. Public because the importer
+     * needs "make *this* slug unique" rather than "derive a slug from a title".
+     */
+    public function ensureUnique(string $base, \PDO $pdo, ?string $excludeId = null): string
     {
         $candidate = $base;
         $counter   = 2;

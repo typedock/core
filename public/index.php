@@ -7,10 +7,6 @@ if (!defined('TYPEDOCK_ROOT')) {
 if (!defined('TYPEDOCK_PUBLIC_DIR')) {
     define('TYPEDOCK_PUBLIC_DIR', __DIR__);
 }
-if (!defined('TYPEDOCK_VERSION')) {
-    define('TYPEDOCK_VERSION', '1.0.0-rc5');
-}
-
 if (is_file(TYPEDOCK_ROOT . '/storage/.maintenance')) {
     $state = json_decode((string) @file_get_contents(TYPEDOCK_ROOT . '/storage/.maintenance'), true);
     $token = is_array($state) ? (string) ($state['token'] ?? '') : '';

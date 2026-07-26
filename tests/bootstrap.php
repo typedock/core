@@ -35,6 +35,35 @@ foreach ($envDefaults as $k => $v) {
     }
 }
 
+// Drop-in plugins declare their PSR-4 prefix in plugin.json and PluginLoader
+// registers it at boot. Tests don't boot the loader, so wire the same
+// manifests up here — otherwise every plugin test has to require_once its way
+// through the plugin's source tree.
+spl_autoload_register(static function (string $class): void {
+    static $prefixes = null;
+
+    if ($prefixes === null) {
+        $prefixes = [];
+        foreach (glob(TYPEDOCK_ROOT . '/plugins/*/plugin.json') ?: [] as $manifestPath) {
+            $manifest = json_decode((string) file_get_contents($manifestPath), true);
+            foreach ($manifest['autoload']['psr-4'] ?? [] as $prefix => $dir) {
+                $prefixes[$prefix] = dirname($manifestPath) . '/' . trim((string) $dir, '/') . '/';
+            }
+        }
+    }
+
+    foreach ($prefixes as $prefix => $baseDir) {
+        if (!str_starts_with($class, $prefix)) {
+            continue;
+        }
+        $file = $baseDir . str_replace('\\', '/', substr($class, strlen($prefix))) . '.php';
+        if (is_file($file)) {
+            require $file;
+            return;
+        }
+    }
+});
+
 // Best-effort cleanup of the per-run SQLite file.
 register_shutdown_function(static function () use ($sqlitePath): void {
     if (is_file($sqlitePath)) {

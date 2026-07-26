@@ -10,6 +10,7 @@ use TypeDock\Contract\MediaProcessor;
 use TypeDock\Contract\RedirectResolver;
 use TypeDock\Contract\StorageDriver;
 use TypeDock\ExternalSource\ExternalSourceAdapterInterface;
+use TypeDock\Import\ImporterInterface;
 use TypeDock\Middleware\AuthMiddleware;
 use TypeDock\Middleware\CsrfMiddleware;
 use TypeDock\Plugin\Util\FileCache;
@@ -177,6 +178,16 @@ class PluginContext
     public function registerExternalSourceAdapter(ExternalSourceAdapterInterface $adapter): void
     {
         \Flight::external_source_adapters()->register($adapter);
+    }
+
+    /**
+     * Teach TypeDock to read another CMS's export format. Core owns the
+     * database, resumption and deduplication; the importer only reads a file
+     * and yields documents.
+     */
+    public function registerImporter(ImporterInterface $importer): void
+    {
+        \Flight::importers()->register($importer);
     }
 
     public function onMediaUpload(callable|MediaProcessor $handler): void

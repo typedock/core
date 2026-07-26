@@ -180,12 +180,24 @@ php cli/install.php         # Interactive install
 php cli/migrate.php         # Apply DB migrations
 php cli/cache-clear.php     # Clear template + HTML cache
 php cli/export.php          # Export content to JSON
-php cli/import.php          # Import a previous export
+php cli/import.php          # Import a previous export, or another CMS (--importer=)
 php cli/assets-publish.php  # Copy theme/plugin assets into public/
 php cli/upgrade.php         # Upgrade preflight + agent handoff context
 php cli/seed.php            # Insert demo content
 php cli/queue-work.php      # Run background jobs (scheduled publishing, etc.)
 ```
+
+### Importing from WordPress
+
+```bash
+php cli/import.php --importer=wordpress export.xml --dry-run   # report only
+php cli/import.php --importer=wordpress export.xml             # import
+```
+
+Posts, pages, categories and tags come across; re-running the same file
+updates rather than duplicates. Images still point at the source site for now.
+See [the plugin's README](plugins/import-wordpress/README.md) for the full
+list of what is and is not migrated.
 
 ### Background jobs
 
