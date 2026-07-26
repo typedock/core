@@ -232,6 +232,15 @@ php cli/cache-clear.php
 
 Then clear any host-level cache or CDN cache.
 
+### Everyone was signed out of the admin after upgrading
+
+Expected once, on the release that renamed the cookies. The admin login
+cookie is now `typedock_auth` (was `cms_session`) and the PHP session cookie
+is `typedock_session` (was `PHPSESSID`), so both share a `typedock_` prefix
+and a CDN can bypass the cache for signed-in visitors with one rule. Sign in
+again; nothing else is affected. Override the names with `AUTH_COOKIE_NAME`
+and `SESSION_NAME` in `config.php` if you need the old ones back.
+
 ### Migrations fail
 
 Do not keep browsing the half-upgraded site. Restore the database backup,

@@ -5,21 +5,10 @@ namespace TypeDock\Core;
 
 final class CacheClearer
 {
-    /**
-     * Clear compiled templates and static HTML cache.
-     *
-     * @return array{latte:int, html:int, total:int}
-     */
-    public function clearTemplateCaches(): array
+    /** Clear compiled Latte templates. Returns the number of files deleted. */
+    public function clearTemplateCaches(): int
     {
-        $latte = $this->clearDirectory((string) config('cache.latte_dir', TYPEDOCK_ROOT . '/storage/cache/latte'));
-        $html  = $this->clearDirectory((string) config('cache.html_dir', TYPEDOCK_ROOT . '/storage/cache/html'));
-
-        return [
-            'latte' => $latte,
-            'html'  => $html,
-            'total' => $latte + $html,
-        ];
+        return $this->clearDirectory((string) config('cache.latte_dir', TYPEDOCK_ROOT . '/storage/cache/latte'));
     }
 
     private function clearDirectory(string $dir): int

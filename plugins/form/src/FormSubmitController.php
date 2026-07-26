@@ -17,7 +17,11 @@ class FormSubmitController
 
     public function submit(): void
     {
-        (new CsrfMiddleware())->verifyOrFail();
+        // Anonymous submissions are guarded by honeypot + rate limit + captcha
+        // rather than a token; see FormCsrf for the reasoning.
+        if (FormCsrf::required()) {
+            (new CsrfMiddleware())->verifyOrFail();
+        }
 
         $formId = trim((string) ($_POST['form_id'] ?? ''));
         $back   = $this->sanitiseReturnPath((string) ($_POST['return_to'] ?? '/'));
@@ -77,15 +81,15 @@ class FormSubmitController
 
         $this->notifyOwner($form, $_POST);
 
-        $message = (string) ($form['success_message'] ?? '');
-        if ($message === '') {
-            $message = 'Thanks — your submission has been received.';
-        }
         $this->ctx->log()->info('Form submission received', [
             'form_id'       => $formId,
             'submission_id' => $result['submission_id'],
         ]);
-        $this->flash($formId, 'success', $message, [], []);
+
+        // Deliberately no session flash on the happy path: the component
+        // renders the form's own success_message off `?form_submitted=<id>`,
+        // so a successful submission leaves the visitor without a cookie and
+        // the landing page stays shareable between visitors.
         $this->redirect($this->withQueryParam($back, 'form_submitted', $formId));
     }
 
@@ -135,9 +139,7 @@ class FormSubmitController
         if ($formId === '') {
             return;
         }
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        typedock_session_start();
         unset($values['_csrf_token'], $values['cf-turnstile-response'], $values['g-recaptcha-response']);
         $_SESSION['form_flash.' . $formId] = [
             'type'    => $type,

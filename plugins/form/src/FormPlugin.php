@@ -39,6 +39,7 @@ class FormPlugin implements PluginInterface
         $controller = new FormAdminController($ctx);
         $ctx->registerAdminRoute('GET',  '',                [$controller, 'index']);
         $ctx->registerAdminRoute('GET',  'new',             [$controller, 'create']);
+        $ctx->registerAdminRoute('POST', 'settings',        [$controller, 'updateSettings']);
         $ctx->registerAdminRoute('POST', '',                [$controller, 'store']);
         $ctx->registerAdminRoute('GET',  '@id/edit',        fn(string $id) => $controller->edit($id));
         $ctx->registerAdminRoute('POST', '@id',             fn(string $id) => $controller->update($id));

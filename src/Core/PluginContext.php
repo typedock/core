@@ -269,17 +269,13 @@ class PluginContext
     /** Session flash setter. Keys are prefixed per-plugin to avoid collisions. */
     public function flash(string $type, string $message): void
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        typedock_session_start();
         $_SESSION['plugin_flash.' . $this->pluginSlug . '.' . $type] = $message;
     }
 
     public function getFlash(string $type): ?string
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        typedock_session_start();
         $key = 'plugin_flash.' . $this->pluginSlug . '.' . $type;
         $msg = $_SESSION[$key] ?? null;
         unset($_SESSION[$key]);

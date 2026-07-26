@@ -39,9 +39,7 @@ class CsrfMiddleware
             return true;
         }
 
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        typedock_session_start();
         $sessionToken = $_SESSION[self::TOKEN_KEY] ?? null;
         $requestToken = $_POST['_csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
 
@@ -93,9 +91,7 @@ class CsrfMiddleware
 
     public static function generate(): string
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        typedock_session_start();
 
         if (empty($_SESSION[self::TOKEN_KEY])) {
             $_SESSION[self::TOKEN_KEY] = bin2hex(random_bytes(32));

@@ -8,6 +8,25 @@
     <a href="{$admin_url('new')}" class="btn btn-primary">New form</a>
 </div>
 
+<div class="card">
+    <form method="post" action="{$admin_url('settings')}">
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+        <label class="switch">
+            <input type="checkbox" name="verify_csrf" value="1" {if $verify_csrf}checked{/if}>
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+            <span class="switch-label">Verify a CSRF token on every submission</span>
+        </label>
+        <p class="form-hint mt-3">
+            Off by default. Submitting a form spends no privileges — it stores a row and
+            sends a notification, the same for everyone — so a token buys nothing against
+            spam or abuse, which the honeypot, the per-IP rate limit and your captcha
+            provider handle instead. Turning this on issues a token to every visitor, which
+            means a session cookie, which takes pages containing a form out of the CDN cache.
+        </p>
+        <p class="mt-3"><button type="submit" class="btn btn-primary btn-sm">Save settings</button></p>
+    </form>
+</div>
+
 {if empty($forms)}
     <div class="card">
         <p class="text-slate-500">No forms yet. Create one, then insert it from the editor slash menu with Component Block → Form.</p>
