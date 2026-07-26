@@ -140,11 +140,11 @@ class MediaService
                 $fileSize   = $processed['file_size'];
             } else {
                 // Intervention failed — fall back to storing the original as-is.
-                $this->storage->putFile($storagePath, $file['tmp_name']);
+                $this->storeFile($storagePath, $file['tmp_name']);
                 [$width, $height] = $this->getImageDimensions($file['tmp_name']);
             }
         } else {
-            $this->storage->putFile($storagePath, $file['tmp_name']);
+            $this->storeFile($storagePath, $file['tmp_name']);
         }
 
         $id  = \Ramsey\Uuid\Uuid::uuid7()->toString();
@@ -359,11 +359,11 @@ class MediaService
                 $thumbnails = $processed['thumbnails'];
                 $fileSize   = $processed['file_size'];
             } else {
-                $this->storage->putFile($storagePath, $tmpFile);
+                $this->storeFile($storagePath, $tmpFile);
                 [$width, $height] = $this->getImageDimensions($tmpFile);
             }
         } else {
-            $this->storage->putFile($storagePath, $tmpFile);
+            $this->storeFile($storagePath, $tmpFile);
         }
 
         $this->pdo->prepare(
@@ -653,9 +653,24 @@ class MediaService
         };
     }
 
+    /** Same contract as putEncoded(): a failed write must not look like a success. */
+    private function storeFile(string $path, string $localPath): void
+    {
+        if (!$this->storage->putFile($path, $localPath)) {
+            throw new \RuntimeException("Could not write {$path} to storage.");
+        }
+    }
+
     private function putEncoded(string $path, EncodedImageInterface $encoded): void
     {
-        $this->storage->put($path, (string) $encoded);
+        // A storage write can fail for reasons that have nothing to do with
+        // the image — a full disk, a read-only uploads directory, an expired
+        // bucket credential. Ignoring the result records a media row that
+        // says "ready" and points at a file that was never written, which is
+        // indistinguishable from a working import until someone loads the page.
+        if (!$this->storage->put($path, (string) $encoded)) {
+            throw new \RuntimeException("Could not write {$path} to storage.");
+        }
     }
 
     private function imageManager(): ImageManager

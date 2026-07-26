@@ -114,10 +114,21 @@ class SeoService
      */
     public function upsert(string $targetType, ?string $targetId, array $data): array
     {
-        $stmt = $this->pdo->prepare(
-            'SELECT id FROM seo_meta WHERE target_type = ? AND (target_id = ? OR (target_id IS NULL AND ? IS NULL)) LIMIT 1'
-        );
-        $stmt->execute([$targetType, $targetId, $targetId]);
+        // Branch rather than `(target_id = ? OR (target_id IS NULL AND ? IS NULL))`:
+        // PostgreSQL cannot infer a bare parameter's type from `? IS NULL` and
+        // refuses to prepare the statement at all, whatever the value. This is
+        // the same shape findByTarget() already uses.
+        if ($targetId === null) {
+            $stmt = $this->pdo->prepare(
+                'SELECT id FROM seo_meta WHERE target_type = ? AND target_id IS NULL LIMIT 1'
+            );
+            $stmt->execute([$targetType]);
+        } else {
+            $stmt = $this->pdo->prepare(
+                'SELECT id FROM seo_meta WHERE target_type = ? AND target_id = ? LIMIT 1'
+            );
+            $stmt->execute([$targetType, $targetId]);
+        }
         $existing = $stmt->fetch();
         $now      = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
