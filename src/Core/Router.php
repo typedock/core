@@ -278,6 +278,18 @@ class Router
                 $auth->requireAuth('admin');
                 (new SettingsController())->revokeApiKey();
             });
+            \Flight::route('GET /settings/cache', function () use ($auth) {
+                $auth->requireAuth('admin');
+                (new SettingsController())->cache();
+            });
+            \Flight::route('POST /settings/cache', function () use ($auth) {
+                $auth->requireAuth('admin');
+                (new SettingsController())->updateCache();
+            });
+            \Flight::route('POST /settings/cache/clear', function () use ($auth) {
+                $auth->requireAuth('admin');
+                (new SettingsController())->clearCache();
+            });
             \Flight::route('GET /settings/modules', function () use ($auth) {
                 $auth->requireAuth('admin');
                 (new SettingsController())->modules();

@@ -78,7 +78,7 @@ class SessionService
         ]);
 
         // Set HttpOnly cookie
-        $cookieName = (string) config('auth.cookie_name', 'cms_session');
+        $cookieName = (string) config('auth.cookie_name', 'typedock_auth');
         $lifetime   = (int) config('auth.session_lifetime', 86400);
         setcookie($cookieName, $token, [
             'expires'  => time() + $lifetime,
@@ -132,7 +132,7 @@ class SessionService
         $this->pdo->prepare('DELETE FROM sessions WHERE token_hash = ?')
             ->execute([$tokenHash]);
 
-        $cookieName = (string) config('auth.cookie_name', 'cms_session');
+        $cookieName = (string) config('auth.cookie_name', 'typedock_auth');
         setcookie($cookieName, '', [
             'expires'  => time() - 3600,
             'path'     => '/',
@@ -146,7 +146,7 @@ class SessionService
      */
     public function getCurrentUser(): ?array
     {
-        $cookieName = (string) config('auth.cookie_name', 'cms_session');
+        $cookieName = (string) config('auth.cookie_name', 'typedock_auth');
         $token      = $_COOKIE[$cookieName] ?? null;
         if ($token === null || $token === '') {
             return null;

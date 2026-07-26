@@ -16,7 +16,11 @@
     </div>
 {else}
 <form class="td-form" method="post" action="/plugins/form/submit" novalidate>
-    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+    {* Empty for anonymous visitors: issuing a token would open a session and
+       make the whole page uncacheable. See plugins/form/src/FormCsrf.php. *}
+    {if ($csrf_token ?? '') !== ''}
+        <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+    {/if}
     <input type="hidden" name="form_id" value="{$form['id']}">
     <input type="hidden" name="return_to" value="{$returnTo}">
 

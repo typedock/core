@@ -3,9 +3,7 @@ declare(strict_types=1);
 
 namespace TypeDock\Core;
 
-use TypeDock\Middleware\AuthMiddleware;
-use TypeDock\Middleware\CsrfMiddleware;
-use TypeDock\Middleware\CacheMiddleware;
+use TypeDock\Middleware\CacheHeadersMiddleware;
 use TypeDock\Middleware\RedirectMiddleware;
 use TypeDock\Middleware\SecurityHeadersMiddleware;
 
@@ -60,7 +58,7 @@ class App
     private function previewAllowed(): bool
     {
         try {
-            $cookieName = (string) config('auth.cookie_name', 'cms_session');
+            $cookieName = (string) config('auth.cookie_name', 'typedock_auth');
             $token      = $_COOKIE[$cookieName] ?? '';
             if ($token === '') {
                 return false;
@@ -108,6 +106,13 @@ class App
             (new SecurityHeadersMiddleware())->handle();
         });
 
+        // Cache-Control policy. Registered right after the security headers
+        // so redirects and error pages emitted downstream carry it too; any
+        // route that opens a session downgrades it to no-store afterwards.
+        \Flight::before('start', function (): void {
+            (new CacheHeadersMiddleware())->handle();
+        });
+
         // Locale resolution: off by default, opt in via config/app.php
         // (`locale.routing_enabled` = true). When enabled, URL prefixes like
         // /ja/about are stripped before dispatch so existing routes keep
@@ -140,6 +145,7 @@ class App
         };
 
         http_response_code($status);
+        CacheHeadersMiddleware::markPrivate();
 
         if ($status === 403) {
             $this->renderErrorPage('403', $e->getMessage());
@@ -161,8 +167,15 @@ class App
         $this->renderErrorPage('404', 'Page not found');
     }
 
+    /**
+     * Error responses are never handed to a shared cache. A 404 today is
+     * often a page that gets published tomorrow, and caching it at the edge
+     * would outlive the fix by a whole TTL.
+     */
     private function renderErrorPage(string $type, string $message): void
     {
+        CacheHeadersMiddleware::markPrivate();
+
         try {
             /** @var \TypeDock\Theme\LatteFactory $latteFactory */
             $latteFactory = \Flight::get('latte');

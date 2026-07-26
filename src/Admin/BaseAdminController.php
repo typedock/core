@@ -59,9 +59,7 @@ abstract class BaseAdminController
         $out = $filter->filter($body);
         $removed = $filter->getRemoved();
         if ($removed !== []) {
-            if (session_status() === PHP_SESSION_NONE) {
-                session_start();
-            }
+            typedock_session_start();
             $_SESSION['flash_error'] = sprintf(
                 __('Removed %d block(s) you are not allowed to publish: %s. '
                 . 'Ask an editor to add raw HTML on your behalf.'),
@@ -117,9 +115,7 @@ abstract class BaseAdminController
     protected function redirect(string $path, string $message = '', string $type = 'success'): void
     {
         if ($message !== '') {
-            if (session_status() === PHP_SESSION_NONE) {
-                session_start();
-            }
+            typedock_session_start();
             $_SESSION['flash_' . $type] = $message;
         }
         \Flight::redirect($path);
@@ -128,9 +124,7 @@ abstract class BaseAdminController
 
     protected function getFlash(string $type = 'success'): ?string
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        typedock_session_start();
         $key = 'flash_' . $type;
         $msg = $_SESSION[$key] ?? null;
         unset($_SESSION[$key]);

@@ -25,10 +25,6 @@ function clearDir(string $dir): int
     return $count;
 }
 
-$latteDir = TYPEDOCK_ROOT . '/storage/cache/latte';
-$htmlDir  = TYPEDOCK_ROOT . '/storage/cache/html';
-
-$count  = clearDir($latteDir);
-$count += clearDir($htmlDir);
+$count = clearDir(TYPEDOCK_ROOT . '/storage/cache/latte');
 
 echo "Cache cleared ({$count} files deleted).\n";

@@ -19,6 +19,8 @@ if (is_file(TYPEDOCK_ROOT . '/storage/.maintenance')) {
         http_response_code(503);
         header('Retry-After: 60');
         header('Content-Type: text/html; charset=utf-8');
+        // Never let a CDN hold on to the maintenance page after the site is back.
+        header('Cache-Control: private, no-store');
         $page = TYPEDOCK_ROOT . '/storage/.maintenance.html';
         if (is_file($page)) {
             readfile($page);
@@ -127,10 +129,18 @@ try {
     http_response_code(403);
     \TypeDock\Core\ErrorPage::render('403', $e->getMessage());
 } catch (\Throwable $e) {
-    http_response_code(500);
-    if ($debug) {
+    // A CSRF mismatch (419) reaches here rather than App::handleError()
+    // because Flight lets it escape start(). Surfacing it as 419 with the
+    // theme's 403 page beats "Internal Server Error" for what is usually
+    // just a form left open until the session expired.
+    if ($e instanceof \TypeDock\Exception\TypeDockException && (int) $e->getCode() === 419) {
+        http_response_code(419);
+        \TypeDock\Core\ErrorPage::render('403', 'Your session expired. Please reload the page and try again.');
+    } elseif ($debug) {
+        http_response_code(500);
         TypeDock\Core\DebugRenderer::render($e);
     } else {
+        http_response_code(500);
         error_log('[TypeDock] ' . $e::class . ': ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
         \TypeDock\Core\ErrorPage::render('500', 'Internal Server Error');
     }

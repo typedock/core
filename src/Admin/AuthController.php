@@ -63,9 +63,7 @@ class AuthController
         if (str_starts_with($result, 'NEEDS_2FA:')) {
             $userId = substr($result, 10);
             // Store user_id in PHP session for 2FA step
-            if (session_status() === PHP_SESSION_NONE) {
-                session_start();
-            }
+            typedock_session_start();
             $_SESSION['pending_2fa_user_id'] = $userId;
 
             // Send 2FA code
@@ -86,9 +84,7 @@ class AuthController
 
     public function showTwoFactor(): void
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        typedock_session_start();
 
         if (empty($_SESSION['pending_2fa_user_id'])) {
             \Flight::redirect('/admin/login');
@@ -106,9 +102,7 @@ class AuthController
 
     public function processTwoFactor(): void
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        typedock_session_start();
 
         $userId = $_SESSION['pending_2fa_user_id'] ?? null;
         if ($userId === null) {
@@ -157,7 +151,7 @@ class AuthController
 
     public function logout(): void
     {
-        $cookieName = (string) config('auth.cookie_name', 'cms_session');
+        $cookieName = (string) config('auth.cookie_name', 'typedock_auth');
         $token      = $_COOKIE[$cookieName] ?? '';
         if ($token !== '') {
             \Flight::session()->logout($token);
@@ -167,7 +161,7 @@ class AuthController
 
     private function isLoggedIn(): bool
     {
-        $cookieName = (string) config('auth.cookie_name', 'cms_session');
+        $cookieName = (string) config('auth.cookie_name', 'typedock_auth');
         $token      = $_COOKIE[$cookieName] ?? null;
         if ($token === null) {
             return false;

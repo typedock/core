@@ -106,7 +106,7 @@ class AuthMiddleware
 
     private function getCurrentUser(): ?array
     {
-        $cookieName = config('auth.cookie_name', 'cms_session');
+        $cookieName = config('auth.cookie_name', 'typedock_auth');
         $token      = $_COOKIE[$cookieName] ?? null;
 
         if ($token === null || $token === '') {

@@ -6,6 +6,7 @@ namespace TypeDock\Admin;
 use League\CommonMark\CommonMarkConverter;
 use TypeDock\Auth\ApiKeyService;
 use TypeDock\Core\AssetPublisher;
+use TypeDock\Middleware\CacheHeadersMiddleware;
 
 class SettingsController extends BaseAdminController
 {
@@ -236,9 +237,7 @@ class SettingsController extends BaseAdminController
         }
 
         $created = \Flight::apikey()->create((string) ($user['id'] ?? ''), $name, $permissions, $expiresAt);
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        typedock_session_start();
         $_SESSION['new_api_key'] = $created['key'];
         $this->redirect('/admin/settings/api', __('API key created. Copy it now; it will not be shown again.'));
     }
@@ -297,9 +296,7 @@ class SettingsController extends BaseAdminController
 
     private function consumeApiKeyFlash(): ?string
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        typedock_session_start();
         $value = $_SESSION['new_api_key'] ?? null;
         unset($_SESSION['new_api_key']);
         return is_string($value) ? $value : null;
@@ -323,6 +320,60 @@ class SettingsController extends BaseAdminController
         }
         unset($key);
         return $keys;
+    }
+
+    /**
+     * Settings -> Cache. Owns the public (CDN) cache header policy and the
+     * on-disk template/HTML cache maintenance action.
+     */
+    public function cache(): void
+    {
+        $settings = CacheHeadersMiddleware::settings();
+
+        $this->render('pages/settings/cache.latte', [
+            'cache'          => $settings,
+            // What a cacheable public page would actually send right now.
+            'header_preview' => CacheHeadersMiddleware::decide('GET', '/', false, $settings)
+                ?? __('(no header sent)'),
+            'session_cookie' => typedock_session_cookie_name(),
+            'auth_cookie'    => (string) config('auth.cookie_name', 'typedock_auth'),
+            'flash_success'  => $this->getFlash('success'),
+            'flash_error'    => $this->getFlash('error'),
+        ]);
+    }
+
+    public function updateCache(): void
+    {
+        // An env-locked install ignores the switch entirely, so don't let a
+        // POST write a misleading `false` into site_options behind its back.
+        if (!(bool) config('cache.public_headers', false)) {
+            $this->setOption('cache.public_headers', isset($_POST['public_headers']), 'cache');
+        }
+
+        $this->setOption('cache.edge_ttl', CacheHeadersMiddleware::clampTtl($_POST['edge_ttl'] ?? 600), 'cache');
+        $this->setOption('cache.browser_ttl', CacheHeadersMiddleware::clampTtl($_POST['browser_ttl'] ?? 0), 'cache');
+        $this->setOption(
+            'cache.stale_while_revalidate',
+            CacheHeadersMiddleware::clampTtl($_POST['stale_while_revalidate'] ?? 86400),
+            'cache'
+        );
+
+        $this->redirect('/admin/settings/cache', __('Cache settings saved.'));
+    }
+
+    public function clearCache(): void
+    {
+        try {
+            $result = (new \TypeDock\Core\CacheClearer())->clearTemplateCaches();
+        } catch (\Throwable $e) {
+            $this->redirect('/admin/settings/cache', __('Failed to clear cache:') . ' ' . $e->getMessage(), 'error');
+            return;
+        }
+
+        $this->redirect('/admin/settings/cache', sprintf(
+            __('Cache cleared (%d files deleted).'),
+            $result
+        ));
     }
 
     public function modules(): void

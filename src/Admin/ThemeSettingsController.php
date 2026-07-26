@@ -70,7 +70,7 @@ class ThemeSettingsController extends BaseAdminController
 
         $this->redirect('/admin/theme-settings', sprintf(
             'Template cache cleared (%d files deleted).',
-            $result['total']
+            $result
         ));
     }
 }

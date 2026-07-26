@@ -77,11 +77,26 @@ return [
     // leave stale compiled templates behind. Set false only for tightly
     // controlled deployments that clear cache during release.
     'LATTE_AUTO_REFRESH' => 'true',
-    'CACHE_STATIC_HTML' => 'false',
-    'CACHE_TTL'         => '3600',
+
+    // Public (CDN) cache headers. Normally managed from Settings -> Cache in
+    // the admin; setting CACHE_PUBLIC_HEADERS to 'true' here forces the
+    // feature on and locks the admin switch. The TTLs below are only the
+    // defaults for a site that has never saved that form.
+    //   CACHE_EDGE_TTL    -> s-maxage (how long a CDN may serve the page)
+    //   CACHE_BROWSER_TTL -> max-age  (keep at 0 so edits appear after a purge)
+    'CACHE_PUBLIC_HEADERS'         => 'false',
+    'CACHE_EDGE_TTL'               => '600',
+    'CACHE_BROWSER_TTL'            => '0',
+    'CACHE_STALE_WHILE_REVALIDATE' => '86400',
 
     // --- Auth ---
     'SESSION_LIFETIME' => '86400',
+    // Cookie names. Both start with `typedock_` so a CDN can bypass the cache
+    // for signed-in visitors with a single rule.
+    //   SESSION_NAME     -> PHP session (CSRF tokens, flash messages)
+    //   AUTH_COOKIE_NAME -> admin login session
+    'SESSION_NAME'     => 'typedock_session',
+    'AUTH_COOKIE_NAME' => 'typedock_auth',
     'AUTH_TWO_FACTOR'  => 'false',
     'AUTH_HASH_ALGO'   => 'bcrypt',
 

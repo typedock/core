@@ -170,6 +170,26 @@ if (!function_exists('typedock_is_https')) {
     }
 }
 
+if (!function_exists('typedock_session_cookie_name')) {
+    /**
+     * Name of the PHP session cookie. A TypeDock-specific name (rather than
+     * the default PHPSESSID) lets operators write a single "bypass the cache
+     * when this cookie is present" rule at the CDN. Override with the
+     * SESSION_NAME env var; invalid names fall back to the default because
+     * PHP only accepts alphanumerics here.
+     */
+    function typedock_session_cookie_name(): string
+    {
+        $name = (string) ($_ENV['SESSION_NAME'] ?? getenv('SESSION_NAME') ?: '');
+
+        if ($name === '' || ctype_digit($name) || preg_match('/^[A-Za-z0-9_]{1,64}$/', $name) !== 1) {
+            return 'typedock_session';
+        }
+
+        return $name;
+    }
+}
+
 if (!function_exists('typedock_configure_session_cookie')) {
     /**
      * Apply hardened session cookie defaults at runtime. Called once from
@@ -182,6 +202,16 @@ if (!function_exists('typedock_configure_session_cookie')) {
      *     navigation (works with admin login redirect chains).
      *   - Secure: only over real HTTPS, including TLS-terminating proxies.
      *
+     * Also pins PHP's session cache limiter to `nocache`. That is already the
+     * stock default, but it is a php.ini setting a shared host can change —
+     * `session.cache_limiter = public` would have PHP stamp
+     * `Cache-Control: public, max-age=...` on admin responses. Pinning it
+     * removes that variable, and keeps PHP's automatic downgrade as a
+     * backstop for any code that opens a session without going through
+     * typedock_session_start(). CacheHeadersMiddleware still has the final
+     * word: it runs after session_start() and replaces the header with its
+     * own value.
+     *
      * Idempotent — safe to call multiple times. No-op if a session has
      * already been started (PHP cannot change the params after that point).
      */
@@ -190,6 +220,9 @@ if (!function_exists('typedock_configure_session_cookie')) {
         if (session_status() !== PHP_SESSION_NONE) {
             return;
         }
+
+        session_name(typedock_session_cookie_name());
+        session_cache_limiter('nocache');
 
         $lifetime = (int) ($_ENV['SESSION_LIFETIME'] ?? getenv('SESSION_LIFETIME') ?: 0);
         if ($lifetime < 0) {
@@ -204,6 +237,30 @@ if (!function_exists('typedock_configure_session_cookie')) {
             'httponly' => true,
             'samesite' => 'Lax',
         ]);
+    }
+}
+
+if (!function_exists('typedock_session_start')) {
+    /**
+     * Start (or adopt) the PHP session and mark the response uncacheable.
+     *
+     * Every session_start() in TypeDock goes through here so the invariant
+     * holds structurally: a response that can carry per-visitor state — a
+     * CSRF token, a flash message, an admin screen — is never offered to a
+     * shared cache, whichever code path opened the session.
+     */
+    function typedock_session_start(): bool
+    {
+        $started = true;
+
+        if (session_status() === PHP_SESSION_NONE) {
+            typedock_configure_session_cookie();
+            $started = session_start();
+        }
+
+        \TypeDock\Middleware\CacheHeadersMiddleware::markPrivate();
+
+        return $started;
     }
 }
 

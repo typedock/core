@@ -1,0 +1,105 @@
+{layout '../../layouts/admin-base.latte'}
+
+{block page_title}{_'Cache Settings'}{/block}
+
+{block content}
+<div class="page-header">
+    <div>
+        <h1>{_'Cache Settings'}</h1>
+        <p class="subtitle">{_'Control the cache headers sent to visitors and CDNs, and clear the caches TypeDock keeps on disk.'}</p>
+    </div>
+</div>
+
+<nav class="tabs">
+    <a href="/admin/settings/general">{_'General'}</a>
+    <a href="/admin/settings/seo">{_'SEO'}</a>
+    <a href="/admin/settings/mail">{_'Mail'}</a>
+    <a href="/admin/settings/api">{_'API'}</a>
+    <a href="/admin/settings/modules">{_'Modules'}</a>
+    <a href="/admin/settings/cache" class="is-active">{_'Cache'}</a>
+</nav>
+
+{if isset($flash_success) && $flash_success}<div class="alert alert-success">{$flash_success}</div>{/if}
+{if isset($flash_error) && $flash_error}<div class="alert alert-danger">{$flash_error}</div>{/if}
+
+<div class="space-y-6">
+    <div class="card max-w-3xl">
+        <div class="card-header"><h2>{_'Public cache headers'}</h2></div>
+        <div class="card-body">
+            <form method="post" action="/admin/settings/cache">
+                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+
+                <label class="switch">
+                    <input type="checkbox" name="public_headers" value="1"
+                           {$cache['enabled'] ? 'checked' : ''}
+                           {$cache['env_locked'] ? 'disabled' : ''}>
+                    <span>{_'Send public cache headers on front-end pages'}</span>
+                </label>
+                {if $cache['env_locked']}
+                    <small class="form-hint">{_'Enabled by configuration (CACHE_PUBLIC_HEADERS), so this switch is locked on.'}</small>
+                {else}
+                    <small class="form-hint">{_'When off, TypeDock sends no Cache-Control on public pages and most CDNs will not store your HTML. Turn this on when a CDN sits in front of the site.'}</small>
+                {/if}
+
+                <div class="columns mt-6">
+                    <div class="form-group">
+                        <label for="edge_ttl">{_'CDN TTL'}</label>
+                        <input type="number" id="edge_ttl" name="edge_ttl" min="0" max="31536000"
+                               value="{$cache['edge_ttl']}">
+                        <small class="form-hint">{_'Seconds a CDN may serve the page without asking TypeDock again (s-maxage).'}</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="browser_ttl">{_'Browser TTL'}</label>
+                        <input type="number" id="browser_ttl" name="browser_ttl" min="0" max="31536000"
+                               value="{$cache['browser_ttl']}">
+                        <small class="form-hint">{_'Seconds a visitor\'s browser may reuse the page (max-age). Keep this at 0 so edits become visible as soon as the CDN is purged.'}</small>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="stale_while_revalidate">{_'Serve stale while revalidating'}</label>
+                    <input type="number" id="stale_while_revalidate" name="stale_while_revalidate" min="0" max="31536000"
+                           value="{$cache['stale_while_revalidate']}">
+                    <small class="form-hint">{_'Seconds a CDN may keep serving an expired page while it fetches a fresh copy in the background. Set to 0 to disable.'}</small>
+                </div>
+
+                <div class="form-group">
+                    <label>{_'Header sent on a cacheable page'}</label>
+                    <code class="font-mono text-xs">Cache-Control: {$header_preview}</code>
+                </div>
+
+                <div class="mt-6">
+                    <button type="submit" class="btn btn-primary">{_'Save Changes'}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card max-w-3xl">
+        <div class="card-header"><h2>{_'What is never cached'}</h2></div>
+        <div class="card-body">
+            <p class="form-hint">{_'These responses always get'} <code>private, no-store</code>{_', whatever the settings above say:'}</p>
+            <p class="text-sm mt-3">{_'Anything under'} <code>/admin</code> {_'or'} <code>/api</code>{_', and every non-GET request.'}</p>
+            <p class="text-sm mt-3">{_'Requests carrying'} <code>{$auth_cookie}</code> {_'(signed in) or'} <code>{$session_cookie}</code> {_'(a form token or flash message).'}</p>
+            <p class="text-sm mt-3">{_'Error pages and the maintenance page.'}</p>
+            <p class="form-hint mt-4">
+                {_'Add a bypass rule for those two cookies at your CDN as well, so a signed-in editor never fills the shared cache with a page meant only for them.'}
+            </p>
+            <p class="form-hint mt-3">
+                {_'Pages containing a form stay cacheable: submissions are guarded by honeypot, rate limit and captcha instead of a per-visitor token. Turning on strict CSRF verification under Forms makes those pages uncacheable again.'}
+            </p>
+        </div>
+    </div>
+
+    <div class="card max-w-3xl">
+        <div class="card-header"><h2>{_'Template cache'}</h2></div>
+        <div class="card-body">
+            <p class="form-hint">{_'Clear compiled Latte templates. This does not purge your CDN — do that from the CDN dashboard.'}</p>
+            <form method="post" action="/admin/settings/cache/clear" class="mt-4">
+                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                <button type="submit" class="btn btn-secondary">{_'Clear cache'}</button>
+            </form>
+        </div>
+    </div>
+</div>
+{/block}

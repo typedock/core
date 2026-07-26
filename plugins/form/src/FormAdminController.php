@@ -24,9 +24,21 @@ class FormAdminController
     {
         $this->ctx->view('templates/admin/index.latte', [
             'forms'         => $this->service()->listForms(),
+            'verify_csrf'   => (bool) $this->ctx->getSiteOption(FormCsrf::OPTION),
             'flash_success' => $this->ctx->getFlash('success'),
             'flash_error'   => $this->ctx->getFlash('error'),
         ]);
+    }
+
+    /**
+     * Strict mode: verify a CSRF token on every submission, including
+     * anonymous ones. Off by default because it forces a session cookie onto
+     * every visitor who sees a form, which takes those pages out of the CDN.
+     */
+    public function updateSettings(): void
+    {
+        $this->ctx->setSiteOption(FormCsrf::OPTION, isset($_POST['verify_csrf']), 'plugin.form');
+        $this->ctx->redirect($this->ctx->adminUrl(), 'Form settings saved.');
     }
 
     public function create(): void
