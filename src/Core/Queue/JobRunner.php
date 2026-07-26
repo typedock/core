@@ -4,6 +4,8 @@ declare(strict_types=1);
 namespace TypeDock\Core\Queue;
 
 use TypeDock\Content\PublishScheduledPostsJob;
+use TypeDock\Import\ImportMediaJob;
+use TypeDock\Media\MediaService;
 
 /**
  * Drains the queue for a bounded slice of time.
@@ -41,10 +43,11 @@ final class JobRunner
      * The handler set Core ships with. Shared by the HTTP tick and
      * `cli/queue-work.php` so the two can never drift apart.
      */
-    public static function withCoreHandlers(\PDO $pdo): self
+    public static function withCoreHandlers(\PDO $pdo, MediaService $media): self
     {
         $runner = new self(new JobQueue($pdo));
         $runner->register('posts.publish_scheduled', new PublishScheduledPostsJob($pdo), 60);
+        $runner->register('import.media', new ImportMediaJob($pdo, $media));
 
         return $runner;
     }

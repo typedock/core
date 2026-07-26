@@ -25,15 +25,32 @@ Gzipped exports (`export.xml.gz`) work without unpacking them first.
 | Author | Matched to an existing account by email address |
 | Page parents | Resolved after the import, so a child listed before its parent still links up |
 | Hand-written excerpts | Excerpt (auto-generated "[…]" ones are skipped) |
+| Inline images | Downloaded into the media library, thumbnails and all |
 
 Trashed posts, attachments and custom post types are not imported. Neither are
 comments, custom fields, menus or users — the same line other CMS migration
 tools draw.
 
+## Images
+
+Images found in post bodies are copied into the media library, resized and
+given the same thumbnails and WebP siblings as an ordinary upload. Each image
+is fetched once however many posts use it, and WordPress's `-300x200` size
+suffixes are normalised away so you get the original.
+
+Downloads run in the background: a large site keeps fetching after the import
+command finishes. Run `php cli/queue-work.php` (or set up cron — see the main
+README) to work through the queue.
+
+An image that cannot be fetched after several tries is left pointing at your
+old site rather than at a broken link, and the media row keeps the source URL
+so you can retry or upload a replacement.
+
+Pass `--skip-media` to keep every image on the old site instead.
+
 ## What does not come across yet
 
-**Images still point at your WordPress site.** Downloading them into the media
-library is not implemented, so keep the old site online for now.
+The featured image (`_thumbnail_id`) is not migrated.
 
 Absolute links back to the old site are left as they are. The dry run tells
 you how many there are.

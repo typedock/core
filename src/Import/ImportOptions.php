@@ -11,6 +11,13 @@ final class ImportOptions
         /** Author used when the source author has no matching TypeDock account. */
         public readonly ?string $defaultAuthorId = null,
         public readonly string $locale = 'en',
+        /**
+         * Copy images into the media library. Turning this off leaves them
+         * pointing at the source site — a reasonable choice when migrating
+         * away from a host that will stay online, and the only choice when
+         * the source is behind a login.
+         */
+        public readonly bool $fetchMedia = true,
     ) {
     }
 
@@ -21,6 +28,7 @@ final class ImportOptions
             (bool) ($data['as_draft'] ?? false),
             isset($data['default_author_id']) ? (string) $data['default_author_id'] : null,
             (string) ($data['locale'] ?? typedock_default_locale()),
+            (bool) ($data['fetch_media'] ?? true),
         );
     }
 
@@ -31,6 +39,7 @@ final class ImportOptions
             'as_draft'          => $this->asDraft,
             'default_author_id' => $this->defaultAuthorId,
             'locale'            => $this->locale,
+            'fetch_media'       => $this->fetchMedia,
         ];
     }
 }

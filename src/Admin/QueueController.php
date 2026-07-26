@@ -18,7 +18,7 @@ class QueueController extends BaseAdminController
      */
     public function tick(): void
     {
-        $result = JobRunner::withCoreHandlers(\Flight::db())->run();
+        $result = JobRunner::withCoreHandlers(\Flight::db(), \Flight::media_service())->run();
 
         \Flight::json($result);
     }

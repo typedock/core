@@ -238,57 +238,11 @@ final class GenericJsonAdapter implements ExternalSourceAdapterInterface
 
     private function assertPublicHttpUrl(string $url): void
     {
-        $parts = parse_url($url);
-        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
-        $host = strtolower((string) ($parts['host'] ?? ''));
-        if (!in_array($scheme, ['http', 'https'], true) || $host === '') {
-            throw new \RuntimeException('Generic JSON endpoint must be an http(s) URL.');
+        try {
+            \TypeDock\Http\UrlGuard::inspect($url);
+        } catch (\Throwable $e) {
+            throw new \RuntimeException('Generic JSON endpoint: ' . $e->getMessage(), 0, $e);
         }
-        if (isset($parts['user']) || isset($parts['pass'])) {
-            throw new \RuntimeException('Generic JSON endpoint must not include credentials in the URL.');
-        }
-        if ($this->isBlockedHost($host)) {
-            throw new \RuntimeException('Generic JSON endpoint host is not allowed.');
-        }
-        foreach ($this->resolveHostIps($host) as $ip) {
-            if ($this->isPrivateIp($ip)) {
-                throw new \RuntimeException('Generic JSON endpoint resolves to a private or reserved IP address.');
-            }
-        }
-    }
-
-    private function isBlockedHost(string $host): bool
-    {
-        return $host === 'localhost' || str_ends_with($host, '.localhost');
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function resolveHostIps(string $host): array
-    {
-        if (filter_var($host, FILTER_VALIDATE_IP)) {
-            return [$host];
-        }
-        $records = @dns_get_record($host, DNS_A + DNS_AAAA);
-        if (is_array($records) && $records !== []) {
-            $ips = [];
-            foreach ($records as $record) {
-                foreach (['ip', 'ipv6'] as $key) {
-                    if (isset($record[$key]) && is_string($record[$key])) {
-                        $ips[] = $record[$key];
-                    }
-                }
-            }
-            return array_values(array_unique($ips));
-        }
-        $fallback = @gethostbynamel($host);
-        return is_array($fallback) ? $fallback : [];
-    }
-
-    private function isPrivateIp(string $ip): bool
-    {
-        return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false;
     }
 
     private function path(mixed $value, string $path): mixed

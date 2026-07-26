@@ -194,10 +194,10 @@ php cli/import.php --importer=wordpress export.xml --dry-run   # report only
 php cli/import.php --importer=wordpress export.xml             # import
 ```
 
-Posts, pages, categories and tags come across; re-running the same file
-updates rather than duplicates. Images still point at the source site for now.
-See [the plugin's README](plugins/import-wordpress/README.md) for the full
-list of what is and is not migrated.
+Posts, pages, categories and tags come across, and images are copied into the
+media library. Re-running the same file updates rather than duplicates. See
+[the plugin's README](plugins/import-wordpress/README.md) for the full list of
+what is and is not migrated.
 
 ### Background jobs
 

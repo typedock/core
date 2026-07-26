@@ -10,6 +10,8 @@ use TypeDock\Core\Queue\Job;
 use TypeDock\Core\Queue\JobHandler;
 use TypeDock\Core\Queue\JobQueue;
 use TypeDock\Core\Queue\JobRunner;
+use TypeDock\Media\MediaService;
+use TypeDock\Storage\LocalStorage;
 
 /**
  * Exercises the queue against a real migrated SQLite database — the driver
@@ -197,7 +199,8 @@ final class JobQueueTest extends TestCase
         $due    = $this->insertScheduledPost('due-post', '-1 hour');
         $future = $this->insertScheduledPost('future-post', '+1 hour');
 
-        $result = JobRunner::withCoreHandlers($this->pdo)->run(5);
+        $media  = new MediaService($this->pdo, new LocalStorage(['root' => sys_get_temp_dir(), 'url' => '/uploads']));
+        $result = JobRunner::withCoreHandlers($this->pdo, $media)->run(5);
         $this->assertSame(1, $result['ran'], 'The recurring publisher should have been created and run');
         $this->assertSame(0, $result['pending'], 'The re-armed publisher is not due again yet');
 

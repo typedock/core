@@ -8,6 +8,8 @@ use TypeDock\Content\PostService;
 use TypeDock\Content\SlugValidator;
 use TypeDock\Content\TagService;
 use TypeDock\Content\TermSlugger;
+use TypeDock\Core\Queue\JobQueue;
+use TypeDock\Media\MediaService;
 
 /**
  * Turns an ImportDocument into a row in `posts`.
@@ -27,9 +29,14 @@ final class ImportWriter
     /** @var array<string, ?string> Author email => user id, memoised per run. */
     private array $authorCache = [];
 
+    /** @var array<string, true> Media ids already queued for download this run. */
+    private array $queuedMedia = [];
+
     public function __construct(
         private readonly \PDO $pdo,
         private readonly ImportOptions $options,
+        private readonly ?MediaService $media = null,
+        private readonly ?JobQueue $queue = null,
     ) {
         $this->slugValidator = new SlugValidator();
         $this->posts         = new PostService($this->pdo, $this->slugValidator);
@@ -47,7 +54,7 @@ final class ImportWriter
         $data = [
             'title'        => $doc->title !== '' ? $doc->title : '(untitled)',
             'slug'         => $this->resolveSlug($doc, $existingId),
-            'body'         => ['type' => 'doc', 'content' => $doc->blocks],
+            'body'         => ['type' => 'doc', 'content' => $this->attachMedia($doc->blocks, $batchId)],
             'excerpt'      => $doc->excerpt,
             'post_type'    => $doc->type === PostService::TYPE_PAGE ? PostService::TYPE_PAGE : PostService::TYPE_POST,
             'status'       => $this->options->asDraft ? PostService::STATUS_DRAFT : $doc->status,
@@ -107,6 +114,72 @@ final class ImportWriter
         }
 
         return $resolved;
+    }
+
+    /**
+     * Point every remote image at the media library *before* the body is
+     * written for the first time.
+     *
+     * `reserve()` hands back the row and therefore the final URL without
+     * touching the network, so the body is written once and never revisited —
+     * no bulk rewrite pass over every imported post once the downloads
+     * finish, and no revision churn from one.
+     *
+     * @param  array<int, array<string, mixed>> $blocks
+     * @return array<int, array<string, mixed>>
+     */
+    private function attachMedia(array $blocks, string $batchId): array
+    {
+        if ($this->media === null || !$this->options->fetchMedia) {
+            return $blocks;
+        }
+
+        foreach ($blocks as $index => $block) {
+            if (!is_array($block)) {
+                continue;
+            }
+
+            if (($block['type'] ?? '') === 'image') {
+                $src = (string) ($block['attrs']['src'] ?? '');
+                if (preg_match('#^https?://#i', $src) === 1) {
+                    $reserved = $this->media->reserve(self::originalSizeUrl($src), $batchId);
+                    if ($reserved !== null) {
+                        $blocks[$index]['attrs']['src']     = (string) $reserved['url'];
+                        $blocks[$index]['attrs']['mediaId'] = (string) $reserved['id'];
+                        $this->queueDownload($reserved, $batchId);
+                    }
+                }
+            }
+
+            if (isset($block['content']) && is_array($block['content'])) {
+                $blocks[$index]['content'] = $this->attachMedia($block['content'], $batchId);
+            }
+        }
+
+        return $blocks;
+    }
+
+    /** @param array<string, mixed> $media */
+    private function queueDownload(array $media, string $batchId): void
+    {
+        $id = (string) $media['id'];
+        if ($this->queue === null || (string) $media['status'] !== 'pending' || isset($this->queuedMedia[$id])) {
+            return;
+        }
+
+        $this->queuedMedia[$id] = true;
+        $this->queue->push('import.media', ['media_id' => $id], $batchId);
+    }
+
+    /**
+     * WordPress rewrites `photo.jpg` into `photo-300x200.jpg` for every
+     * registered size; the original is what we want. Both dimensions must be
+     * two digits or more before the suffix is treated as generated — files
+     * genuinely named `chart-1x2.png` exist, and mangling them would 404.
+     */
+    private static function originalSizeUrl(string $url): string
+    {
+        return preg_replace('/-\d{2,}x\d{2,}(\.[a-z0-9]+)$/i', '$1', $url) ?? $url;
     }
 
     private function findExisting(string $importerKey, string $externalId): ?string

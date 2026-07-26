@@ -4,8 +4,9 @@ declare(strict_types=1);
 define('TYPEDOCK_ROOT', dirname(__DIR__));
 require TYPEDOCK_ROOT . '/vendor/autoload.php';
 
-use TypeDock\Core\Database\ConnectionFactory;
+use TypeDock\Core\PluginLoader;
 use TypeDock\Core\Queue\JobRunner;
+use TypeDock\Core\ServiceProvider;
 
 typedock_load_config(TYPEDOCK_ROOT);
 
@@ -31,9 +32,13 @@ foreach ($argv as $arg) {
     }
 }
 
-$db     = require TYPEDOCK_ROOT . '/config/database.php';
-$pdo    = ConnectionFactory::create($db, TYPEDOCK_ROOT);
-$runner = JobRunner::withCoreHandlers($pdo);
+// Boot the same services and plugins a web request does: image jobs run
+// plugin-contributed media processors, so a worker that skipped plugins would
+// quietly produce differently-optimised files than an admin upload.
+(new ServiceProvider())->register();
+(new PluginLoader())->load();
+
+$runner = JobRunner::withCoreHandlers(\Flight::db(), \Flight::media_service());
 
 if ($maxTime > 0) {
     // Cron mode. Returns as soon as the queue is empty, so a per-minute cron

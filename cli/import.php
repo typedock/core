@@ -13,11 +13,12 @@ typedock_load_config(TYPEDOCK_ROOT);
 $argv = $_SERVER['argv'] ?? [];
 array_shift($argv);
 
-$dryRun    = false;
-$overwrite = false;
-$asDraft   = false;
-$importer  = null;
-$path      = null;
+$dryRun     = false;
+$overwrite  = false;
+$asDraft    = false;
+$fetchMedia = true;
+$importer   = null;
+$path       = null;
 
 foreach ($argv as $arg) {
     if ($arg === '--dry-run') {
@@ -26,6 +27,8 @@ foreach ($argv as $arg) {
         $overwrite = true;
     } elseif ($arg === '--as-draft') {
         $asDraft = true;
+    } elseif ($arg === '--skip-media') {
+        $fetchMedia = false;
     } elseif (str_starts_with($arg, '--importer=')) {
         $importer = substr($arg, 11);
     } elseif ($arg === '--help' || $arg === '-h') {
@@ -52,7 +55,7 @@ if (!is_file($path)) {
 // --importer this stays the counterpart of cli/export.php (TypeDock's own
 // JSON dumps of options, menus, slots and redirects).
 if ($importer !== null) {
-    exit(runContentImport($importer, $path, $dryRun, $asDraft));
+    exit(runContentImport($importer, $path, $dryRun, $asDraft, $fetchMedia));
 }
 
 $json = json_decode((string) file_get_contents($path), true);
@@ -157,8 +160,9 @@ function printUsage(): void
     echo "\n";
     echo "       php cli/import.php --importer=<key> <export-file> [--dry-run] [--as-draft]\n";
     echo "  Import content from another CMS, e.g. --importer=wordpress export.xml\n";
-    echo "  --dry-run   Report what the file contains without writing anything.\n";
-    echo "  --as-draft  Import everything as a draft instead of honouring the source status.\n";
+    echo "  --dry-run     Report what the file contains without writing anything.\n";
+    echo "  --as-draft    Import everything as a draft instead of honouring the source status.\n";
+    echo "  --skip-media  Leave images pointing at the source site instead of copying them.\n";
 }
 
 /**
@@ -167,12 +171,18 @@ function printUsage(): void
  * Boots services and plugins the same way a web request does — importers ship
  * as plugins, so nothing is registered without the plugin loader.
  */
-function runContentImport(string $importerKey, string $path, bool $dryRun, bool $asDraft): int
+function runContentImport(string $importerKey, string $path, bool $dryRun, bool $asDraft, bool $fetchMedia): int
 {
     (new \TypeDock\Core\ServiceProvider())->register();
     (new \TypeDock\Core\PluginLoader())->load();
 
-    $service = new \TypeDock\Import\ImportService(\Flight::db(), \Flight::importers());
+    $queue   = new \TypeDock\Core\Queue\JobQueue(\Flight::db());
+    $service = new \TypeDock\Import\ImportService(
+        \Flight::db(),
+        \Flight::importers(),
+        \Flight::media_service(),
+        $queue
+    );
 
     echo "TypeDock Content Import\n";
     echo "Source:   {$path}\n";
@@ -204,10 +214,12 @@ function runContentImport(string $importerKey, string $path, bool $dryRun, bool 
         return 0;
     }
 
-    echo "\nImages are left pointing at the source site: fetching them into the media\n";
-    echo "library is not implemented yet. Keep the original site online for now.\n\n";
+    if (!$fetchMedia) {
+        echo "\nImages will keep pointing at the source site (--skip-media).\n";
+    }
+    echo "\n";
 
-    $options  = new \TypeDock\Import\ImportOptions(asDraft: $asDraft);
+    $options  = new \TypeDock\Import\ImportOptions(asDraft: $asDraft, fetchMedia: $fetchMedia);
     $importId = $service->create($importerKey, $path, $options);
 
     try {
@@ -224,6 +236,37 @@ function runContentImport(string $importerKey, string $path, bool $dryRun, bool 
     } catch (\Throwable $e) {
         fwrite(STDERR, 'Error: ' . $e->getMessage() . "\n");
         return 1;
+    }
+
+    // Images are queued rather than fetched inline, so that a timed-out or
+    // interrupted run resumes instead of starting over. Drain them here so a
+    // command-line import finishes complete.
+    if ($fetchMedia && $queue->dueCount() > 0) {
+        echo "\nDownloading images…\n";
+        $runner = \TypeDock\Core\Queue\JobRunner::withCoreHandlers(\Flight::db(), \Flight::media_service());
+        do {
+            $tick = $runner->run(60);
+            printf("  fetched=%d failed=%d remaining=%d\n", $tick['ran'], $tick['failed'], $tick['pending']);
+        } while ($tick['pending'] > 0 && ($tick['ran'] > 0 || $tick['failed'] > 0));
+
+        $stmt = \Flight::db()->prepare(
+            'SELECT status, COUNT(*) AS n FROM media WHERE import_batch_id = ? GROUP BY status'
+        );
+        $stmt->execute([$importId]);
+        $byStatus = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $byStatus[(string) $row['status']] = (int) $row['n'];
+        }
+
+        if (($byStatus['pending'] ?? 0) > 0) {
+            // Retries are on an exponential backoff, so a run that hit an
+            // unreachable host exits rather than sitting here sleeping.
+            echo "  {$byStatus['pending']} image(s) still queued — they retry on a backoff.\n";
+            echo "  Run `php cli/queue-work.php` again, or set up cron, to finish them.\n";
+        }
+        if (($byStatus['failed'] ?? 0) > 0) {
+            echo "  {$byStatus['failed']} image(s) gave up; those posts point back at the source site.\n";
+        }
     }
 
     echo "\nImport {$importId} complete.\n";

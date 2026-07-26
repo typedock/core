@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 namespace TypeDock\Import;
 
+use TypeDock\Core\Queue\JobQueue;
+use TypeDock\Media\MediaService;
+
 /**
  * Owns an import run: its row in `imports`, its resume point, and the lock
  * that stops two workers from ingesting the same file at once.
@@ -22,6 +25,8 @@ final class ImportService
     public function __construct(
         private readonly \PDO $pdo,
         private readonly ImporterRegistry $registry,
+        private readonly ?MediaService $media = null,
+        private readonly ?JobQueue $queue = null,
     ) {
     }
 
@@ -96,7 +101,7 @@ final class ImportService
         $summary     = $this->decode($row['summary']);
         $processed   = (int) $row['processed'];
 
-        $writer  = new ImportWriter($this->pdo, $options);
+        $writer  = new ImportWriter($this->pdo, $options, $this->media, $this->queue);
         $created = 0;
         $updated = 0;
         $failed  = 0;
@@ -163,6 +168,19 @@ final class ImportService
      */
     public function undo(string $importId): int
     {
+        // Drop queued downloads first: there is no point fetching images for
+        // posts that are about to disappear, and a job that outlives its media
+        // row is just a guaranteed failure in the log.
+        $this->pdo->prepare('DELETE FROM jobs WHERE batch_id = ?')->execute([$importId]);
+
+        if ($this->media !== null) {
+            $rows = $this->pdo->prepare('SELECT id FROM media WHERE import_batch_id = ?');
+            $rows->execute([$importId]);
+            foreach ($rows->fetchAll(\PDO::FETCH_COLUMN) as $mediaId) {
+                $this->media->delete((string) $mediaId);
+            }
+        }
+
         $stmt = $this->pdo->prepare('DELETE FROM posts WHERE import_batch_id = ?');
         $stmt->execute([$importId]);
 

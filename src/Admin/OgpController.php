@@ -27,18 +27,10 @@ class OgpController
             return;
         }
 
-        $parts = parse_url($url);
-        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
-        $host   = strtolower((string) ($parts['host'] ?? ''));
-        if (!in_array($scheme, ['http', 'https'], true) || $host === '') {
+        $rejection = \TypeDock\Http\UrlGuard::reject($url);
+        if ($rejection !== null) {
             http_response_code(400);
-            echo json_encode(['error' => 'Only http(s) URLs are allowed']);
-            return;
-        }
-
-        if ($this->isPrivateHost($host)) {
-            http_response_code(400);
-            echo json_encode(['error' => 'Host not allowed']);
+            echo json_encode(['error' => $rejection]);
             return;
         }
 
@@ -152,29 +144,6 @@ class OgpController
         $res = @file_get_contents($url, false, $ctx, 0, 512 * 1024);
         if ($res === false) return null;
         return $res;
-    }
-
-    private function isPrivateHost(string $host): bool
-    {
-        // Disallow bare localhost / .local
-        if ($host === 'localhost' || str_ends_with($host, '.local') || str_ends_with($host, '.internal')) {
-            return true;
-        }
-        // If host is an IP, check directly. Otherwise resolve.
-        $ips = filter_var($host, FILTER_VALIDATE_IP)
-            ? [$host]
-            : (gethostbynamel($host) ?: []);
-        if ($ips === []) return true; // DNS failure → refuse.
-        foreach ($ips as $ip) {
-            if (!filter_var(
-                $ip,
-                FILTER_VALIDATE_IP,
-                FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
-            )) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private function cacheDir(): string
