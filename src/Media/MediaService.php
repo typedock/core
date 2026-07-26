@@ -140,11 +140,11 @@ class MediaService
                 $fileSize   = $processed['file_size'];
             } else {
                 // Intervention failed — fall back to storing the original as-is.
-                $this->storage->putFile($storagePath, $file['tmp_name']);
+                $this->storeFile($storagePath, $file['tmp_name']);
                 [$width, $height] = $this->getImageDimensions($file['tmp_name']);
             }
         } else {
-            $this->storage->putFile($storagePath, $file['tmp_name']);
+            $this->storeFile($storagePath, $file['tmp_name']);
         }
 
         $id  = \Ramsey\Uuid\Uuid::uuid7()->toString();
@@ -175,6 +175,232 @@ class MediaService
         ]);
 
         return $this->find($id);
+    }
+
+    /**
+     * Claim a media row — and with it a storage path and public URL — for a
+     * file that has not been downloaded yet.
+     *
+     * This is what lets the importer write a post body exactly once: the URL
+     * an image will have is known while the body is still being built, so
+     * nothing has to go back and rewrite thousands of posts after the
+     * downloads finish. Repeated calls for the same source return the same
+     * row, which is also how one image used by fifty posts is fetched once.
+     *
+     * Returns null when the URL carries no extension we are willing to store;
+     * the caller should leave the original URL in place rather than commit to
+     * a path whose format we would only learn later.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function reserve(string $sourceUrl, ?string $batchId = null): ?array
+    {
+        $sourceUrl = trim($sourceUrl);
+        $hash      = hash('sha256', $sourceUrl);
+
+        $stmt = $this->pdo->prepare('SELECT id FROM media WHERE source_hash = ? LIMIT 1');
+        $stmt->execute([$hash]);
+        $existing = $stmt->fetchColumn();
+        if ($existing !== false) {
+            return $this->find((string) $existing);
+        }
+
+        $path = (string) parse_url($sourceUrl, PHP_URL_PATH);
+        $name = basename($path);
+        $ext  = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+        if ($ext === '' || !in_array($ext, $this->allowedExtensions(), true)) {
+            return null;
+        }
+
+        $id          = \Ramsey\Uuid\Uuid::uuid7()->toString();
+        $now         = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $folder      = '/import/' . self::sourceDateFolder($path);
+        $storagePath = ltrim($folder . '/' . $id . '.' . $ext, '/');
+
+        $this->pdo->prepare(
+            'INSERT INTO media (id, path, original_filename, mime_type, file_size, folder,
+                                source_url, source_hash, status, import_batch_id, created_at)
+             VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)'
+        )->execute([
+            $id,
+            $storagePath,
+            $name !== '' ? $name : $id . '.' . $ext,
+            self::mimeForExtension($ext),
+            $folder,
+            $sourceUrl,
+            $hash,
+            'pending',
+            $batchId,
+            $now,
+        ]);
+
+        return $this->find($id);
+    }
+
+    /**
+     * Reserve a row for an asset the source system identifies by id.
+     *
+     * The id is what a featured image or a gallery points at, so it has to be
+     * a key we can look up later rather than something held in memory for the
+     * duration of an import that may span dozens of requests.
+     *
+     * Deduplication still runs on the URL underneath, so an image used both in
+     * a post body and as its featured image is one row and one download.
+     *
+     * @return array<string, mixed>|null Null when the URL is not something we store.
+     */
+    public function registerExternal(
+        string $importerKey,
+        string $externalId,
+        string $sourceUrl,
+        ?string $batchId = null,
+    ): ?array {
+        $existing = $this->findByExternalId($importerKey, $externalId);
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $row = $this->reserve($sourceUrl, $batchId);
+        if ($row === null) {
+            return null;
+        }
+
+        // `AND external_id IS NULL` guards the case where two source assets
+        // share one URL: the row keeps the first id rather than silently
+        // changing which asset it answers to.
+        $this->pdo->prepare(
+            'UPDATE media SET external_source = ?, external_id = ? WHERE id = ? AND external_id IS NULL'
+        )->execute([$importerKey, $externalId, $row['id']]);
+
+        return $this->find((string) $row['id']);
+    }
+
+    /** @return array<string, mixed>|null */
+    public function findByExternalId(string $importerKey, string $externalId): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT id FROM media WHERE external_source = ? AND external_id = ? LIMIT 1'
+        );
+        $stmt->execute([$importerKey, $externalId]);
+        $id = $stmt->fetchColumn();
+
+        return $id === false ? null : $this->find((string) $id);
+    }
+
+    /**
+     * Keep imported files under the year/month they had on the source site.
+     *
+     * An asset uploaded in 2003 can belong to a post dated 2010, so the source
+     * path is the only honest answer — and keeping it makes old media URLs
+     * mappable to new ones. Falls back to today when the source URL says
+     * nothing.
+     */
+    private static function sourceDateFolder(string $sourcePath): string
+    {
+        if (preg_match('#/(\d{4})/(\d{2})(?:/|$)#', $sourcePath, $m) === 1) {
+            return $m[1] . '/' . $m[2];
+        }
+
+        return date('Y') . '/' . date('m');
+    }
+
+    /**
+     * Put a downloaded file into a reserved row's storage path and mark it
+     * ready. Safe to run twice — the second call simply overwrites the same
+     * path with the same bytes, which is what at-least-once delivery needs.
+     *
+     * @return array<string, mixed>
+     */
+    public function fulfil(string $mediaId, string $tmpFile): array
+    {
+        $media = $this->find($mediaId);
+        if ($media === null) {
+            throw new \RuntimeException("Media row not found: {$mediaId}");
+        }
+
+        $mimeType = $this->detectMimeType($tmpFile);
+        if (!in_array($mimeType, $this->allowedMimeTypes(), true)) {
+            throw new \RuntimeException("Refusing {$mimeType} from {$media['source_url']}.");
+        }
+
+        $storagePath = (string) $media['path'];
+        $ext         = strtolower(pathinfo($storagePath, PATHINFO_EXTENSION));
+        if (self::mimeForExtension($ext) !== $mimeType) {
+            // The reserved path — already baked into published post bodies —
+            // promises a format the response did not deliver. Serving a PNG
+            // as .jpg is the kind of thing that works everywhere until it
+            // doesn't, so treat it as a failure the operator can see.
+            throw new \RuntimeException(
+                "{$media['source_url']} returned {$mimeType} but the reserved path expects .{$ext}."
+            );
+        }
+
+        foreach ($this->processors as $processor) {
+            try {
+                $replacement = $processor->process($tmpFile, $mimeType);
+                if ($replacement !== '' && is_file($replacement)) {
+                    $tmpFile = $replacement;
+                }
+            } catch (\Throwable $e) {
+                error_log('[TypeDock] Media processor failed: ' . $e->getMessage());
+            }
+        }
+
+        $width      = null;
+        $height     = null;
+        $thumbnails = null;
+        $fileSize   = (int) filesize($tmpFile);
+
+        if (in_array($mimeType, self::IMAGE_MIME_TYPES, true)) {
+            $processed = $this->processImage($tmpFile, $storagePath, $mimeType, $ext);
+            if ($processed !== null) {
+                $width      = $processed['width'];
+                $height     = $processed['height'];
+                $thumbnails = $processed['thumbnails'];
+                $fileSize   = $processed['file_size'];
+            } else {
+                $this->storeFile($storagePath, $tmpFile);
+                [$width, $height] = $this->getImageDimensions($tmpFile);
+            }
+        } else {
+            $this->storeFile($storagePath, $tmpFile);
+        }
+
+        $this->pdo->prepare(
+            "UPDATE media SET mime_type = ?, file_size = ?, width = ?, height = ?, thumbnails = ?, status = 'ready'
+              WHERE id = ?"
+        )->execute([
+            $mimeType,
+            $fileSize,
+            $width,
+            $height,
+            $thumbnails !== null ? json_encode($thumbnails) : null,
+            $mediaId,
+        ]);
+
+        return $this->find($mediaId);
+    }
+
+    /**
+     * Park a media row whose file could not be fetched. The row is kept, not
+     * deleted: it records where the file was supposed to come from, which is
+     * what an operator needs to retry or upload a replacement.
+     */
+    public function markFailed(string $mediaId): void
+    {
+        $this->pdo->prepare("UPDATE media SET status = 'failed' WHERE id = ?")->execute([$mediaId]);
+    }
+
+    private static function mimeForExtension(string $ext): string
+    {
+        return match ($ext) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'png'         => 'image/png',
+            'gif'         => 'image/gif',
+            'webp'        => 'image/webp',
+            'pdf'         => 'application/pdf',
+            default       => 'application/octet-stream',
+        };
     }
 
     /**
@@ -427,9 +653,24 @@ class MediaService
         };
     }
 
+    /** Same contract as putEncoded(): a failed write must not look like a success. */
+    private function storeFile(string $path, string $localPath): void
+    {
+        if (!$this->storage->putFile($path, $localPath)) {
+            throw new \RuntimeException("Could not write {$path} to storage.");
+        }
+    }
+
     private function putEncoded(string $path, EncodedImageInterface $encoded): void
     {
-        $this->storage->put($path, (string) $encoded);
+        // A storage write can fail for reasons that have nothing to do with
+        // the image — a full disk, a read-only uploads directory, an expired
+        // bucket credential. Ignoring the result records a media row that
+        // says "ready" and points at a file that was never written, which is
+        // indistinguishable from a working import until someone loads the page.
+        if (!$this->storage->put($path, (string) $encoded)) {
+            throw new \RuntimeException("Could not write {$path} to storage.");
+        }
     }
 
     private function imageManager(): ImageManager

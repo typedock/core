@@ -181,11 +181,49 @@ php cli/install.php         # Interactive install
 php cli/migrate.php         # Apply DB migrations
 php cli/cache-clear.php     # Clear template + HTML cache
 php cli/export.php          # Export content to JSON
-php cli/import.php          # Import a previous export
+php cli/import.php          # Import a previous export, or another CMS (--importer=)
 php cli/assets-publish.php  # Copy theme/plugin assets into public/
 php cli/upgrade.php         # Upgrade preflight + agent handoff context
 php cli/seed.php            # Insert demo content
+php cli/queue-work.php      # Run background jobs (scheduled publishing, etc.)
 ```
+
+### Importing from WordPress
+
+Go to **Import** in the admin, upload your WordPress export, and check what
+the file contains before anything is written. Exports too large for your
+host's upload limit can be copied into `storage/import/` over FTP instead.
+
+The same thing from the command line:
+
+```bash
+php cli/import.php --importer=wordpress export.xml --dry-run   # report only
+php cli/import.php --importer=wordpress export.xml             # import
+```
+
+Posts, pages, categories and tags come across, images are copied into the
+media library, and links between imported posts are rewritten to point at
+their new homes. Re-running the same file updates rather than duplicates, and
+an import can be undone in one click. See
+[the plugin's README](plugins/import-wordpress/README.md) for the full list of
+what is and is not migrated.
+
+### Background jobs
+
+Scheduled publishing and other deferred work run through a small job queue.
+Out of the box it needs no setup: every admin page load nudges the worker, so
+background work happens whenever someone is in the admin.
+
+For work that must happen on time whether or not anyone is logged in, add a
+cron entry. The worker exits as soon as the queue is empty, so a per-minute
+entry never stacks up:
+
+```
+* * * * * php /path/to/typedock/cli/queue-work.php --max-time=55
+```
+
+On a VPS or container you can run it as a service instead — `--max-time=0`
+stays resident and works continuously.
 
 ## Useful Feedback Right Now
 

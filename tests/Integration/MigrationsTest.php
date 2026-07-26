@@ -69,6 +69,8 @@ final class MigrationsTest extends TestCase
             'external_sources',
             'external_source_credentials',
             'locales',
+            'jobs',
+            'imports',
             'migrations',
         ];
 
@@ -91,6 +93,28 @@ final class MigrationsTest extends TestCase
         $sourceColumns = $pdo->query("PRAGMA table_info('external_sources')")->fetchAll(\PDO::FETCH_ASSOC);
         $sourceColumnNames = array_map('strval', array_column($sourceColumns, 'name'));
         $this->assertContains('description', $sourceColumnNames);
+
+        $importColumns = array_map(
+            'strval',
+            array_column($pdo->query("PRAGMA table_info('posts')")->fetchAll(\PDO::FETCH_ASSOC), 'name')
+        );
+        foreach ([
+            'external_source', 'external_id', 'external_parent_id',
+            'external_featured_id', 'external_url', 'import_batch_id',
+        ] as $column) {
+            $this->assertContains($column, $importColumns);
+        }
+
+        $mediaColumns = array_map(
+            'strval',
+            array_column($pdo->query("PRAGMA table_info('media')")->fetchAll(\PDO::FETCH_ASSOC), 'name')
+        );
+        foreach ([
+            'source_url', 'source_hash', 'status',
+            'external_source', 'external_id', 'import_batch_id',
+        ] as $column) {
+            $this->assertContains($column, $mediaColumns);
+        }
     }
 
     public function testRedirectPluginMigrationCreatesRedirectsTable(): void

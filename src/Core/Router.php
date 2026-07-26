@@ -12,6 +12,8 @@ use TypeDock\Admin\MenuController;
 use TypeDock\Admin\CategoryController;
 use TypeDock\Admin\TagController;
 use TypeDock\Admin\UserController;
+use TypeDock\Admin\ImportController;
+use TypeDock\Admin\QueueController;
 use TypeDock\Admin\SettingsController;
 use TypeDock\Admin\SystemUpdateController;
 use TypeDock\Admin\SlotController;
@@ -372,6 +374,36 @@ class Router
                 (new ThemeController())->preview();
             });
 
+            // Content import
+            \Flight::route('GET /import', function () use ($auth) {
+                $auth->requireAuth('admin');
+                (new ImportController())->index();
+            });
+            \Flight::route('POST /import/upload', function () use ($auth) {
+                $auth->requireAuth('admin');
+                (new ImportController())->upload();
+            });
+            \Flight::route('POST /import/scan', function () use ($auth) {
+                $auth->requireAuth('admin');
+                (new ImportController())->scan();
+            });
+            \Flight::route('POST /import/start', function () use ($auth) {
+                $auth->requireAuth('admin');
+                (new ImportController())->start();
+            });
+            \Flight::route('GET /import/@id', function (string $id) use ($auth) {
+                $auth->requireAuth('admin');
+                (new ImportController())->show($id);
+            });
+            \Flight::route('GET /import/@id/redirects.csv', function (string $id) use ($auth) {
+                $auth->requireAuth('admin');
+                (new ImportController())->redirects($id);
+            });
+            \Flight::route('POST /import/@id/undo', function (string $id) use ($auth) {
+                $auth->requireAuth('admin');
+                (new ImportController())->undo($id);
+            });
+
             // Theme settings
             \Flight::route('GET /theme-settings', function () use ($auth) {
                 $auth->requireAuth('admin');
@@ -426,6 +458,16 @@ class Router
         \Flight::route('GET /admin/api/link-card', function () use ($auth) {
             $auth->requireAuthJson();
             (new \TypeDock\Admin\LinkCardController())->resolve();
+        });
+        \Flight::route('POST /admin/api/queue/tick', function () use ($auth, $csrf) {
+            $auth->requireAuthJson();
+            $csrf->verifyOrFail();
+            (new QueueController())->tick();
+        });
+        \Flight::route('POST /admin/api/import/@id/tick', function (string $id) use ($auth, $csrf) {
+            $auth->requireAuthJson();
+            $csrf->verifyOrFail();
+            (new ImportController())->tick($id);
         });
     }
 

@@ -132,13 +132,35 @@ jobs:
         run: composer install --prefer-dist --no-progress --no-interaction
 
       - name: Prepare storage directories
-        run: mkdir -p storage/{cache,logs,sessions,tmp,uploads,backups}
+        run: mkdir -p storage/{cache,logs,sessions,tmp,uploads,backups,import}
 
       - name: Run migrations
         run: php cli/migrate.php
 
       - name: PHPUnit
         run: vendor/bin/phpunit --testdox
+
+      # The PHPUnit suite builds its own SQLite database for isolation, so on
+      # the MySQL and PostgreSQL legs it only ever proves the migrations apply
+      # — no query in the application is executed against those drivers. A
+      # real import is the cheapest way to close that gap: one command
+      # exercises the optimistic job claim (which depends on rowCount
+      # semantics), the import lease, upserts, SEO meta writes, COALESCE, and
+      # the link rewriter, on whichever driver this leg is running.
+      #
+      # Image downloads are expected to fail here: the fixture points at a
+      # host that does not exist. That is not what this step is checking.
+      - name: End-to-end import against ${{ matrix.driver }}
+        run: |
+          set -e
+          php cli/import.php --importer=wordpress tests/fixtures/wxr/sample.xml \
+            | tee /tmp/import-first.txt
+          grep -q 'created=5 updated=0' /tmp/import-first.txt
+
+          # Re-running the same file must update rather than duplicate.
+          php cli/import.php --importer=wordpress tests/fixtures/wxr/sample.xml \
+            | tee /tmp/import-second.txt
+          grep -q 'created=0 updated=5' /tmp/import-second.txt
 
   static-analysis:
     name: PHP syntax check

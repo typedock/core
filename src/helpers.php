@@ -1,6 +1,20 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * The release version, defined here because helpers.php is on Composer's
+ * `files` autoload and therefore loaded by every entry point — web, CLI and
+ * tests alike.
+ *
+ * It used to be a literal repeated in each front controller, which meant CLI
+ * scripts saw no version at all: PluginLoader read 0.0.0 and silently skipped
+ * every plugin declaring a `min_core_version`. Bumping a release should touch
+ * exactly one line.
+ */
+if (!defined('TYPEDOCK_VERSION')) {
+    define('TYPEDOCK_VERSION', '1.0.0-rc5');
+}
+
 if (!function_exists('typedock_load_config')) {
     /**
      * Load TypeDock's central config.php and populate $_ENV.

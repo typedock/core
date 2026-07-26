@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0"
+	xmlns:excerpt="http://wordpress.org/export/1.2/excerpt/"
+	xmlns:content="http://purl.org/rss/1.0/modules/content/"
+	xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:wp="http://wordpress.org/export/1.2/"
+>
+<channel>
+	<title>Old Blog</title>
+	<link>https://old.example.com</link>
+	<wp:wxr_version>1.2</wp:wxr_version>
+	<wp:base_site_url>https://old.example.com</wp:base_site_url>
+	<wp:base_blog_url>https://old.example.com</wp:base_blog_url>
+
+	<wp:author>
+		<wp:author_id>1</wp:author_id>
+		<wp:author_login><![CDATA[hanako]]></wp:author_login>
+		<wp:author_email><![CDATA[hanako@example.com]]></wp:author_email>
+		<wp:author_display_name><![CDATA[Hanako]]></wp:author_display_name>
+	</wp:author>
+	<wp:author>
+		<wp:author_id>2</wp:author_id>
+		<wp:author_login><![CDATA[ghost]]></wp:author_login>
+		<wp:author_email><![CDATA[nobody@example.com]]></wp:author_email>
+		<wp:author_display_name><![CDATA[Nobody]]></wp:author_display_name>
+	</wp:author>
+
+	<wp:category>
+		<wp:term_id>2</wp:term_id>
+		<wp:category_nicename><![CDATA[news]]></wp:category_nicename>
+		<wp:category_parent><![CDATA[]]></wp:category_parent>
+		<wp:cat_name><![CDATA[News]]></wp:cat_name>
+	</wp:category>
+	<wp:category>
+		<wp:term_id>3</wp:term_id>
+		<wp:category_nicename><![CDATA[releases]]></wp:category_nicename>
+		<wp:category_parent><![CDATA[news]]></wp:category_parent>
+		<wp:cat_name><![CDATA[Releases]]></wp:cat_name>
+	</wp:category>
+
+	<!-- A classic-editor post: no <p> tags at all, plus a table we cannot map. -->
+	<item>
+		<title>Hello Classic</title>
+		<link>https://old.example.com/2019/05/hello-classic/</link>
+		<dc:creator><![CDATA[hanako]]></dc:creator>
+		<content:encoded><![CDATA[First paragraph with <strong>bold</strong> and a <a href="https://old.example.com/2019/06/second-post/">link home</a>.
+
+Second paragraph.
+
+<table><tr><td>cell</td></tr></table>]]></content:encoded>
+		<excerpt:encoded><![CDATA[]]></excerpt:encoded>
+		<wp:post_id>11</wp:post_id>
+		<wp:post_date><![CDATA[2019-05-01 10:00:00]]></wp:post_date>
+		<wp:post_name><![CDATA[hello-classic]]></wp:post_name>
+		<wp:status><![CDATA[publish]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:post_type><![CDATA[post]]></wp:post_type>
+		<category domain="category" nicename="releases"><![CDATA[Releases]]></category>
+		<category domain="post_tag" nicename="php"><![CDATA[PHP]]></category>
+	</item>
+
+	<!-- Gutenberg markup, an auto-generated excerpt, and an image in a figure. -->
+	<item>
+		<title>Second Post</title>
+		<link>https://old.example.com/2019/06/second-post/</link>
+		<dc:creator><![CDATA[ghost]]></dc:creator>
+		<content:encoded><![CDATA[<!-- wp:paragraph --><p>Block editor paragraph.</p><!-- /wp:paragraph -->
+<!-- wp:heading {"level":3} --><h3>A heading</h3><!-- /wp:heading -->
+<!-- wp:image --><figure class="wp-block-image"><img src="https://old.example.com/wp-content/uploads/2019/06/photo-300x200.jpg" alt="A photo"/><figcaption>The caption</figcaption></figure><!-- /wp:image -->
+<!-- wp:list --><ul><li>one</li><li>two</li></ul><!-- /wp:list -->]]></content:encoded>
+		<excerpt:encoded><![CDATA[Block editor paragraph. A heading […]]]></excerpt:encoded>
+		<wp:post_id>12</wp:post_id>
+		<wp:post_date><![CDATA[2019-06-02 09:30:00]]></wp:post_date>
+		<wp:post_name><![CDATA[second-post]]></wp:post_name>
+		<wp:status><![CDATA[publish]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:post_type><![CDATA[post]]></wp:post_type>
+		<category domain="category" nicename="news"><![CDATA[News]]></category>
+		<!-- Points at attachment 40, which is listed further down the file. -->
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_thumbnail_id]]></wp:meta_key>
+			<wp:meta_value><![CDATA[40]]></wp:meta_value>
+		</wp:postmeta>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_edit_last]]></wp:meta_key>
+			<wp:meta_value><![CDATA[1]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+
+	<!-- A child page that appears BEFORE its parent — the ordering problem. -->
+	<item>
+		<title>Child Page</title>
+		<link>https://old.example.com/about/team/</link>
+		<dc:creator><![CDATA[hanako]]></dc:creator>
+		<content:encoded><![CDATA[<p>We are a team.</p>]]></content:encoded>
+		<wp:post_id>21</wp:post_id>
+		<wp:post_date><![CDATA[2020-01-05 12:00:00]]></wp:post_date>
+		<wp:post_name><![CDATA[team]]></wp:post_name>
+		<wp:status><![CDATA[publish]]></wp:status>
+		<wp:post_parent>20</wp:post_parent>
+		<wp:post_type><![CDATA[page]]></wp:post_type>
+	</item>
+
+	<item>
+		<title>About</title>
+		<link>https://old.example.com/about/</link>
+		<dc:creator><![CDATA[hanako]]></dc:creator>
+		<content:encoded><![CDATA[<p>About us.</p>]]></content:encoded>
+		<excerpt:encoded><![CDATA[Everything about us.]]></excerpt:encoded>
+		<wp:post_id>20</wp:post_id>
+		<wp:post_date><![CDATA[2020-01-04 12:00:00]]></wp:post_date>
+		<wp:post_name><![CDATA[about]]></wp:post_name>
+		<wp:status><![CDATA[publish]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:post_type><![CDATA[page]]></wp:post_type>
+	</item>
+
+	<item>
+		<title>Deleted Thing</title>
+		<link>https://old.example.com/?p=30</link>
+		<dc:creator><![CDATA[hanako]]></dc:creator>
+		<content:encoded><![CDATA[<p>Should not be imported.</p>]]></content:encoded>
+		<wp:post_id>30</wp:post_id>
+		<wp:post_date><![CDATA[2020-02-01 12:00:00]]></wp:post_date>
+		<wp:post_name><![CDATA[deleted-thing]]></wp:post_name>
+		<wp:status><![CDATA[trash]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:post_type><![CDATA[post]]></wp:post_type>
+	</item>
+
+	<item>
+		<title>photo</title>
+		<link>https://old.example.com/2019/06/second-post/photo/</link>
+		<dc:creator><![CDATA[hanako]]></dc:creator>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<wp:post_id>40</wp:post_id>
+		<wp:post_date><![CDATA[2019-06-02 09:29:00]]></wp:post_date>
+		<wp:post_name><![CDATA[photo]]></wp:post_name>
+		<wp:status><![CDATA[inherit]]></wp:status>
+		<wp:post_parent>12</wp:post_parent>
+		<wp:post_type><![CDATA[attachment]]></wp:post_type>
+		<wp:attachment_url>https://old.example.com/wp-content/uploads/2019/06/photo.jpg</wp:attachment_url>
+	</item>
+
+	<item>
+		<title>Scheduled Announcement</title>
+		<link>https://old.example.com/?p=50</link>
+		<dc:creator><![CDATA[hanako]]></dc:creator>
+		<content:encoded><![CDATA[<p>Coming soon.</p>]]></content:encoded>
+		<wp:post_id>50</wp:post_id>
+		<wp:post_date><![CDATA[2099-01-01 00:00:00]]></wp:post_date>
+		<wp:post_name><![CDATA[scheduled-announcement]]></wp:post_name>
+		<wp:status><![CDATA[future]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:post_type><![CDATA[post]]></wp:post_type>
+		<!-- Dangling: attachment 999 is not in this export. -->
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_thumbnail_id]]></wp:meta_key>
+			<wp:meta_value><![CDATA[999]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+
+	<!-- An attachment nothing references: must not be downloaded. -->
+	<item>
+		<title>unused</title>
+		<link>https://old.example.com/unused/</link>
+		<dc:creator><![CDATA[hanako]]></dc:creator>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<wp:post_id>41</wp:post_id>
+		<wp:post_date><![CDATA[2019-07-01 09:00:00]]></wp:post_date>
+		<wp:post_name><![CDATA[unused]]></wp:post_name>
+		<wp:status><![CDATA[inherit]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:post_type><![CDATA[attachment]]></wp:post_type>
+		<wp:attachment_url>https://old.example.com/wp-content/uploads/2019/07/unused.jpg</wp:attachment_url>
+	</item>
+</channel>
+</rss>

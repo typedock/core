@@ -1,0 +1,16 @@
+{
+    "slug": "import-wordpress",
+    "name": "WordPress Importer",
+    "version": "1.0.0",
+    "description": "Import posts, pages, categories and tags from a WordPress export file (WXR).",
+    "readme": "README.md",
+    "main_class": "TypeDock\\Plugin\\ImportWordPress\\WordPressImporterPlugin",
+    "min_core_version": "0.1",
+    "default_enabled": true,
+    "provides": [],
+    "autoload": {
+        "psr-4": {
+            "TypeDock\\Plugin\\ImportWordPress\\": "src/"
+        }
+    }
+}

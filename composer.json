@@ -38,6 +38,7 @@
         "migrate": "php cli/migrate.php",
         "install-cms": "php cli/install.php",
         "cache-clear": "php cli/cache-clear.php",
+        "queue-work": "php cli/queue-work.php",
         "export": "php cli/export.php",
         "import": "php cli/import.php",
         "analyse": "phpstan analyse --memory-limit=1G --debug"
