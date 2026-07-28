@@ -124,7 +124,7 @@ TypeDock is intended as an **alternative**, not a replacement. It deliberately p
 - **Auth and RBAC** - Session cookies, API keys, TOTP 2FA, login and 2FA brute-force lockout, 4 roles, named permissions, and ownership checks.
 - **Themes** - Latte layouts, partials, component overrides, `theme.json` settings, custom components, and declarative fetch. Bundled themes: `default`, `kinari`.
 - **Plugins** - Manifest-based drop-in plugins with optional iframe-isolated admin UI, zip upload installer, and `provides` collision detection.
-- **Core updates** - Zip-managed installs can download, signature-check, stage, back up, apply, migrate, and roll back Core releases from the admin.
+- **Core updates** - Zip-managed installs verify minisign, then stage, back up, apply, migrate, and roll back Core releases from the admin. Releases also carry a Sigstore keyless bundle recorded in Rekor for independent audit.
 - **Bundled plugins** - `form`, `redirect`, `social`, `image-optimizer`, `turnstile-captcha`, `advanced-blocks`, `backup`, `import-wordpress`, `source-contentful`, `source-github`, `source-github-docs`, and `simple-ai-writing`.
 - **External Source** - Read-only content from Contentful, GitHub Issues, GitHub Docs, or generic JSON HTTP APIs. Credentials are encrypted at rest using `APP_KEY`.
 - **SEO and feeds** - Meta tags, canonical URLs, Open Graph/Twitter metadata, sitemap, RSS, and search.

@@ -25,7 +25,8 @@ opportunity to publish a fix before disclosure.
 Official Core release packages are accompanied by:
 
 - a SHA-256 digest;
-- a minisign signature; and
+- a minisign signature;
+- a Sigstore keyless bundle recorded in Rekor; and
 - channel metadata published from the release workflow.
 
 Zip-managed installations verify both the digest and the pinned minisign
@@ -34,6 +35,12 @@ online primary release key and a separate offline recovery key. A release must
 not be published until both public keys are embedded in
 `src/Update/Trust.php`; the release workflow fails closed while either is
 empty or they are identical.
+
+The Sigstore bundle is an additional, independently verifiable record of the
+GitHub Actions workflow that produced the release. It does not replace
+minisign and is not an alternate acceptance path in the PHP updater. This
+keeps shared-hosting verification small while making every normal release
+publicly auditable.
 
 Private keys must never be committed to this repository. The two keys must not
 be stored in the same security boundary.
@@ -76,6 +83,31 @@ signature matches the pinned primary public key. Installed RC6-or-newer
 systems accept a valid package signed by either pinned key and record the
 matching key ID in `storage/upgrade-state.json` and
 `storage/logs/upgrade.log`.
+
+### Sigstore verification
+
+The release workflow also uses GitHub Actions OIDC to create an ephemeral
+Sigstore signing key. No additional secret is stored. It publishes the
+certificate, signature, timestamp, and Rekor inclusion proof together as
+`typedock-shared-<version>.zip.sigstore.json`.
+
+Verify a downloaded release with Cosign, substituting the actual version and
+tag:
+
+```bash
+VERSION=1.0.0-rc6
+TAG=v1.0.0-rc6
+cosign verify-blob "typedock-shared-${VERSION}.zip" \
+  --bundle "typedock-shared-${VERSION}.zip.sigstore.json" \
+  --certificate-identity \
+    "https://github.com/typedock/core/.github/workflows/release.yml@refs/tags/${TAG}" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+```
+
+The release job performs the same verification before uploading its assets.
+Rekor makes a signing event auditable; it does not prevent a compromised
+GitHub identity or authorized workflow from signing. Environment approval,
+tag restrictions, account security, and log monitoring remain required.
 
 ### Lost or compromised primary key
 

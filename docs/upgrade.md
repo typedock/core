@@ -21,6 +21,9 @@ or plugins.
 TypeDock verifies the release checksum and minisign signature against its
 pinned primary/recovery keyring before staging. This lets a
 recovery-signed release rotate a lost or compromised normal release key.
+Official releases also include a Sigstore keyless bundle with Rekor proof for
+independent verification; the PHP updater deliberately continues to require
+minisign and does not treat Sigstore as an alternate acceptance path.
 Applying creates database and file backups, enters maintenance mode, swaps
 only manifest-owned paths, runs migrations, republishes assets, and verifies
 the installed file hashes. A caught failure triggers automatic rollback.

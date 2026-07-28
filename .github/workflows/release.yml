@@ -5,10 +5,11 @@ on:
     tags:
       - 'v*'
 
-# Required so softprops/action-gh-release can create the release and upload
-# the artifact.
+# Required to upload release assets/channel metadata and request the GitHub
+# OIDC token used for keyless Sigstore signing.
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   build:
@@ -30,6 +31,11 @@ jobs:
 
       - name: Install build prerequisites
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends minisign rsync zip
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: v3.1.2
 
       - name: Verify release signing trust is pinned
         run: |
@@ -118,6 +124,21 @@ jobs:
             -x "${{ steps.artifact.outputs.named_zip }}.minisig" \
             -P "$PINNED_PUBLIC_KEY"
 
+      - name: Sign the versioned Core package with Sigstore
+        run: |
+          set -eu
+          BUNDLE="${{ steps.artifact.outputs.named_zip }}.sigstore.json"
+          IDENTITY="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release.yml@${GITHUB_REF}"
+          cosign sign-blob \
+            --yes \
+            --bundle "$BUNDLE" \
+            "${{ steps.artifact.outputs.named_zip }}"
+          cosign verify-blob \
+            --bundle "$BUNDLE" \
+            --certificate-identity "$IDENTITY" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "${{ steps.artifact.outputs.named_zip }}"
+
       - name: Generate update channel metadata
         id: channel
         run: |
@@ -153,6 +174,7 @@ jobs:
           files: |
             ${{ steps.artifact.outputs.named_zip }}
             ${{ steps.artifact.outputs.named_zip }}.minisig
+            ${{ steps.artifact.outputs.named_zip }}.sigstore.json
             ${{ steps.artifact.outputs.cloud_zip }}
             ${{ steps.channel.outputs.path }}
             dist/SHA256SUMS
@@ -162,6 +184,7 @@ jobs:
             - File: `typedock-shared-${{ steps.artifact.outputs.version }}.zip`
             - Size: ${{ steps.artifact.outputs.bytes }} bytes
             - SHA-256: `${{ steps.artifact.outputs.sha256 }}`
+            - Signatures: minisign + Sigstore keyless bundle (Rekor)
             - Optional Cloud Storage plugin: `${{ steps.artifact.outputs.cloud_zip }}`
             - Cloud Storage size: ${{ steps.artifact.outputs.cloud_bytes }} bytes
             - Cloud Storage SHA-256: `${{ steps.artifact.outputs.cloud_sha256 }}`
