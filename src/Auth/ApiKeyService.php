@@ -29,7 +29,7 @@ class ApiKeyService
         $random    = bin2hex(random_bytes(self::RANDOM_LENGTH / 2)); // 32 hex chars
         $plaintext = 'td_' . $prefix . '_' . $random;
         $keyHash   = hash('sha256', $plaintext);
-        $id        = \Ramsey\Uuid\Uuid::uuid7()->toString();
+        $id        = typedock_uuid7();
         $now       = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
         $stmt = $this->pdo->prepare(

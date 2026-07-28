@@ -83,7 +83,7 @@ class ThemeLoader
             foreach ($slots as $slotName => $slotConfig) {
                 $defaults = $slotConfig['defaults'] ?? [];
                 foreach ($defaults as $order => $item) {
-                    $id = \Ramsey\Uuid\Uuid::uuid7()->toString();
+                    $id = typedock_uuid7();
                     $pdo->prepare(
                         'INSERT INTO slot_placements (id, slot_name, component_type, params, sort_order, created_at)
                          VALUES (?, ?, ?, ?, ?, ?)'

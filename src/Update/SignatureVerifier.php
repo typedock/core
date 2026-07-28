@@ -30,13 +30,9 @@ final class SignatureVerifier
             throw new \RuntimeException('Package or signature file is missing.');
         }
 
-        $trustedKey = base64_decode($this->trustedPublicKeyBase64, true);
-        if (!is_string($trustedKey) || strlen($trustedKey) < 32) {
-            throw new \RuntimeException('Trusted update public key is malformed.');
-        }
-        $publicKey = strlen($trustedKey) === SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES
-            ? $trustedKey
-            : substr($trustedKey, -SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES);
+        $trustedKey = $this->publicKeyRecord();
+        $publicKey = substr($trustedKey, -SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES);
+        $trustedKeyId = strlen($trustedKey) === 42 ? substr($trustedKey, 2, 8) : null;
 
         $lines = preg_split('/\r?\n/', trim((string) file_get_contents($minisigPath)));
         if (!is_array($lines) || count($lines) < 4) {
@@ -49,9 +45,17 @@ final class SignatureVerifier
         }
 
         $algorithm = substr($signatureRecord, 0, 2);
+        if (!in_array($algorithm, ['Ed', 'ED'], true)) {
+            throw new \RuntimeException('Minisign signature uses an unsupported algorithm.');
+        }
+        if ($trustedKeyId !== null && !hash_equals($trustedKeyId, substr($signatureRecord, 2, 8))) {
+            throw new \RuntimeException('Minisign signature was made by a different key.');
+        }
         $signature = substr($signatureRecord, 10, 64);
         $payload = (string) file_get_contents($artifactPath);
-        $message = $algorithm === 'Ed'
+        // Minisign's current default is the pre-hashed "ED" variant. The
+        // legacy direct-message form is identified by "Ed".
+        $message = $algorithm === 'ED'
             ? sodium_crypto_generichash($payload, '', 64)
             : $payload;
 
@@ -59,7 +63,15 @@ final class SignatureVerifier
             throw new \RuntimeException('Package signature verification failed.');
         }
 
-        $trustedComment = $lines[2];
+        $trustedCommentLine = trim($lines[2]);
+        $prefix = 'trusted comment: ';
+        if (!str_starts_with($trustedCommentLine, $prefix)) {
+            throw new \RuntimeException('Minisign trusted comment is malformed.');
+        }
+        $trustedComment = substr($trustedCommentLine, strlen($prefix));
+        if ($trustedComment === '') {
+            throw new \RuntimeException('Minisign trusted comment is empty.');
+        }
         $globalRecord = base64_decode(trim($lines[3]), true);
         if (!is_string($globalRecord) || strlen($globalRecord) < 64) {
             throw new \RuntimeException('Minisign trusted-comment signature is malformed.');
@@ -68,5 +80,30 @@ final class SignatureVerifier
         if (!sodium_crypto_sign_verify_detached($globalSignature, $signature . $trustedComment, $publicKey)) {
             throw new \RuntimeException('Minisign trusted-comment verification failed.');
         }
+    }
+
+    public function keyId(): string
+    {
+        $trustedKey = $this->publicKeyRecord();
+        if (strlen($trustedKey) === 42) {
+            return strtoupper(bin2hex(substr($trustedKey, 2, 8)));
+        }
+
+        return strtoupper(substr(hash('sha256', $trustedKey), 0, 16));
+    }
+
+    private function publicKeyRecord(): string
+    {
+        $keyText = trim($this->trustedPublicKeyBase64);
+        if (str_contains($keyText, "\n")) {
+            $keyLines = preg_split('/\r?\n/', $keyText);
+            $keyText = trim((string) end($keyLines));
+        }
+        $trustedKey = base64_decode($keyText, true);
+        if (!is_string($trustedKey) || !in_array(strlen($trustedKey), [32, 42], true)) {
+            throw new \RuntimeException('Trusted update public key is malformed.');
+        }
+
+        return $trustedKey;
     }
 }

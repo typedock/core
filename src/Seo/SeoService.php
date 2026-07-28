@@ -154,7 +154,7 @@ class SeoService
                 $id,
             ]);
         } else {
-            $id = \Ramsey\Uuid\Uuid::uuid7()->toString();
+            $id = typedock_uuid7();
             $this->pdo->prepare(
                 'INSERT INTO seo_meta (id, target_type, target_id, seo_title, meta_description,
                  canonical_url, robots, og_title, og_description, og_image_id, twitter_card,

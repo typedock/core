@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace TypeDock\Plugin\Form;
 
-use Ramsey\Uuid\Uuid;
 
 /**
  * Persistence + business logic for Form plugin definitions and submissions.
@@ -61,7 +60,7 @@ class FormService
      */
     public function create(array $payload): string
     {
-        $id  = Uuid::uuid7()->toString();
+        $id  = typedock_uuid7();
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
         $this->pdo->prepare(
@@ -190,7 +189,7 @@ class FormService
             return ['ok' => false, 'errors' => $errors, 'submission_id' => null];
         }
 
-        $id  = Uuid::uuid7()->toString();
+        $id  = typedock_uuid7();
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
         $this->pdo->prepare(

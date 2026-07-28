@@ -99,7 +99,7 @@ class PluginDatabase
     public function insert(string $table, array $data): string
     {
         if (!isset($data['id'])) {
-            $data['id'] = \Ramsey\Uuid\Uuid::uuid7()->toString();
+            $data['id'] = typedock_uuid7();
         }
 
         foreach (array_keys($data) as $col) {

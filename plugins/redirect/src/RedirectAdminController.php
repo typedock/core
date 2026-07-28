@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace TypeDock\Plugin\Redirect;
 
-use Ramsey\Uuid\Uuid;
 use TypeDock\Core\PluginContext;
 
 final class RedirectAdminController
@@ -41,7 +40,7 @@ final class RedirectAdminController
         $this->ctx->db()->pdo()->prepare(
             'INSERT INTO redirects (id, source_path, target_url, status_code, created_at) VALUES (?, ?, ?, ?, ?)'
         )->execute([
-            Uuid::uuid7()->toString(),
+            typedock_uuid7(),
             $source,
             $target,
             $status,

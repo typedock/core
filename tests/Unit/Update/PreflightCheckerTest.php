@@ -50,6 +50,23 @@ final class PreflightCheckerTest extends TestCase
         self::assertTrue($this->hasIssue($report->issues, 'Database', 'warning'));
     }
 
+    public function testSplitPublicManagedPathUsesConfiguredPublicDirectory(): void
+    {
+        $publicDir = $this->root . '/public_html';
+        mkdir($publicDir . '/admin/dist', 0775, true);
+        $profile = new InstallationProfile($this->root, $publicDir, 'zip', true);
+        $manifest = new PackageManifest(1, '1.0.0', ['public/admin/dist'], [], [], []);
+
+        $report = (new PreflightChecker($profile, $manifest))->check();
+
+        $missingManagedPath = array_filter(
+            $report->issues,
+            static fn(object $issue): bool => $issue->label === 'Managed path'
+                && str_contains($issue->message, 'does not exist'),
+        );
+        self::assertSame([], array_values($missingManagedPath));
+    }
+
     /**
      * @param list<object> $issues
      */

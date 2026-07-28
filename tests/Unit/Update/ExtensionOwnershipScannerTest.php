@@ -70,6 +70,22 @@ final class ExtensionOwnershipScannerTest extends TestCase
         self::assertSame('collision', $custom['status']);
     }
 
+    public function testPreservesPluginRemovedFromBundledPackage(): void
+    {
+        $current = $this->manifest([
+            'plugins/form/plugin.json' => $this->hash('plugins/form/plugin.json'),
+        ]);
+        $target = new PackageManifest(1, '0.2.0', [], ['default'], [], []);
+
+        $rows = (new ExtensionOwnershipScanner($this->root, $current))->scan($target);
+        $form = array_values(array_filter(
+            $rows,
+            fn(array $row): bool => $row['type'] === 'plugin' && $row['slug'] === 'form',
+        ))[0];
+
+        self::assertSame('removed-bundled', $form['status']);
+    }
+
     /**
      * @param array<string, string> $hashes
      */

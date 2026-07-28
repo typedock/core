@@ -57,7 +57,7 @@ class SessionService
     {
         $token     = bin2hex(random_bytes(32));
         $tokenHash = hash('sha256', $token);
-        $id        = \Ramsey\Uuid\Uuid::uuid7()->toString();
+        $id        = typedock_uuid7();
         $expiresAt = (new \DateTimeImmutable())
             ->modify('+' . (int) config('auth.session_lifetime', 86400) . ' seconds')
             ->format('Y-m-d H:i:s');

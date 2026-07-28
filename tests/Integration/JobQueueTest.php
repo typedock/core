@@ -225,7 +225,7 @@ final class JobQueueTest extends TestCase
 
     private function insertScheduledPost(string $slug, string $when): string
     {
-        $id  = \Ramsey\Uuid\Uuid::uuid7()->toString();
+        $id  = typedock_uuid7();
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
         $this->pdo->prepare(

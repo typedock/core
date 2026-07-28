@@ -41,12 +41,22 @@ final class PreflightChecker
             : PreflightIssue::error('PHP version', 'TypeDock updates require PHP 8.2 or newer.');
 
         $issues[] = extension_loaded('zip')
-            ? PreflightIssue::ok('Zip extension', 'Archive inspection is available to Core if needed.')
-            : PreflightIssue::warning('Zip extension', 'PHP ext-zip is unavailable; the coding agent should inspect release archives outside Core.');
+            ? PreflightIssue::ok('Zip extension', 'Safe archive inspection and staging are available.')
+            : ($this->profile->isZipManaged()
+                ? PreflightIssue::error('Zip extension', 'PHP ext-zip is required for in-place updates.')
+                : PreflightIssue::warning('Zip extension', 'PHP ext-zip is unavailable; deployment tooling must inspect release archives.'));
 
         $issues[] = extension_loaded('sodium')
-            ? PreflightIssue::ok('Sodium extension', 'Core can verify Ed25519 signatures if a signing key is configured.')
-            : PreflightIssue::warning('Sodium extension', 'PHP ext-sodium is unavailable; the coding agent must verify release signatures outside Core.');
+            ? PreflightIssue::ok('Sodium extension', 'Core can verify Ed25519 release signatures.')
+            : ($this->profile->isZipManaged()
+                ? PreflightIssue::error('Sodium extension', 'PHP ext-sodium is required for in-place updates.')
+                : PreflightIssue::warning('Sodium extension', 'Deployment tooling must verify release signatures.'));
+
+        $issues[] = extension_loaded('curl')
+            ? PreflightIssue::ok('cURL extension', 'Core can use DNS-pinned HTTPS update downloads.')
+            : ($this->profile->isZipManaged()
+                ? PreflightIssue::error('cURL extension', 'PHP ext-curl is required for secure in-place update downloads.')
+                : PreflightIssue::warning('cURL extension', 'Deployment tooling must download the release package.'));
 
         $issues = array_merge($issues, $this->pathChecks());
         if ($this->db !== null) {
@@ -97,8 +107,12 @@ final class PreflightChecker
             $issues[] = $this->writableDir('Public directory', $publicDir);
         }
 
-        foreach ($this->currentManifest->managedPaths as $path) {
-            $full = $root . '/' . $path;
+        $managedPaths = array_values(array_unique(array_merge(
+            $this->currentManifest->managedPaths,
+            ($this->targetManifest ?? $this->currentManifest)->managedPaths,
+        )));
+        foreach ($managedPaths as $path) {
+            $full = $this->managedPath($path);
             if (!file_exists($full)) {
                 $issues[] = PreflightIssue::warning('Managed path', "{$path} does not exist in this install.");
                 continue;
@@ -109,6 +123,15 @@ final class PreflightChecker
         }
 
         return $issues;
+    }
+
+    private function managedPath(string $path): string
+    {
+        if ($this->profile->isSplitPublic() && str_starts_with($path, 'public/')) {
+            return $this->profile->publicDir . '/' . substr($path, strlen('public/'));
+        }
+
+        return $this->profile->root . '/' . $path;
     }
 
     private function writableDir(string $label, string $path): PreflightIssue

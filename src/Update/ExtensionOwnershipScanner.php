@@ -64,6 +64,16 @@ final class ExtensionOwnershipScanner
             }
 
             $dir = $dirName . '/' . $slug;
+            if (!$isTargetBundled) {
+                $rows[] = [
+                    'type' => $type,
+                    'slug' => $slug,
+                    'status' => 'removed-bundled',
+                    'message' => 'No longer bundled by TypeDock; preserved as an installed extension.',
+                ];
+                continue;
+            }
+
             $hashes = $this->currentManifest->hashesUnder($dir);
             if ($hashes === []) {
                 $rows[] = [

@@ -1,6 +1,6 @@
 {
   "name": "typedock-admin-assets",
-  "version": "1.0.0-rc5",
+  "version": "1.0.0-rc6",
   "private": true,
   "description": "Build pipeline for TypeDock admin CSS (Tailwind 4) and the Tiptap editor bundle. End users receive the compiled files; only core developers run this.",
   "scripts": {

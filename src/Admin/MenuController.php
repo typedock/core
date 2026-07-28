@@ -119,7 +119,7 @@ class MenuController extends BaseAdminController
         $parentId = $_POST['parent_id'] ?? '';
         $parentId = $parentId === '' ? null : $parentId;
 
-        $id  = \Ramsey\Uuid\Uuid::uuid7()->toString();
+        $id  = typedock_uuid7();
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
         $pdo->prepare(
@@ -209,7 +209,7 @@ class MenuController extends BaseAdminController
             return $existing;
         }
 
-        $id  = \Ramsey\Uuid\Uuid::uuid7()->toString();
+        $id  = typedock_uuid7();
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $pdo->prepare(
             'INSERT INTO menus (id, name, location, locale, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'

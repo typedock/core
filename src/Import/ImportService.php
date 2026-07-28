@@ -37,7 +37,7 @@ final class ImportService
     {
         $this->importerOrFail($importerKey);
 
-        $id  = \Ramsey\Uuid\Uuid::uuid7()->toString();
+        $id  = typedock_uuid7();
         $now = $this->now();
 
         $this->pdo->prepare(

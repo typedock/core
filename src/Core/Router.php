@@ -300,6 +300,22 @@ class Router
                 $auth->requireAuth('admin');
                 (new SystemUpdateController())->index();
             });
+            \Flight::route('POST /system/update/check', function () use ($auth) {
+                $auth->requireAuth('admin');
+                (new SystemUpdateController())->check();
+            });
+            \Flight::route('POST /system/update/prepare', function () use ($auth) {
+                $auth->requireAuth('admin');
+                (new SystemUpdateController())->prepare();
+            });
+            \Flight::route('POST /system/update/apply', function () use ($auth) {
+                $auth->requireAuth('admin');
+                (new SystemUpdateController())->apply();
+            });
+            \Flight::route('POST /system/update/rollback', function () use ($auth) {
+                $auth->requireAuth('admin');
+                (new SystemUpdateController())->rollback();
+            });
             \Flight::route('POST /settings/modules/plugins/toggle', function () use ($auth) {
                 $auth->requireAuth('admin');
                 (new SettingsController())->togglePlugin();

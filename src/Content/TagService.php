@@ -62,7 +62,7 @@ class TagService
      */
     public function create(array $data): array
     {
-        $id   = \Ramsey\Uuid\Uuid::uuid7()->toString();
+        $id   = typedock_uuid7();
         $now  = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $slug = trim((string) ($data['slug'] ?? ''));
         $slug = $slug !== ''

@@ -137,7 +137,7 @@ class PostService
     public function create(array $data): array
     {
         $now  = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
-        $id   = \Ramsey\Uuid\Uuid::uuid7()->toString();
+        $id   = typedock_uuid7();
 
         $slug = $data['slug'] ?? '';
         if ($slug === '') {
@@ -366,7 +366,7 @@ class PostService
      */
     private function saveRevision(array $page): void
     {
-        $id  = \Ramsey\Uuid\Uuid::uuid7()->toString();
+        $id  = typedock_uuid7();
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
         $this->pdo->prepare(

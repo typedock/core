@@ -6,10 +6,110 @@
 {block content}
 <div class="page-header">
     <div>
-        <h1>Agent-Assisted Update</h1>
-        <p>Give your coding agent the context it needs to update TypeDock without overwriting local customizations.</p>
+        <h1>System Update</h1>
+        <p>Authenticate, stage, and apply TypeDock releases while preserving site data and separately installed extensions.</p>
     </div>
 </div>
+
+{if $flash_success}
+    <div class="alert alert-success mb-4"><span>{$flash_success}</span></div>
+{/if}
+{if $flash_error}
+    <div class="alert alert-error mb-4"><span>{$flash_error}</span></div>
+{/if}
+{if $current_revoked}
+    <div class="alert alert-error mb-4">
+        <span>This TypeDock release has been revoked. Apply the newest compatible release as soon as possible.</span>
+    </div>
+{/if}
+
+<section class="card mb-6">
+    <div class="card-header"><h2>Release Channel</h2></div>
+    <div class="card-body space-y-4">
+        <table class="data-table border-0 rounded-none shadow-none">
+            <tbody>
+                <tr><th>Installed</th><td>{$version}</td></tr>
+                <tr><th>Channel</th><td>{$channel}</td></tr>
+                <tr>
+                    <th>Latest checked release</th>
+                    <td>{if $release}{$release->version}{else}Not checked{/if}</td>
+                </tr>
+                <tr>
+                    <th>Signing trust</th>
+                    <td>{if $signing_key_configured}Configured{else}Not configured{/if}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <form method="post" action="/admin/system/update/check">
+            <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+            <button type="submit" class="btn btn-secondary">Check now</button>
+        </form>
+
+        {if !$report->profile->isZipManaged()}
+            <div class="alert alert-warning">
+                <span>In-place updates are disabled for {$report->profile->mode} installations. Use the deployment workflow and the agent context below.</span>
+            </div>
+        {elseif !$signing_key_configured}
+            <div class="alert alert-warning">
+                <span>A trusted minisign public key must be pinned before TypeDock can download or apply releases.</span>
+            </div>
+        {elseif $update_available && (!$update_state || in_array($update_state['phase'], ['done', 'rolled_back']))}
+            <div class="alert alert-success">
+                <span>TypeDock {$release->version} is available. Preparation downloads the package, verifies SHA-256 and minisign, extracts it to staging, and checks extension ownership. Live files are not changed yet.</span>
+            </div>
+            {if $release->releaseNotesUrl}
+                <p><a href="{$release->releaseNotesUrl}" target="_blank" rel="noopener noreferrer">Read release notes</a></p>
+            {/if}
+            <form method="post" action="/admin/system/update/prepare">
+                <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                <button type="submit" class="btn btn-primary">Download and verify</button>
+            </form>
+        {elseif $release && !$update_available}
+            <div class="alert alert-success"><span>This installation is current for the selected channel.</span></div>
+        {/if}
+
+        {if $update_state}
+            <table class="data-table border-0 rounded-none shadow-none">
+                <tbody>
+                    <tr><th>Update state</th><td>{$update_state['phase']}</td></tr>
+                    <tr><th>Target</th><td>{$update_state['target_version']}</td></tr>
+                    {ifset $update_state['verified_signing_key']}
+                        <tr><th>Verified signing key</th><td><code>{$update_state['verified_signing_key']}</code></td></tr>
+                    {/ifset}
+                    <tr><th>Updated</th><td>{$update_state['updated_at']}</td></tr>
+                    {if $update_state['error']}
+                        <tr><th>Last error</th><td>{$update_state['error']}</td></tr>
+                    {/if}
+                </tbody>
+            </table>
+
+            {if $update_state['phase'] === 'prepared'}
+                <div class="alert alert-warning">
+                    <span>Applying enters maintenance mode, creates a database and file backup, swaps Core-owned paths, runs migrations, republishes assets, and verifies every manifest hash. On a caught failure, TypeDock rolls back automatically.</span>
+                </div>
+                <form method="post" action="/admin/system/update/apply" class="space-y-4">
+                    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                    <input type="hidden" name="update_token" value="{$update_state['token']}">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="confirm_update" value="yes" required>
+                        <span>I understand the site will briefly enter maintenance mode.</span>
+                    </label>
+                    <button type="submit" class="btn btn-primary">Back up and apply {$update_state['target_version']}</button>
+                </form>
+            {elseif in_array($update_state['phase'], ['backup_complete', 'swapping', 'migrating', 'rollback_failed'])}
+                <div class="alert alert-error">
+                    <span>An update stopped after live changes began. Keep maintenance mode enabled and restore the recorded backup.</span>
+                </div>
+                <form method="post" action="/admin/system/update/rollback">
+                    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+                    <input type="hidden" name="update_token" value="{$update_state['token']}">
+                    <button type="submit" class="btn btn-danger">Restore previous release</button>
+                </form>
+            {/if}
+        {/if}
+    </div>
+</section>
 
 <div class="columns">
     <section class="card">
@@ -25,7 +125,7 @@
             </table>
             {if $report->canApplyUpdates()}
                 <div class="alert alert-success">
-                    <span>No blocking ownership conflicts were found. Review warnings before handing this site to an agent.</span>
+                    <span>No blocking ownership conflicts were found. Review warnings before applying an update.</span>
                 </div>
             {else}
                 <div class="alert alert-error">
@@ -62,7 +162,7 @@
 </div>
 
 <section class="card mt-6">
-    <div class="card-header"><h2>Agent Prompt</h2></div>
+    <div class="card-header"><h2>Deployment / Agent Fallback</h2></div>
     <div class="card-body space-y-4">
         <p class="form-hint" style="margin-top:0">
             Use this prompt with the coding agent that has access to your deployment, repository, SSH/FTP, or hosting panel. TypeDock Core provides context; the agent performs the update according to your environment.

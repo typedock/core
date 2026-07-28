@@ -5,7 +5,6 @@ namespace TypeDock\Install;
 
 use DateTimeImmutable;
 use PDO;
-use Ramsey\Uuid\Uuid;
 use RuntimeException;
 use TypeDock\Content\TiptapMarkdownRenderer;
 
@@ -64,7 +63,7 @@ final class DemoSeeder
                 $categoryIds[$spec['slug']] = $existing;
                 continue;
             }
-            $id = Uuid::uuid7()->toString();
+            $id = typedock_uuid7();
             $this->pdo->prepare(
                 'INSERT INTO categories (id, slug, name, description, locale, sort_order, created_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?)'
@@ -86,7 +85,7 @@ final class DemoSeeder
                 $tagIds[$spec['slug']] = $existing;
                 continue;
             }
-            $id = Uuid::uuid7()->toString();
+            $id = typedock_uuid7();
             $this->pdo->prepare('INSERT INTO tags (id, slug, name, locale, created_at) VALUES (?, ?, ?, ?, ?)')
                 ->execute([$id, $spec['slug'], $spec['name'], $locale, $now]);
             $tagIds[$spec['slug']] = $id;
@@ -107,7 +106,7 @@ final class DemoSeeder
             if ($existing !== null) {
                 continue;
             }
-            $id  = Uuid::uuid7()->toString();
+            $id  = typedock_uuid7();
             $pub = (new DateTimeImmutable("-{$spec['days_ago']} day"))->format('Y-m-d H:i:s');
             $body = $this->tiptapBody([
                 $spec['lede'],
@@ -162,7 +161,7 @@ final class DemoSeeder
                 $pageIds[$spec['slug']] = $existing;
                 continue;
             }
-            $id = Uuid::uuid7()->toString();
+            $id = typedock_uuid7();
             $body = $this->tiptapBody($spec['paras']);
             $bodyMarkdown = TiptapMarkdownRenderer::render($body);
             $this->pdo->prepare(
@@ -199,7 +198,7 @@ final class DemoSeeder
             if ($existing !== null) {
                 continue;
             }
-            $menuId = Uuid::uuid7()->toString();
+            $menuId = typedock_uuid7();
             $this->pdo->prepare(
                 'INSERT INTO menus (id, name, location, locale, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
             )->execute([$menuId, $spec['name'], $spec['location'], $locale, $now, $now]);
@@ -207,7 +206,7 @@ final class DemoSeeder
 
             $sort = 0;
             foreach ($spec['items'] as $item) {
-                $itemId = Uuid::uuid7()->toString();
+                $itemId = typedock_uuid7();
                 if (isset($item['page'])) {
                     $targetType = 'page';
                     $targetId   = $pageIds[$item['page']] ?? null;

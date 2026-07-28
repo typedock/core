@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace TypeDock\Plugin\Backup;
 
-use Ramsey\Uuid\Uuid;
 
 /**
  * BackupService — produces a timestamped tar.gz containing:
@@ -55,7 +54,7 @@ class BackupService
 
         $size     = (int) filesize($finalPath);
         $filename = basename($finalPath);
-        $id       = Uuid::uuid7()->toString();
+        $id       = typedock_uuid7();
 
         try {
             $this->pdo->prepare(

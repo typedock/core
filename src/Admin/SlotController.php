@@ -138,7 +138,7 @@ class SlotController extends BaseAdminController
         $now    = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
         if ($action === 'add') {
-            $id            = \Ramsey\Uuid\Uuid::uuid7()->toString();
+            $id            = typedock_uuid7();
             $componentType = trim((string) ($_POST['component_type'] ?? ''));
 
             // Default params come from the component's declared schema so a

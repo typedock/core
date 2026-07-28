@@ -63,4 +63,37 @@ final class HelpersTest extends TestCase
         $this->assertSame(TYPEDOCK_ROOT . DIRECTORY_SEPARATOR . 'config', base_path('config'));
         $this->assertSame(TYPEDOCK_ROOT . '/storage' . DIRECTORY_SEPARATOR . 'cache', storage_path('cache'));
     }
+
+    public function testUuid7HasExpectedFormatVersionAndVariant(): void
+    {
+        $uuid = typedock_uuid7();
+
+        $this->assertMatchesRegularExpression(
+            '/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/',
+            $uuid,
+        );
+    }
+
+    public function testUuid7SortsInGenerationOrder(): void
+    {
+        $generated = [];
+        for ($i = 0; $i < 5000; $i++) {
+            $generated[] = typedock_uuid7();
+        }
+
+        $sorted = $generated;
+        sort($sorted, SORT_STRING);
+
+        $this->assertSame($generated, $sorted);
+    }
+
+    public function testUuid7DoesNotCollideAcrossLargeBatch(): void
+    {
+        $generated = [];
+        for ($i = 0; $i < 10000; $i++) {
+            $generated[] = typedock_uuid7();
+        }
+
+        $this->assertCount(count($generated), array_unique($generated));
+    }
 }

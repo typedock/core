@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace TypeDock\ExternalSource;
 
-use Ramsey\Uuid\Uuid;
 use TypeDock\Content\SlugValidator;
 use TypeDock\Exception\NotFoundException;
 use TypeDock\Exception\ValidationException;
@@ -97,7 +96,7 @@ final class ExternalSourceService
      */
     public function create(array $data): array
     {
-        $id = Uuid::uuid7()->toString();
+        $id = typedock_uuid7();
         $now = $this->now();
         $row = $this->normalizeInput($data);
         $this->validate($row);

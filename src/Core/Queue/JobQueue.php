@@ -35,7 +35,7 @@ final class JobQueue
         int $delaySeconds = 0,
         string $queue = 'default',
     ): string {
-        $id  = \Ramsey\Uuid\Uuid::uuid7()->toString();
+        $id  = typedock_uuid7();
         $now = $this->now();
 
         $this->pdo->prepare(
