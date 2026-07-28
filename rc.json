@@ -1,0 +1,17 @@
+{
+    "schema_version": 1,
+    "channel": "rc",
+    "version": "1.0.0-rc6",
+    "released_at": "2026-07-28T05:55:40+00:00",
+    "min_php": "8.2.0",
+    "min_core_from": "1.0.0-rc6",
+    "max_core_from": "",
+    "zip_url": "https://github.com/typedock/core/releases/download/v1.0.0-rc6/typedock-shared-1.0.0-rc6.zip",
+    "signature_url": "https://github.com/typedock/core/releases/download/v1.0.0-rc6/typedock-shared-1.0.0-rc6.zip.minisig",
+    "sha256": "7425c20fd4e6ede5d5e3ca54ae6eb54be5ac35fbbee7d1d235532d9ff87c4375",
+    "size_bytes": 2292319,
+    "release_notes_url": "https://github.com/typedock/core/releases/tag/v1.0.0-rc6",
+    "revoked_versions": [],
+    "breaking_changes": false,
+    "security": false
+}
