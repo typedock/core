@@ -45,6 +45,30 @@
     <button type="submit" class="btn btn-primary">Add</button>
 </form>
 
+<form method="post" action="{$admin_url('import')}" class="card" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf_token" value="{$csrf_token}">
+
+    <h2>Import from a file</h2>
+    <p class="text-slate-500">
+        Load many rules at once. The <code>redirects-….csv</code> file that
+        Tools &rarr; Import produces after a site migration can be uploaded here unchanged.
+    </p>
+
+    <div class="form-group">
+        <label for="redirect_file">CSV or JSON file</label>
+        <input id="redirect_file" type="file" name="redirect_file" accept=".csv,.json" required>
+        <p class="form-hint">
+            CSV columns are <code>from</code>, <code>to</code> and an optional <code>status</code>;
+            a file with no header row is read in that order.
+            JSON is an array of <code>{l}"from": "/old", "to": "/new", "status": 301{r}</code> objects.
+            A rule whose source already exists is updated rather than duplicated,
+            so the same file can safely be uploaded twice.
+        </p>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Import</button>
+</form>
+
 {if empty($redirects)}
     <div class="card">
         <h2>No redirects configured</h2>

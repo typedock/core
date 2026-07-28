@@ -19,6 +19,7 @@ final class RedirectPlugin implements PluginInterface
         $controller = new RedirectAdminController($ctx);
         $ctx->registerAdminRoute('GET',  '',           [$controller, 'index']);
         $ctx->registerAdminRoute('POST', '',           [$controller, 'store']);
+        $ctx->registerAdminRoute('POST', 'import',     [$controller, 'import']);
         $ctx->registerAdminRoute('POST', '@id/delete', fn(string $id) => $controller->destroy($id));
 
         $ctx->addAdminMenuItem('Redirects', '');
