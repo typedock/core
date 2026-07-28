@@ -5,15 +5,19 @@ on:
     tags:
       - 'v*'
 
-# Required so softprops/action-gh-release can create the release and upload
-# the artifact.
+# Required to upload release assets/channel metadata and request the GitHub
+# OIDC token used for keyless Sigstore signing.
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   build:
     name: Build typedock-shared.zip
     runs-on: ubuntu-latest
+    # Configure this Environment with a required reviewer and keep
+    # MINISIGN_PRIVATE_KEY as an Environment secret, not a repository secret.
+    environment: release
     steps:
       - uses: actions/checkout@v6
 
@@ -26,7 +30,35 @@ jobs:
           tools: composer:v2
 
       - name: Install build prerequisites
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rsync zip
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends minisign rsync zip
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: v3.1.2
+
+      - name: Verify release signing trust is pinned
+        run: |
+          php -r '
+            require "src/Update/Trust.php";
+            $primary = TypeDock\Update\Trust::PRIMARY_MINISIGN_PUBLIC_KEY;
+            $recovery = TypeDock\Update\Trust::RECOVERY_MINISIGN_PUBLIC_KEY;
+            if ($primary === "" || $recovery === "") {
+                fwrite(STDERR, "Embed both official minisign public keys in src/Update/Trust.php before releasing.\n");
+                exit(1);
+            }
+            if (hash_equals($primary, $recovery)) {
+                fwrite(STDERR, "Primary and recovery minisign public keys must be different.\n");
+                exit(1);
+            }
+            foreach (["primary" => $primary, "recovery" => $recovery] as $name => $key) {
+                $record = base64_decode($key, true);
+                if (!is_string($record) || strlen($record) !== 42 || substr($record, 0, 2) !== "Ed") {
+                    fwrite(STDERR, "The {$name} minisign public key is malformed.\n");
+                    exit(1);
+                }
+            }
+          '
 
       # Editor bundle (admin/dist/editor.bundle.*) and Tailwind admin CSS are
       # already committed under public/admin/ — make-shared-zip.sh treats them
@@ -35,6 +67,11 @@ jobs:
         run: bash build/make-shared-zip.sh
         env:
           OUT_DIR: ${{ github.workspace }}/dist
+
+      - name: Build optional Cloud Storage plugin
+        run: bash build/make-plugin-zip.sh cloud-storage
+        env:
+          OUT_DIR: ${{ github.workspace }}/dist/plugins
 
       - name: Compute archive paths
         id: artifact
@@ -45,6 +82,8 @@ jobs:
           # Tag without the leading "v" — `v1.0.0-rc1` -> `1.0.0-rc1`.
           VERSION="${GITHUB_REF_NAME#v}"
           NAMED="dist/typedock-shared-${VERSION}.zip"
+          CLOUD_ZIP="$(find dist/plugins -maxdepth 1 -name 'typedock-cloud-storage-*.zip' -print -quit)"
+          test -f "$CLOUD_ZIP"
           cp "$ZIP" "$NAMED"
           {
             echo "zip_path=$ZIP"
@@ -52,11 +91,77 @@ jobs:
             echo "version=$VERSION"
             echo "sha256=$(sha256sum "$ZIP" | awk '{print $1}')"
             echo "bytes=$(stat -c %s "$ZIP")"
+            echo "cloud_zip=$CLOUD_ZIP"
+            echo "cloud_sha256=$(sha256sum "$CLOUD_ZIP" | awk '{print $1}')"
+            echo "cloud_bytes=$(stat -c %s "$CLOUD_ZIP")"
           } >> "$GITHUB_OUTPUT"
 
       - name: Generate checksum file
         run: |
-          (cd dist && sha256sum "typedock-shared.zip" "typedock-shared-${{ steps.artifact.outputs.version }}.zip") > dist/SHA256SUMS
+          (
+            cd dist
+            sha256sum \
+              "typedock-shared-${{ steps.artifact.outputs.version }}.zip" \
+              "plugins/$(basename "${{ steps.artifact.outputs.cloud_zip }}")"
+          ) > dist/SHA256SUMS
+
+      - name: Sign the versioned Core package
+        env:
+          MINISIGN_PRIVATE_KEY: ${{ secrets.MINISIGN_PRIVATE_KEY }}
+        run: |
+          set -eu
+          test -n "$MINISIGN_PRIVATE_KEY"
+          KEY_FILE="$(mktemp)"
+          trap 'shred -u "$KEY_FILE"' EXIT
+          printf '%s\n' "$MINISIGN_PRIVATE_KEY" > "$KEY_FILE"
+          minisign -S -W \
+            -s "$KEY_FILE" \
+            -m "${{ steps.artifact.outputs.named_zip }}" \
+            -x "${{ steps.artifact.outputs.named_zip }}.minisig" \
+            -t "TypeDock ${{ steps.artifact.outputs.version }} release"
+          PINNED_PUBLIC_KEY="$(php -r 'require "src/Update/Trust.php"; echo TypeDock\Update\Trust::PRIMARY_MINISIGN_PUBLIC_KEY;')"
+          minisign -Vm "${{ steps.artifact.outputs.named_zip }}" \
+            -x "${{ steps.artifact.outputs.named_zip }}.minisig" \
+            -P "$PINNED_PUBLIC_KEY"
+
+      - name: Sign the versioned Core package with Sigstore
+        run: |
+          set -eu
+          BUNDLE="${{ steps.artifact.outputs.named_zip }}.sigstore.json"
+          IDENTITY="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release.yml@${GITHUB_REF}"
+          cosign sign-blob \
+            --yes \
+            --bundle "$BUNDLE" \
+            "${{ steps.artifact.outputs.named_zip }}"
+          cosign verify-blob \
+            --bundle "$BUNDLE" \
+            --certificate-identity "$IDENTITY" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "${{ steps.artifact.outputs.named_zip }}"
+
+      - name: Generate update channel metadata
+        id: channel
+        run: |
+          set -eu
+          VERSION="${{ steps.artifact.outputs.version }}"
+          if [[ "$VERSION" == *-beta* ]]; then
+            CHANNEL="beta"
+          elif [[ "$VERSION" == *-* ]]; then
+            CHANNEL="rc"
+          else
+            CHANNEL="stable"
+          fi
+          BASE="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}"
+          php build/make-update-json.php \
+            --version="$VERSION" \
+            --channel="$CHANNEL" \
+            --zip="${{ steps.artifact.outputs.named_zip }}" \
+            --zip-url="$BASE/typedock-shared-${VERSION}.zip" \
+            --signature-url="$BASE/typedock-shared-${VERSION}.zip.minisig" \
+            --release-notes-url="https://github.com/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}" \
+            > "dist/${CHANNEL}.json"
+          echo "name=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "path=dist/${CHANNEL}.json" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
@@ -67,8 +172,11 @@ jobs:
           # Mark RC / pre-release tags as prerelease automatically.
           prerelease: ${{ contains(github.ref_name, '-') }}
           files: |
-            ${{ steps.artifact.outputs.zip_path }}
             ${{ steps.artifact.outputs.named_zip }}
+            ${{ steps.artifact.outputs.named_zip }}.minisig
+            ${{ steps.artifact.outputs.named_zip }}.sigstore.json
+            ${{ steps.artifact.outputs.cloud_zip }}
+            ${{ steps.channel.outputs.path }}
             dist/SHA256SUMS
           body: |
             **TypeDock ${{ github.ref_name }}** — shared-hosting distribution
@@ -76,7 +184,39 @@ jobs:
             - File: `typedock-shared-${{ steps.artifact.outputs.version }}.zip`
             - Size: ${{ steps.artifact.outputs.bytes }} bytes
             - SHA-256: `${{ steps.artifact.outputs.sha256 }}`
+            - Signatures: minisign + Sigstore keyless bundle (Rekor)
+            - Optional Cloud Storage plugin: `${{ steps.artifact.outputs.cloud_zip }}`
+            - Cloud Storage size: ${{ steps.artifact.outputs.cloud_bytes }} bytes
+            - Cloud Storage SHA-256: `${{ steps.artifact.outputs.cloud_sha256 }}`
 
             See `SHA256SUMS` for verification. Unzip into your hosting account so
             `public_html/` lands at the webroot and `typedock/` sits as its
             sibling. Open the site in a browser to launch the installer.
+
+      - name: Publish update channel metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          CHANNEL="${{ steps.channel.outputs.name }}"
+          if ! gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/release-channel" >/dev/null 2>&1; then
+            DEFAULT_BRANCH="$(gh api "repos/${GITHUB_REPOSITORY}" --jq .default_branch)"
+            DEFAULT_SHA="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/${DEFAULT_BRANCH}" --jq .object.sha)"
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+              --field ref="refs/heads/release-channel" \
+              --field sha="$DEFAULT_SHA" >/dev/null
+          fi
+          EXISTING_SHA="$(gh api "repos/${GITHUB_REPOSITORY}/contents/${CHANNEL}.json?ref=release-channel" --jq .sha 2>/dev/null || true)"
+          CONTENT="$(base64 -w0 "${{ steps.channel.outputs.path }}")"
+          if [ -n "$EXISTING_SHA" ]; then
+            gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/${CHANNEL}.json" \
+              --field message="Update ${CHANNEL} channel to ${{ github.ref_name }}" \
+              --field content="$CONTENT" \
+              --field branch="release-channel" \
+              --field sha="$EXISTING_SHA" >/dev/null
+          else
+            gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/${CHANNEL}.json" \
+              --field message="Create ${CHANNEL} channel for ${{ github.ref_name }}" \
+              --field content="$CONTENT" \
+              --field branch="release-channel" >/dev/null
+          fi

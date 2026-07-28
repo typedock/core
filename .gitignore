@@ -47,6 +47,7 @@ composer.phar
 
 # Build artifacts (output) — the build/ scripts themselves are tracked
 /dist/
+/typedock-package.json
 
 # Test coverage
 /coverage/

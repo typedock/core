@@ -7,9 +7,7 @@
         "php": ">=8.2",
         "ext-zip": "*",
         "flightphp/core": "^3.17",
-        "flightphp/active-record": "^0.7",
         "latte/latte": "^3.1",
-        "ramsey/uuid": "^4.7",
         "league/commonmark": "^2.5",
         "phpmailer/phpmailer": "^6.9",
         "intervention/image": "^3.7"

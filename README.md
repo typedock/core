@@ -124,7 +124,8 @@ TypeDock is intended as an **alternative**, not a replacement. It deliberately p
 - **Auth and RBAC** - Session cookies, API keys, TOTP 2FA, login and 2FA brute-force lockout, 4 roles, named permissions, and ownership checks.
 - **Themes** - Latte layouts, partials, component overrides, `theme.json` settings, custom components, and declarative fetch. Bundled themes: `default`, `kinari`.
 - **Plugins** - Manifest-based drop-in plugins with optional iframe-isolated admin UI, zip upload installer, and `provides` collision detection.
-- **Bundled plugins** - `form`, `redirect`, `social`, `image-optimizer`, `turnstile-captcha`, `advanced-blocks`, `backup`, `cloud-storage`, `source-contentful`, `source-github`, `source-github-docs`, and `simple-ai-writing`.
+- **Core updates** - Zip-managed installs verify minisign, then stage, back up, apply, migrate, and roll back Core releases from the admin. Releases also carry a Sigstore keyless bundle recorded in Rekor for independent audit.
+- **Bundled plugins** - `form`, `redirect`, `social`, `image-optimizer`, `turnstile-captcha`, `advanced-blocks`, `backup`, `import-wordpress`, `source-contentful`, `source-github`, `source-github-docs`, and `simple-ai-writing`.
 - **External Source** - Read-only content from Contentful, GitHub Issues, GitHub Docs, or generic JSON HTTP APIs. Credentials are encrypted at rest using `APP_KEY`.
 - **SEO and feeds** - Meta tags, canonical URLs, Open Graph/Twitter metadata, sitemap, RSS, and search.
 - **Multi-DB** - MySQL 8, PostgreSQL 14, and SQLite 3.35+ using the same migrations, plus an opt-in experimental remote-only libSQL driver for Turso and Bunny Database.
@@ -173,6 +174,14 @@ Plugins live under `plugins/<slug>/` and declare a `plugin.json` manifest. They 
 - `provides` claims detect provider collisions before one plugin silently replaces another.
 - Plugin admin UIs render inside an iframe so their CSS and JavaScript do not leak into the core admin.
 - External origins needed by admin pages are declared per plugin in `plugin.json` under `admin_csp`. Only HTTPS origins (plus WSS for `connect-src`) can extend the admin fetch directives; plugins cannot relax `object-src`, `form-action`, `base-uri`, or `frame-ancestors`.
+
+Cloud Storage is an optional official plugin because its S3 client dependencies
+would account for hundreds of files in every Core installation. Download the
+`typedock-cloud-storage-*.zip` asset from the matching GitHub release, then
+upload it from **Settings -> Modules**. If the host's upload limit rejects the
+archive, extract it locally and copy the `cloud-storage/` directory to
+`plugins/` over FTP. Existing Cloud Storage installations are preserved when
+Core is upgraded.
 
 ## CLI
 

@@ -209,3 +209,85 @@ jobs:
         run: bash build/make-shared-zip.sh
         env:
           OUT_DIR: ${{ github.workspace }}/dist
+
+      - name: Assert distribution contents and budgets
+        run: |
+          set -euo pipefail
+          stage="dist/typedock-shared"
+          files="$(find "$stage" -type f | wc -l)"
+          bytes="$(find "$stage" -type f -printf '%s\n' | awk '{sum += $1} END {print sum + 0}')"
+          zip_bytes="$(stat -c %s dist/typedock-shared.zip)"
+
+          echo "Distribution: ${files} files, ${bytes} bytes, zip ${zip_bytes} bytes"
+          # Initial guardrails are the measured post-cleanup package plus
+          # approximately 5% headroom. Raising them requires an explicit diff.
+          test "$files" -le 1566
+          test "$bytes" -le 6000000
+          test "$zip_bytes" -le 2400000
+
+          test -z "$(find "$stage" -type f \( -name '*.sqlite' -o -name '*.sqlite-wal' -o -name '*.sqlite-shm' \) -print -quit)"
+          test -z "$(find "$stage" -type f \( -iname 'Dockerfile*' -o -iname 'Makefile*' -o -iname 'docker-compose*' \) -print -quit)"
+          for forbidden in \
+            "$stage/typedock/.preview" \
+            "$stage/typedock/docs-internal" \
+            "$stage/typedock/node_modules" \
+            "$stage/typedock/tests" \
+            "$stage/typedock/admin/src"; do
+            test ! -e "$forbidden"
+          done
+          test ! -e "$stage/typedock/config.php"
+          test -f "$stage/typedock/config.php.example"
+          test ! -e "$stage/typedock/plugins/cloud-storage"
+          php -r '
+            $manifest = json_decode((string) file_get_contents($argv[1]), true);
+            if (!is_array($manifest) || count((array) ($manifest["file_hashes"] ?? [])) === 0) {
+                fwrite(STDERR, "Package manifest has no file hashes.\n");
+                exit(1);
+            }
+            $bundled = (array) ($manifest["bundled_plugins"] ?? []);
+            $actual = array_values(array_filter(
+                scandir($argv[2] . "/plugins") ?: [],
+                fn(string $entry): bool => $entry[0] !== "." && is_dir($argv[2] . "/plugins/" . $entry),
+            ));
+            sort($bundled);
+            sort($actual);
+            if ($bundled !== $actual) {
+                fwrite(STDERR, "Bundled plugin list does not match the package.\n");
+                exit(2);
+            }
+            foreach ($manifest["file_hashes"] as $path => $expected) {
+                $full = str_starts_with($path, "public/")
+                    ? $argv[3] . "/" . substr($path, strlen("public/"))
+                    : $argv[2] . "/" . $path;
+                if (!is_file($full) || "sha256:" . hash_file("sha256", $full) !== $expected) {
+                    fwrite(STDERR, "Package manifest hash mismatch: {$path}\n");
+                    exit(3);
+                }
+            }
+          ' \
+            "$stage/typedock/typedock-package.json" \
+            "$stage/typedock" \
+            "$stage/public_html"
+
+      - name: Build optional Cloud Storage plugin
+        run: bash build/make-plugin-zip.sh cloud-storage
+        env:
+          OUT_DIR: ${{ github.workspace }}/dist/plugins
+
+      - name: Assert Cloud Storage upload artifact
+        run: |
+          set -euo pipefail
+          plugin_zip="$(find dist/plugins -maxdepth 1 -name 'typedock-cloud-storage-*.zip' -print -quit)"
+          test -n "$plugin_zip"
+          test "$(stat -c %s "$plugin_zip")" -le 2097152
+          unzip -t "$plugin_zip"
+          install_dir="$(mktemp -d)"
+          trap 'rm -rf "$install_dir"' EXIT
+          php -r '
+            require $argv[3] . "/vendor/autoload.php";
+            $result = (new TypeDock\Core\PluginInstaller($argv[2]))->install($argv[1]);
+            if ($result["slug"] !== "cloud-storage") {
+                exit(1);
+            }
+          ' "$plugin_zip" "$install_dir" "dist/typedock-shared/typedock"
+          test -f "$install_dir/cloud-storage/vendor/autoload.php"

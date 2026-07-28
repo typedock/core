@@ -534,7 +534,7 @@ final class WordPressImportTest extends TestCase
 
     private function insertUser(string $email): string
     {
-        $id  = \Ramsey\Uuid\Uuid::uuid7()->toString();
+        $id  = typedock_uuid7();
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
         $this->pdo->prepare(

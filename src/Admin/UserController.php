@@ -29,7 +29,7 @@ class UserController extends BaseAdminController
     public function store(): void
     {
         $pdo  = \Flight::db();
-        $id   = \Ramsey\Uuid\Uuid::uuid7()->toString();
+        $id   = typedock_uuid7();
         $now  = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $hash = password_hash($_POST['password'] ?? '', PASSWORD_BCRYPT);
         $name = trim((string) ($_POST['name'] ?? ''));

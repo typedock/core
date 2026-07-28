@@ -1,9 +1,10 @@
 # TypeDock Upgrade Guide
 
-TypeDock does not try to rewrite itself from inside the CMS. Instead, it
-provides an upgrade preflight and a machine-readable update context so a
-human operator, deployment system, or coding agent can apply the release
-package while preserving local customizations.
+Zip-managed TypeDock installations can update Core from
+**Admin → System Update** beginning with `1.0.0-rc6`. Source checkouts and
+containers continue to use their normal deployment workflow. The same page
+retains a machine-readable context and agent prompt for hosts where PHP cannot
+replace the installed files.
 
 This keeps the update path portable across shared hosting, VPS, Docker,
 Git checkouts, split `public_html` layouts, and sites with custom themes
@@ -11,16 +12,21 @@ or plugins.
 
 ## The Short Version
 
-1. Back up the database and the TypeDock files.
-2. Open `/admin/system/update` or run `php cli/upgrade.php --check`.
-3. Review ownership warnings for themes and plugins.
-4. Download the target TypeDock release package.
-5. Verify the release signature/checksum from the official release notes.
-6. Replace Core-managed files from the package.
-7. Keep `config.php`, `storage/`, uploads, and user-owned themes/plugins.
-8. Run `php cli/migrate.php`.
-9. Run `php cli/assets-publish.php`.
-10. Smoke test the site and admin.
+1. Open `/admin/system/update`.
+2. Click **Check now**.
+3. Click **Download and verify**.
+4. Review ownership warnings for themes and plugins.
+5. Confirm the maintenance notice and apply the staged release.
+
+TypeDock verifies the release checksum and minisign signature against its
+pinned primary/recovery keyring before staging. This lets a
+recovery-signed release rotate a lost or compromised normal release key.
+Official releases also include a Sigstore keyless bundle with Rekor proof for
+independent verification; the PHP updater deliberately continues to require
+minisign and does not treat Sigstore as an alternate acceptance path.
+Applying creates database and file backups, enters maintenance mode, swaps
+only manifest-owned paths, runs migrations, republishes assets, and verifies
+the installed file hashes. A caught failure triggers automatic rollback.
 
 If you use a coding agent, give it the prompt from `/admin/system/update`
 or:
@@ -34,10 +40,11 @@ php cli/upgrade.php --agent-prompt
 TypeDock Core provides:
 
 - A package manifest: `typedock-package.json`
+- Signed release download and safe zip staging
 - Installation mode detection: `zip`, `source`, or `container`
 - Theme/plugin ownership checks
-- Preflight warnings for writable paths, database type, and public layout
-- Maintenance mode primitive: `storage/.maintenance`
+- Database and replaced-file backups
+- Maintenance mode, migration, asset publishing, and automatic rollback
 - Agent handoff context:
 
 ```bash
@@ -45,9 +52,9 @@ php cli/upgrade.php --agent-context
 php cli/upgrade.php --agent-prompt
 ```
 
-TypeDock Core does **not** automatically replace its own files. The actual
-file replacement is done by you, your hosting panel, your deployment
-system, or your coding agent.
+In-place apply is deliberately limited to zip-managed installations.
+Git/source and container installs show the preflight and agent context but do
+not offer an apply button.
 
 ## Files to Preserve
 
@@ -81,6 +88,10 @@ migrations/
 cli/
 admin/
 public/admin/dist/
+public/admin/assets/
+public/index.php
+public/install.php
+config/
 composer.json
 composer.lock
 LICENSE
@@ -89,6 +100,14 @@ README.md
 
 Bundled themes and plugins are handled separately because users often
 customize them by mistake.
+
+Cloud Storage is distributed as a separate official plugin beginning with
+TypeDock 1.0. Core release packages do not add or replace
+`plugins/cloud-storage/`. If it is already installed, preserve that directory
+during upgrades. New installations can download the
+`typedock-cloud-storage-*.zip` asset from the matching GitHub release and
+upload it from **Settings -> Modules**, or copy the extracted directory over
+FTP when the host's upload limit is too small.
 
 ## Theme and Plugin Ownership
 
@@ -99,6 +118,7 @@ The updater preflight classifies theme and plugin directories:
 | `clean` | Bundled by TypeDock and unchanged | Safe to replace from the release |
 | `modified` | Bundled by TypeDock but locally changed | Back it up, inspect the diff, then decide |
 | `managed-untracked` | Bundled by TypeDock, but this install lacks package hashes | Treat as modified; back it up first |
+| `removed-bundled` | Bundled by the old release but now distributed separately | Preserve it as an installed extension |
 | `user-owned` | Not owned by TypeDock Core | Do not overwrite |
 | `collision` | A user-owned slug conflicts with a new bundled slug | Stop and resolve manually |
 
@@ -107,7 +127,8 @@ directly. Copy them to a new slug and customize the copy.
 
 ## Shared Hosting Upgrade
 
-Use this flow when the site was installed from the shared-hosting zip.
+Use the Admin flow above when the site was installed from the shared-hosting
+zip at `1.0.0-rc6` or newer. The manual fallback is:
 
 1. Put the site in maintenance mode by creating `storage/.maintenance`
    if you are doing the replacement manually.
@@ -195,7 +216,12 @@ where backups were written.
 
 ## Rollback
 
-Rollback is environment-specific:
+If a caught error occurs after live replacement starts, TypeDock automatically
+restores the recorded database and files. If the PHP request itself is killed
+mid-swap, revisit `/admin/system/update` with the maintenance bypass link from
+the interrupted session and click **Restore previous release**.
+
+Manual rollback remains environment-specific:
 
 - Restore the database backup.
 - Restore the previous Core-managed files.
@@ -243,6 +269,8 @@ and `SESSION_NAME` in `config.php` if you need the old ones back.
 
 ### Migrations fail
 
-Do not keep browsing the half-upgraded site. Restore the database backup,
-restore the previous files, clear caches, and retry after reading the
-migration error.
+The admin updater keeps maintenance mode active while migrating and attempts
+rollback immediately. SQLite rollback is an exact file restore. MySQL,
+PostgreSQL, and libSQL use a portable row snapshot; schema changes are
+forward-only, so a migration that destructively removes old schema may still
+require the hosting provider's database backup.

@@ -12,7 +12,6 @@ define('TYPEDOCK_ROOT', dirname(__DIR__));
 
 require TYPEDOCK_ROOT . '/vendor/autoload.php';
 
-use Ramsey\Uuid\Uuid;
 use TypeDock\Core\AssetPublisher;
 use TypeDock\Core\Database\SqlitePragmas;
 use TypeDock\Core\Migration\Migrator;
@@ -229,7 +228,7 @@ function theme_preview_seed_extras(PDO $pdo): array
         $stmt->execute([$author['email']]);
         $id = $stmt->fetchColumn();
         if ($id === false) {
-            $id = Uuid::uuid7()->toString();
+            $id = typedock_uuid7();
             $pdo->prepare(
                 'INSERT INTO users (id, email, password_hash, name, display_name, slug, bio, role, created_at, updated_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
@@ -265,7 +264,7 @@ function theme_preview_seed_extras(PDO $pdo): array
         $stmt->execute([$path]);
         $id = $stmt->fetchColumn();
         if ($id === false) {
-            $id = Uuid::uuid7()->toString();
+            $id = typedock_uuid7();
             $pdo->prepare(
                 'INSERT INTO media (id, path, original_filename, mime_type, file_size, width, height, alt_text, folder, uploaded_by, created_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
@@ -334,7 +333,7 @@ function theme_preview_upsert_seo(PDO $pdo, string $targetType, ?string $targetI
         'INSERT INTO seo_meta (id, target_type, target_id, seo_title, meta_description, og_title, og_description, og_image_id, twitter_card, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     )->execute([
-        Uuid::uuid7()->toString(),
+        typedock_uuid7(),
         $targetType,
         $targetId,
         $title,

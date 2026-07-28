@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace TypeDock\Plugin\Form;
 
-use Ramsey\Uuid\Uuid;
 
 /**
  * Honeypot + IP rate-limit check for form submissions. Absorbs the former
@@ -64,7 +63,7 @@ class FormAntispam
             $this->pdo->prepare(
                 'INSERT INTO ' . self::TABLE . ' (id, ip_address, scope, created_at) VALUES (?, ?, ?, ?)'
             )->execute([
-                Uuid::uuid7()->toString(),
+                typedock_uuid7(),
                 $ip,
                 $scope,
                 (new \DateTimeImmutable())->format('Y-m-d H:i:s'),

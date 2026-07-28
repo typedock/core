@@ -145,7 +145,6 @@ final class GenericJsonAdapter implements ExternalSourceAdapterInterface
      */
     private function request(array $config, array $credentials, string $url): mixed
     {
-        $this->assertPublicHttpUrl($url);
         $headers = [
             'Accept: application/json',
             'User-Agent: TypeDock/0.1 ExternalSource',
@@ -163,6 +162,7 @@ final class GenericJsonAdapter implements ExternalSourceAdapterInterface
             $headers[] = 'Authorization: Basic ' . base64_encode($config['basic_username'] . ':' . $token);
         }
 
+        $this->assertPublicHttpUrl($url);
         $body = $this->httpGet($url, $headers);
         $json = json_decode($body, true);
         if (!is_array($json)) {

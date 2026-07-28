@@ -118,7 +118,7 @@ class MediaService
             }
         }
 
-        $safeName     = \Ramsey\Uuid\Uuid::uuid7()->toString() . '.' . $ext;
+        $safeName     = typedock_uuid7() . '.' . $ext;
         $folder       = '/' . trim($folder, '/');
         $year         = date('Y');
         $month        = date('m');
@@ -147,7 +147,7 @@ class MediaService
             $this->storeFile($storagePath, $file['tmp_name']);
         }
 
-        $id  = \Ramsey\Uuid\Uuid::uuid7()->toString();
+        $id  = typedock_uuid7();
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
         $stmt = $this->pdo->prepare(
@@ -212,7 +212,7 @@ class MediaService
             return null;
         }
 
-        $id          = \Ramsey\Uuid\Uuid::uuid7()->toString();
+        $id          = typedock_uuid7();
         $now         = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $folder      = '/import/' . self::sourceDateFolder($path);
         $storagePath = ltrim($folder . '/' . $id . '.' . $ext, '/');

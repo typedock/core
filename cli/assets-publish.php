@@ -16,9 +16,9 @@ $publisher = new TypeDock\Core\AssetPublisher(TYPEDOCK_ROOT);
 
 if (in_array('--clean', $argv ?? [], true)) {
     // Remove published asset directories.
-    $dirs = ['public/themes', 'public/plugins'];
+    $dirs = ['themes', 'plugins'];
     foreach ($dirs as $dir) {
-        $full = TYPEDOCK_ROOT . '/' . $dir;
+        $full = public_path($dir);
         if (is_dir($full)) {
             $iter = new RecursiveIteratorIterator(
                 new RecursiveDirectoryIterator($full, RecursiveDirectoryIterator::SKIP_DOTS),
@@ -28,7 +28,7 @@ if (in_array('--clean', $argv ?? [], true)) {
                 $item->isDir() ? rmdir($item->getPathname()) : unlink($item->getPathname());
             }
             rmdir($full);
-            echo "  Removed {$dir}/\n";
+            echo "  Removed public/{$dir}/\n";
         }
     }
     echo "Done.\n";

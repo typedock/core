@@ -28,7 +28,7 @@ class PasswordResetService
 
         $token      = bin2hex(random_bytes(32));
         $tokenHash  = hash('sha256', $token);
-        $id         = \Ramsey\Uuid\Uuid::uuid7()->toString();
+        $id         = typedock_uuid7();
         $expiresAt  = (new \DateTimeImmutable())->modify('+' . self::TOKEN_EXPIRY . ' seconds')->format('Y-m-d H:i:s');
         $now        = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 

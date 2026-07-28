@@ -47,7 +47,7 @@ ZIP_PATH="$OUT_DIR/$STAGE_NAME.zip"
 
 VERSION="$(
     awk -F"'" '/define\(.TYPEDOCK_VERSION./ {print $4; exit}' \
-        "$REPO_ROOT/public/index.php" 2>/dev/null || true
+        "$REPO_ROOT/src/helpers.php" 2>/dev/null || true
 )"
 VERSION="${VERSION:-0.0.0-dev}"
 
@@ -85,6 +85,7 @@ log "copying source tree → typedock/"
 # is documentation / marketing and excluded — see ThemeLoader::screenshotUrl()
 # for the runtime lookup path.
 rsync -a \
+    --filter=':- .gitignore' \
     --exclude='.git/' \
     --exclude='.github/' \
     --exclude='.vscode/' \
@@ -102,13 +103,13 @@ rsync -a \
     --exclude='/vendor/' \
     --exclude='/dist/' \
     --exclude='/tests/' \
+    --exclude='/admin/src/' \
     --exclude='docs-internal/' \
     --exclude='docker/' \
-    --exclude='docker-compose.yml' \
-    --exclude='docker.env' \
-    --exclude='docker.env.example' \
-    --exclude='Dockerfile' \
-    --exclude='Makefile' \
+    --exclude='docker-compose*.yml' \
+    --exclude='docker.env*' \
+    --exclude='Dockerfile*' \
+    --exclude='Makefile*' \
     --exclude='esbuild.config.mjs' \
     --exclude='package.json' \
     --exclude='package-lock.json' \
@@ -116,16 +117,17 @@ rsync -a \
     --exclude='.phpunit.result.cache' \
     --exclude='.phpunit.cache/' \
     --exclude='/phpstan/' \
-    --exclude='phpstan.neon' \
-    --exclude='phpstan.neon.dist' \
+    --exclude='phpstan.neon*' \
     --exclude='CLAUDE.md' \
     --exclude='AGENTS.md' \
     --exclude='MAINTAINERS.md' \
     --exclude='/bin/' \
     --exclude='/build/' \
+    --exclude='/cli/theme-preview.php' \
     --exclude='/config.php' \
     --exclude='/resources/' \
     --exclude='/schema/' \
+    --exclude='/seeds/' \
     --exclude='/storage/cache/' \
     --exclude='/storage/logs/' \
     --exclude='/storage/sessions/' \
@@ -143,6 +145,27 @@ rsync -a \
     --exclude='/public/plugins/' \
     --exclude='/public/cache/' \
     "$REPO_ROOT/" "$APP_DIR/"
+
+# Keep the release's bundled extension set in one place. Repositories may
+# contain optional plugins that are built as separate release artifacts.
+mapfile -t BUNDLED_PLUGINS < <(
+    php "$REPO_ROOT/build/make-package-manifest.php" --list-bundled-plugins
+)
+for plugin_dir in "$APP_DIR"/plugins/*/; do
+    [ -d "$plugin_dir" ] || continue
+    plugin_slug="$(basename "$plugin_dir")"
+    bundled=false
+    for bundled_slug in "${BUNDLED_PLUGINS[@]}"; do
+        if [ "$plugin_slug" = "$bundled_slug" ]; then
+            bundled=true
+            break
+        fi
+    done
+    if [ "$bundled" = false ]; then
+        log "excluding optional plugin plugins/$plugin_slug"
+        rm -rf "$plugin_dir"
+    fi
+done
 
 # -----------------------------------------------------------------------------
 # Install production Composer dependencies into the app dir
@@ -180,6 +203,24 @@ for plugin_composer in "$APP_DIR"/plugins/*/composer.json; do
             --prefer-dist
     )
 done
+
+# -----------------------------------------------------------------------------
+# Prune non-runtime vendor files
+# -----------------------------------------------------------------------------
+
+log "pruning vendor documentation and unused PHPMailer translations"
+
+for vendor_dir in "$APP_DIR/vendor" "$APP_DIR"/plugins/*/vendor; do
+    [ -d "$vendor_dir" ] || continue
+    find "$vendor_dir" -type f -iname '*.md' -delete
+done
+
+phpmailer_language="$APP_DIR/vendor/phpmailer/phpmailer/language"
+if [ -d "$phpmailer_language" ]; then
+    find "$phpmailer_language" -type f \
+        ! -name 'phpmailer.lang-en.php' \
+        -delete
+fi
 
 # -----------------------------------------------------------------------------
 # Split public/ → public_html/ (webroot) + leave the rest in typedock/
@@ -409,6 +450,21 @@ RemoveHandler .php .phtml .phar
 EOF
 
 # -----------------------------------------------------------------------------
+# Generate the package manifest after split-layout patching.
+#
+# Manifest keys keep source-layout names (`public/...`) while their hashes are
+# read from public_html/. This gives the updater one stable logical path model
+# for both standard and shared-hosting installs.
+# -----------------------------------------------------------------------------
+
+log "generating typedock-package.json"
+php "$REPO_ROOT/build/make-package-manifest.php" \
+    --root="$APP_DIR" \
+    --public-root="$WEB_DIR" \
+    --version="$VERSION" \
+    > "$APP_DIR/typedock-package.json"
+
+# -----------------------------------------------------------------------------
 # Seed runtime dirs inside typedock/
 # -----------------------------------------------------------------------------
 
@@ -481,6 +537,7 @@ check_exists "$WEB_DIR/admin/dist/editor.bundle.js"
 check_exists "$WEB_DIR/uploads/.htaccess"
 check_exists "$APP_DIR/.htaccess"
 check_exists "$APP_DIR/vendor/autoload.php"
+check_exists "$APP_DIR/typedock-package.json"
 check_exists "$APP_DIR/src/Core/App.php"
 check_exists "$APP_DIR/admin/layouts/admin-base.latte"
 check_exists "$APP_DIR/config.php.example"
@@ -493,7 +550,19 @@ check_absent "$APP_DIR/public"
 check_absent "$APP_DIR/tests"
 check_absent "$APP_DIR/node_modules"
 check_absent "$APP_DIR/docs-internal"
+check_absent "$APP_DIR/admin/src"
+check_absent "$APP_DIR/cli/theme-preview.php"
+check_absent "$APP_DIR/plugins/cloud-storage"
 check_absent "$APP_DIR/.git"
+
+manifest_hash_count="$(
+    php -r '
+        $manifest = json_decode((string) file_get_contents($argv[1]), true);
+        echo count((array) ($manifest["file_hashes"] ?? []));
+    ' "$APP_DIR/typedock-package.json"
+)"
+[ "$manifest_hash_count" -gt 0 ] \
+    || die "typedock-package.json contains no file hashes"
 
 check_no_phpsyn "$WEB_DIR/index.php"
 check_no_phpsyn "$WEB_DIR/install.php"

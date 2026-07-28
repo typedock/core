@@ -5,7 +5,6 @@ namespace TypeDock\Install;
 
 use DateTimeImmutable;
 use PDO;
-use Ramsey\Uuid\Uuid;
 use RuntimeException;
 use TypeDock\Core\Database\ConnectionFactory;
 use TypeDock\Core\Migration\Migrator;
@@ -237,7 +236,7 @@ final class Installer
         }
 
         $pdo  = $this->makePdo($db);
-        $id   = Uuid::uuid7()->toString();
+        $id   = typedock_uuid7();
         $hash = password_hash($password, PASSWORD_BCRYPT);
         $now  = (new DateTimeImmutable())->format('Y-m-d H:i:s');
         $displayName = $name !== '' ? $name : $email;

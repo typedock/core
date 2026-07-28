@@ -42,7 +42,7 @@ final class AgentUpdateContext
             ),
             'ownership' => $this->report->ownership,
             'agent_policy' => [
-                'core_does_not_apply_files' => true,
+                'core_can_apply_files' => $this->report->profile->isZipManaged(),
                 'preserve' => ['config.php', 'storage/', 'public/uploads/', 'themes/<user-owned>/', 'plugins/<user-owned>/'],
                 'regenerate' => ['public/themes/', 'public/plugins/'],
                 'must_backup_database_before_migrations' => true,

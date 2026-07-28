@@ -110,7 +110,7 @@ final class ImportMediaJobTest extends TestCase
 
     private function insertPostWithImage(string $mediaId, string $reservedUrl): string
     {
-        $id   = \Ramsey\Uuid\Uuid::uuid7()->toString();
+        $id   = typedock_uuid7();
         $now  = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $body = json_encode([
             'type'    => 'doc',
