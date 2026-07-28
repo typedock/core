@@ -9,8 +9,8 @@ final class Trust
     // primary key is held by the protected release environment; the encrypted
     // recovery key stays offline and is used only to rotate a lost or
     // compromised primary key.
-    public const PRIMARY_MINISIGN_PUBLIC_KEY = '';
-    public const RECOVERY_MINISIGN_PUBLIC_KEY = '';
+    public const PRIMARY_MINISIGN_PUBLIC_KEY = 'RWRoYa3JMgPIUmKZMrVRFwMRBhfmbRKIIeI5gm2IxaHy+7eqACNumEmj';
+    public const RECOVERY_MINISIGN_PUBLIC_KEY = 'RWSIrhvOjI98gr8E8XswOY69zF/+XOxXfEusmKlbUgAvURp5/xBb8aDY';
 
     /**
      * @return list<string>
