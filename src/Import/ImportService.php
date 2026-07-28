@@ -175,10 +175,18 @@ final class ImportService
             $featured = $writer->resolvePendingFeatured($importerKey, $importId);
             $summary['featured_resolved']   = $featured['resolved'];
             $summary['featured_unresolved'] = $featured['unresolved'];
+            $summary['featured_non_image']  = $featured['non_image'];
             if ($featured['unresolved'] > 0) {
                 $summary = $this->addWarning($summary, sprintf(
                     '%d featured image(s) point at assets that are not in this export.',
                     $featured['unresolved']
+                ));
+            }
+            if ($featured['non_image'] > 0) {
+                $summary = $this->addWarning($summary, sprintf(
+                    '%d featured media item(s) are not images (a PDF, for example) and were left unset. '
+                    . 'The files themselves are in the media library.',
+                    $featured['non_image']
                 ));
             }
 
@@ -296,7 +304,7 @@ final class ImportService
             $rows[] = [
                 $from,
                 (string) $row['post_type'] === \TypeDock\Content\PostService::TYPE_PAGE
-                    ? '/' . $row['slug']
+                    ? slug_path((string) $row['slug'])
                     : post_path((string) $row['slug']),
             ];
         }

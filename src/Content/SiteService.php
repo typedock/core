@@ -53,8 +53,10 @@ class SiteService
      */
     public function postUrl(string $slug = ''): string
     {
+        // slug_path() percent-encodes: a slug may be in any script, and this
+        // value goes straight into an href.
         $prefix = '/' . $this->postsArchiveSlug();
-        return $slug === '' ? $prefix : $prefix . '/' . ltrim($slug, '/');
+        return $slug === '' ? $prefix : $prefix . slug_path($slug);
     }
 
     private function postsArchiveSlug(): string

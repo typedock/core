@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0"
+	xmlns:excerpt="http://wordpress.org/export/1.2/excerpt/"
+	xmlns:content="http://purl.org/rss/1.0/modules/content/"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:wp="http://wordpress.org/export/1.2/"
+>
+<channel>
+	<title>Old Blog</title>
+	<link>https://old.example.com</link>
+	<wp:wxr_version>1.2</wp:wxr_version>
+	<wp:base_site_url>https://old.example.com</wp:base_site_url>
+	<wp:base_blog_url>https://old.example.com</wp:base_blog_url>
+
+	<!-- A page whose name carries its whole path. -->
+	<item>
+		<title>Customer A</title>
+		<link>https://old.example.com/showcase/customer-a/</link>
+		<content:encoded><![CDATA[<p>A case study.</p>]]></content:encoded>
+		<wp:post_id>101</wp:post_id>
+		<wp:post_date><![CDATA[2021-03-01 10:00:00]]></wp:post_date>
+		<wp:post_name><![CDATA[showcase/customer-a]]></wp:post_name>
+		<wp:status><![CDATA[publish]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:post_type><![CDATA[page]]></wp:post_type>
+	</item>
+
+	<!-- The same shape as a post: single archive segment, so it flattens. -->
+	<item>
+		<title>Showcase 001</title>
+		<link>https://old.example.com/2021/03/showcase-001/</link>
+		<content:encoded><![CDATA[<p>A post.</p>]]></content:encoded>
+		<wp:post_id>102</wp:post_id>
+		<wp:post_date><![CDATA[2021-03-02 10:00:00]]></wp:post_date>
+		<wp:post_name><![CDATA[showcase/showcase-001]]></wp:post_name>
+		<wp:status><![CDATA[publish]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:post_type><![CDATA[post]]></wp:post_type>
+	</item>
+
+	<!-- A Japanese permalink, as WordPress exports it: percent-encoded. -->
+	<item>
+		<title>お知らせ</title>
+		<link>https://old.example.com/%E3%81%8A%E7%9F%A5%E3%82%89%E3%81%9B/</link>
+		<content:encoded><![CDATA[<p>日本語の本文。</p>]]></content:encoded>
+		<wp:post_id>105</wp:post_id>
+		<wp:post_date><![CDATA[2021-03-05 10:00:00]]></wp:post_date>
+		<wp:post_name><![CDATA[%e3%81%8a%e7%9f%a5%e3%82%89%e3%81%9b]]></wp:post_name>
+		<wp:status><![CDATA[publish]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:post_type><![CDATA[post]]></wp:post_type>
+		<category domain="category" nicename="%e3%81%8a%e7%9f%a5%e3%82%89%e3%81%9b"><![CDATA[お知らせ]]></category>
+	</item>
+
+	<!-- Featured "image" is a PDF that WordPress generated a preview for. -->
+	<item>
+		<title>Brochure Post</title>
+		<link>https://old.example.com/2021/03/brochure/</link>
+		<content:encoded><![CDATA[<p>Download the brochure.</p>]]></content:encoded>
+		<wp:post_id>103</wp:post_id>
+		<wp:post_date><![CDATA[2021-03-03 10:00:00]]></wp:post_date>
+		<wp:post_name><![CDATA[brochure]]></wp:post_name>
+		<wp:status><![CDATA[publish]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:post_type><![CDATA[post]]></wp:post_type>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_thumbnail_id]]></wp:meta_key>
+			<wp:meta_value><![CDATA[60]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+
+	<!-- Featured "image" is a PDF with no generated preview at all. -->
+	<item>
+		<title>Plain PDF Post</title>
+		<link>https://old.example.com/2021/03/plain-pdf/</link>
+		<content:encoded><![CDATA[<p>No preview exists.</p>]]></content:encoded>
+		<wp:post_id>104</wp:post_id>
+		<wp:post_date><![CDATA[2021-03-04 10:00:00]]></wp:post_date>
+		<wp:post_name><![CDATA[plain-pdf]]></wp:post_name>
+		<wp:status><![CDATA[publish]]></wp:status>
+		<wp:post_parent>0</wp:post_parent>
+		<wp:post_type><![CDATA[post]]></wp:post_type>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_thumbnail_id]]></wp:meta_key>
+			<wp:meta_value><![CDATA[61]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+
+	<item>
+		<title>sample</title>
+		<link>https://old.example.com/2021/03/brochure/sample/</link>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<wp:post_id>60</wp:post_id>
+		<wp:post_date><![CDATA[2021-03-03 09:00:00]]></wp:post_date>
+		<wp:post_name><![CDATA[sample]]></wp:post_name>
+		<wp:status><![CDATA[inherit]]></wp:status>
+		<wp:post_parent>103</wp:post_parent>
+		<wp:post_type><![CDATA[attachment]]></wp:post_type>
+		<wp:attachment_url>https://old.example.com/wp-content/uploads/2021/03/sample.pdf</wp:attachment_url>
+		<wp:postmeta>
+			<wp:meta_key><![CDATA[_wp_attachment_metadata]]></wp:meta_key>
+			<wp:meta_value><![CDATA[a:1:{s:5:"sizes";a:1:{s:4:"full";a:3:{s:4:"file";s:14:"sample-pdf.jpg";s:5:"width";i:1088;s:6:"height";i:1408;}}}]]></wp:meta_value>
+		</wp:postmeta>
+	</item>
+
+	<item>
+		<title>plain</title>
+		<link>https://old.example.com/2021/03/plain-pdf/plain/</link>
+		<content:encoded><![CDATA[]]></content:encoded>
+		<wp:post_id>61</wp:post_id>
+		<wp:post_date><![CDATA[2021-03-04 09:00:00]]></wp:post_date>
+		<wp:post_name><![CDATA[plain]]></wp:post_name>
+		<wp:status><![CDATA[inherit]]></wp:status>
+		<wp:post_parent>104</wp:post_parent>
+		<wp:post_type><![CDATA[attachment]]></wp:post_type>
+		<wp:attachment_url>https://old.example.com/wp-content/uploads/2021/03/plain.pdf</wp:attachment_url>
+	</item>
+</channel>
+</rss>

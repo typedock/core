@@ -53,9 +53,20 @@ class Router
             });
         }
 
-        // Sitemap
+        // Sitemap. The index lists the three child sitemaps by path, so each
+        // needs a route of its own — without them the index advertises URLs
+        // that fall through to the page catch-all and 404.
         \Flight::route('GET /sitemap.xml', function () {
             (new \TypeDock\Seo\SitemapController())->index();
+        });
+        \Flight::route('GET /sitemap-pages.xml', function () {
+            (new \TypeDock\Seo\SitemapController())->pages();
+        });
+        \Flight::route('GET /sitemap-posts.xml', function () {
+            (new \TypeDock\Seo\SitemapController())->posts();
+        });
+        \Flight::route('GET /sitemap-categories.xml', function () {
+            (new \TypeDock\Seo\SitemapController())->categories();
         });
 
         // RSS feed

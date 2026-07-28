@@ -199,12 +199,12 @@ final class ImportWriter
      * broken body image is obvious; a missing featured image is an empty
      * thumbnail that nobody notices for months.
      *
-     * @return array{resolved:int, unresolved:int}
+     * @return array{resolved:int, unresolved:int, non_image:int}
      */
     public function resolvePendingFeatured(string $importerKey, string $batchId): array
     {
         if ($this->media === null || !$this->options->fetchMedia) {
-            return ['resolved' => 0, 'unresolved' => 0];
+            return ['resolved' => 0, 'unresolved' => 0, 'non_image' => 0];
         }
 
         $stmt = $this->pdo->prepare(
@@ -215,7 +215,9 @@ final class ImportWriter
 
         $seo        = new \TypeDock\Seo\SeoService($this->pdo);
         $referenced = [];
+        $resolved   = 0;
         $unresolved = 0;
+        $nonImage   = 0;
 
         foreach ($stmt->fetchAll() as $row) {
             $asset = $this->media->findByExternalId($importerKey, (string) $row['external_featured_id']);
@@ -224,8 +226,22 @@ final class ImportWriter
                 continue;
             }
 
+            // The asset still counts as referenced — it is kept and fetched —
+            // even when it turns out not to be usable as a thumbnail.
             $referenced[] = (string) $asset['id'];
             $this->queueDownload($asset, $batchId);
+
+            // WordPress lets a PDF be the featured "image" because it swaps in
+            // a preview it generated at display time. Wiring the PDF itself
+            // into og_image would produce a thumbnail no browser can draw, and
+            // an og:image tag no crawler can use, so leave it unset and count
+            // it. The file stays in the library either way.
+            if (!str_starts_with((string) $asset['mime_type'], 'image/')) {
+                $nonImage++;
+                continue;
+            }
+
+            $resolved++;
 
             // Merge rather than replace: a re-import must not blank a meta
             // description someone wrote by hand.
@@ -238,7 +254,7 @@ final class ImportWriter
 
         $this->discardUnusedAttachments($batchId, $referenced);
 
-        return ['resolved' => count($referenced), 'unresolved' => $unresolved];
+        return ['resolved' => $resolved, 'unresolved' => $unresolved, 'non_image' => $nonImage];
     }
 
     /**
@@ -379,26 +395,61 @@ final class ImportWriter
      */
     private function resolveSlug(ImportDocument $doc, ?string $excludeId): string
     {
+        // Only the source slug may carry a path. A page's slug *is* its URL
+        // path — the front controller looks pages up by the whole request path
+        // and SlugValidator allows slashes — so `showcase/customer-a` has to
+        // survive the trip. Posts get no such freedom: they live under one
+        // archive segment, and the router's `@slug` placeholder stops at a
+        // slash. A title that happens to contain a slash is not a hierarchy,
+        // so the fallbacks are flattened either way.
         $candidates = [
-            $doc->slug,
-            $doc->title,
-            'post-' . preg_replace('/\D+/', '', $doc->externalId),
+            $this->normaliseSlug($doc->slug, keepPath: $doc->type === PostService::TYPE_PAGE),
+            $this->normaliseSlug($doc->title),
+            $this->normaliseSlug('post-' . preg_replace('/\D+/', '', $doc->externalId)),
         ];
 
-        foreach ($candidates as $candidate) {
-            $base = $this->asciiSlug((string) $candidate);
+        foreach ($candidates as $base) {
             if ($base !== '') {
-                return $this->slugValidator->generateUnique($base, $this->pdo, $excludeId);
+                return $this->slugValidator->adoptUnique($base, $this->pdo, $excludeId);
             }
         }
 
         return $this->slugValidator->generateUnique($doc->externalId, $this->pdo, $excludeId);
     }
 
-    private function asciiSlug(string $value): string
+    /**
+     * Normalise a source slug for storage.
+     *
+     * WordPress percent-encodes non-ASCII permalinks, so the value is decoded
+     * first and kept — `%e3%81%8a%e7%9f%a5%e3%82%89%e3%81%9b` is `お知らせ`,
+     * and flattening it to ASCII used to leave the post on a timestamp slug,
+     * breaking every inbound link a Japanese site had.
+     *
+     * `$keepPath` keeps `/` as a separator instead of flattening it to `-`,
+     * collapsing the punctuation around it so the result has no leading,
+     * trailing or doubled separator — the shape SlugValidator::validate()
+     * accepts.
+     */
+    private function normaliseSlug(string $value, bool $keepPath = false): string
     {
-        $value = strtolower(rawurldecode(trim($value)));
-        $value = preg_replace('/[^a-z0-9]+/', '-', $value) ?? '';
+        $value = mb_strtolower(rawurldecode(trim($value)), 'UTF-8');
+        // Invisible letters are stripped before the class below turns
+        // everything else into a separator — an export is attacker-supplied,
+        // and a slug made of Hangul fillers renders as nothing at all.
+        $value = preg_replace('/[' . SlugValidator::INVISIBLE_LETTERS . ']+/u', '', $value) ?? '';
+        $value = preg_replace(
+            $keepPath
+                ? '#[^' . SlugValidator::CHAR_CLASS . '/]+#u'
+                : '/[^' . SlugValidator::CHAR_CLASS . ']+/u',
+            '-',
+            $value
+        ) ?? '';
+
+        if ($keepPath) {
+            $value = preg_replace('#-*/+-*#', '/', $value) ?? $value;
+
+            return trim($value, '-/');
+        }
 
         return trim($value, '-');
     }

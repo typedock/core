@@ -177,4 +177,69 @@ final class SeoServiceTest extends TestCase
 
         $this->assertSame('https://cdn.example/2026/explicit.jpg', $seo->ogImageUrl);
     }
+
+    public function testPageServingTheSiteRootAdvertisesTheSiteRoot(): void
+    {
+        $seo = $this->service->resolveForPage($this->homePageRow(), isHome: true);
+
+        // canonical drives <link rel="canonical"> and og:url in both bundled
+        // themes, so all three move together.
+        $this->assertSame('http://localhost/', $seo->canonical);
+        $this->assertStringContainsString('"url":"http://localhost/"', $seo->jsonLd);
+        $this->assertStringNotContainsString('/home', $seo->jsonLd);
+    }
+
+    public function testHomePageKeepsItsOwnTitleAndDescription(): void
+    {
+        $this->service->upsert('page', 'page-home', [
+            'seo_title'        => 'Welcome',
+            'meta_description' => 'The front door',
+        ]);
+
+        $seo = $this->service->resolveForPage($this->homePageRow(), isHome: true);
+
+        $this->assertSame('Welcome', $seo->title);
+        $this->assertSame('The front door', $seo->description);
+        $this->assertSame('Welcome', $seo->ogTitle);
+    }
+
+    public function testBothKindsOfHomeAgreeOnTheCanonicalUrl(): void
+    {
+        $this->assertSame(
+            $this->service->resolveForHome('Blog')->canonical,
+            $this->service->resolveForPage($this->homePageRow(), isHome: true)->canonical,
+            'A static home page and an archive home must not advertise different URLs'
+        );
+    }
+
+    public function testTheSamePageAwayFromTheRootKeepsItsOwnUrl(): void
+    {
+        $seo = $this->service->resolveForPage($this->homePageRow());
+
+        $this->assertSame('http://localhost/home', $seo->canonical);
+        $this->assertStringContainsString('"url":"http://localhost/home"', $seo->jsonLd);
+    }
+
+    public function testStructuredDataFollowsAnExplicitCanonical(): void
+    {
+        $this->service->upsert('page', 'page-home', [
+            'canonical_url' => 'https://example.test/elsewhere',
+        ]);
+
+        $seo = $this->service->resolveForPage($this->homePageRow());
+
+        $this->assertSame('https://example.test/elsewhere', $seo->canonical);
+        $this->assertStringContainsString('"url":"https://example.test/elsewhere"', $seo->jsonLd);
+    }
+
+    /** @return array<string, mixed> */
+    private function homePageRow(): array
+    {
+        return [
+            'id'        => 'page-home',
+            'post_type' => 'page',
+            'slug'      => 'home',
+            'title'     => 'Home',
+        ];
+    }
 }

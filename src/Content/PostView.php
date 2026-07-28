@@ -145,8 +145,12 @@ class PostView
         ?array $globalImage,
         ?object $primaryCategory
     ): object {
-        $base   = rtrim((string) config('app.url', ''), '/');
-        $prefix = (($row['post_type'] ?? '') === 'post') ? post_path() . '/' : '/';
+        $base    = rtrim((string) config('app.url', ''), '/');
+        $isPost  = ($row['post_type'] ?? '') === 'post';
+        $rowSlug = (string) ($row['slug'] ?? '');
+        // Percent-encoded here rather than in the column: themes drop this
+        // straight into an href, and a slug may be in any script.
+        $path    = $isPost ? post_path($rowSlug) : slug_path($rowSlug);
 
         $perRowOgImageId = !empty($row['og_image_id']) ? (string) $row['og_image_id'] : null;
         $image = $perRowOgImageId !== null
@@ -163,7 +167,7 @@ class PostView
             'id'           => (string) ($row['id'] ?? ''),
             'slug'         => (string) ($row['slug'] ?? ''),
             'title'        => (string) ($row['title'] ?? ''),
-            'url'          => $base . $prefix . ltrim((string) ($row['slug'] ?? ''), '/'),
+            'url'          => $base . $path,
             'excerpt'      => $excerpt,
             'publishedAt'  => $row['published_at'] ?? null,
             'updatedAt'    => $row['updated_at'] ?? null,

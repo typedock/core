@@ -6,6 +6,7 @@ namespace TypeDock\Frontend;
 use TypeDock\Content\BlockRenderer;
 use TypeDock\Component\ComponentRenderer;
 use TypeDock\Content\PostService;
+use TypeDock\Content\SlugValidator;
 use TypeDock\Content\CategoryService;
 use TypeDock\Content\PostView;
 use TypeDock\Content\TagService;
@@ -59,12 +60,18 @@ class FrontendController
     public function page(): void
     {
         $uri  = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
-        $slug = ltrim($uri, '/');
+        // Decoded to match how slugs are stored, and to match what Flight
+        // hands every other route — it urldecodes named parameters, but this
+        // catch-all reads the raw request path itself. Without this a page
+        // slugged `お知らせ` is looked up as `%E3%81%8A…` and 404s.
+        $slug = rawurldecode(ltrim($uri, '/'));
 
         if ($slug === '') {
             $this->homepage();
             return;
         }
+
+        $this->requireResolvableSlug($slug, 'Page');
 
         if (str_ends_with($slug, '.md')) {
             $slug = substr($slug, 0, -3);
@@ -89,6 +96,8 @@ class FrontendController
 
     public function blogPostMarkdown(string $slug): void
     {
+        $this->requireResolvableSlug($slug, 'Post');
+
         $pdo  = \Flight::db();
         $stmt = $pdo->prepare(
             "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM posts p
@@ -148,6 +157,8 @@ class FrontendController
 
     public function blogPost(string $slug): void
     {
+        $this->requireResolvableSlug($slug, 'Post');
+
         $pdo  = \Flight::db();
         $stmt = $pdo->prepare(
             "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM posts p
@@ -167,6 +178,8 @@ class FrontendController
 
     public function categoryArchive(string $slug, int $page = 1): void
     {
+        $this->requireResolvableSlug($slug, 'Category');
+
         $catService = new CategoryService(\Flight::db());
         $locale     = typedock_current_locale();
         $category   = $catService->findBySlug($slug, $locale);
@@ -217,6 +230,8 @@ class FrontendController
 
     public function tagArchive(string $slug, int $page = 1): void
     {
+        $this->requireResolvableSlug($slug, 'Tag');
+
         $tagService = new TagService(\Flight::db());
         $locale     = typedock_current_locale();
         $tag        = $tagService->findBySlug($slug, $locale);
@@ -299,6 +314,8 @@ class FrontendController
 
     public function authorArchive(string $slug, int $page = 1): void
     {
+        $this->requireResolvableSlug($slug, 'Author');
+
         $author = $this->getAuthorBySlug($slug);
         if ($author === null) {
             throw new \TypeDock\Exception\NotFoundException("Author not found: {$slug}");
@@ -392,7 +409,7 @@ class FrontendController
 
         $this->renderLatte($layout, [
             'page'        => PostView::projectSingle($page, $renderedBody, $categories, $tags),
-            'seo'         => (new SeoService(\Flight::db()))->resolveForPage($page),
+            'seo'         => (new SeoService(\Flight::db()))->resolveForPage($page, $isHome),
             'breadcrumbs' => $breadcrumbs,
             'body_class'  => $isHome
                 ? 'home ' . ($postType === 'post' ? 'single-post' : 'page')
@@ -587,6 +604,25 @@ HTML;
         );
     }
 
+
+    /**
+     * Refuse a slug that cannot identify a row, before it reaches the
+     * database.
+     *
+     * Every public entry point above is handed a decoded string: Flight
+     * urldecodes named route parameters, and page() decodes the request path
+     * itself. So the bytes are an anonymous caller's choice, and `/%FF` would
+     * otherwise arrive at a UTF-8 column as an invalid sequence — a 500 on
+     * PostgreSQL rather than the 404 it is.
+     */
+    private function requireResolvableSlug(string $slug, string $what): void
+    {
+        if (!SlugValidator::isResolvable($slug)) {
+            // The slug is deliberately not echoed back: it is exactly the
+            // input that is known to be malformed.
+            throw new \TypeDock\Exception\NotFoundException("{$what} not found.");
+        }
+    }
 
     /**
      * @return array<string, mixed>|null

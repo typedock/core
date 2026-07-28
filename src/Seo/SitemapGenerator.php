@@ -39,19 +39,11 @@ class SitemapGenerator
     /**
      * Generate pages sitemap.
      */
-    public function generatePages(string $postType = 'page'): string
+    public function generatePages(): string
     {
-        $stmt = $this->pdo->prepare(
-            "SELECT slug, updated_at, published_at FROM posts
-             WHERE post_type = ? AND status = 'published'
-             ORDER BY updated_at DESC LIMIT 1000"
-        );
-        $stmt->execute([$postType]);
-        $pages = $stmt->fetchAll();
-
-        return $this->buildUrlset($pages, function (array $page): array {
+        return $this->buildUrlset($this->publishedRows('page'), function (array $page): array {
             return [
-                'loc'        => $this->siteUrl . '/' . ltrim((string) $page['slug'], '/'),
+                'loc'        => $this->siteUrl . slug_path((string) $page['slug']),
                 'lastmod'    => substr((string) ($page['updated_at'] ?? date('Y-m-d')), 0, 10),
                 'changefreq' => 'monthly',
                 'priority'   => '0.7',
@@ -61,10 +53,35 @@ class SitemapGenerator
 
     /**
      * Generate posts sitemap.
+     *
+     * Posts sit under the configured archive segment, so their URLs go through
+     * the same helper the router, canonical tags and the import link rewriter
+     * use. Building them like pages advertised `/{slug}`, which 404s on any
+     * site that is not using the default archive slug.
      */
     public function generatePosts(): string
     {
-        return $this->generatePages('post');
+        return $this->buildUrlset($this->publishedRows('post'), function (array $post): array {
+            return [
+                'loc'        => $this->siteUrl . post_path((string) $post['slug']),
+                'lastmod'    => substr((string) ($post['updated_at'] ?? date('Y-m-d')), 0, 10),
+                'changefreq' => 'monthly',
+                'priority'   => '0.7',
+            ];
+        });
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function publishedRows(string $postType): array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT slug, updated_at, published_at FROM posts
+             WHERE post_type = ? AND status = 'published'
+             ORDER BY updated_at DESC LIMIT 1000"
+        );
+        $stmt->execute([$postType]);
+
+        return $stmt->fetchAll();
     }
 
     /**
@@ -80,7 +97,7 @@ class SitemapGenerator
 
         return $this->buildUrlset($categories, function (array $cat): array {
             return [
-                'loc'        => $this->siteUrl . '/category/' . $cat['slug'],
+                'loc'        => $this->siteUrl . '/category' . slug_path((string) $cat['slug']),
                 'lastmod'    => substr((string) ($cat['created_at'] ?? date('Y-m-d')), 0, 10),
                 'changefreq' => 'weekly',
                 'priority'   => '0.5',
