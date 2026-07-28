@@ -284,10 +284,10 @@ jobs:
           install_dir="$(mktemp -d)"
           trap 'rm -rf "$install_dir"' EXIT
           php -r '
-            require "vendor/autoload.php";
+            require $argv[3] . "/vendor/autoload.php";
             $result = (new TypeDock\Core\PluginInstaller($argv[2]))->install($argv[1]);
             if ($result["slug"] !== "cloud-storage") {
                 exit(1);
             }
-          ' "$plugin_zip" "$install_dir"
+          ' "$plugin_zip" "$install_dir" "dist/typedock-shared/typedock"
           test -f "$install_dir/cloud-storage/vendor/autoload.php"
