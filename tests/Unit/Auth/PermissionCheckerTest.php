@@ -97,15 +97,20 @@ final class PermissionCheckerTest extends TestCase
     public function test_contributor_cannot_manage_redirects_slots_menus_categories(): void
     {
         $contributor = $this->user('contributor');
-        // Redirect plugin uses settings:manage; menus/slots/categories have
-        // their own keys. The audit's intent is "contributor sees none of
-        // these" — pin every key the audit list mentioned.
-        foreach (['menus:manage', 'slots:manage', 'categories:manage', 'settings:manage'] as $perm) {
+        foreach (['redirects:manage', 'menus:manage', 'slots:manage', 'categories:manage'] as $perm) {
             self::assertFalse(
                 $this->checker->can($contributor, $perm),
                 "contributor must not have {$perm}"
             );
         }
+    }
+
+    public function test_redirect_management_is_editor_admin_only(): void
+    {
+        self::assertFalse($this->checker->can($this->user('contributor'), 'redirects:manage'));
+        self::assertFalse($this->checker->can($this->user('author'), 'redirects:manage'));
+        self::assertTrue($this->checker->can($this->user('editor'), 'redirects:manage'));
+        self::assertTrue($this->checker->can($this->user('admin'), 'redirects:manage'));
     }
 
     // -----------------------------------------------------------------

@@ -25,16 +25,32 @@ final class RedirectAdminController
 
     public function store(): void
     {
-        $source = trim((string) ($_POST['source_path'] ?? ''));
-        $target = trim((string) ($_POST['target_url'] ?? ''));
-        $status = (int) ($_POST['status_code'] ?? 301);
-        if (!in_array($status, [301, 302, 307, 308], true)) {
-            $status = 301;
+        try {
+            [$source, $target, $status] = (new RedirectRuleValidator())->validate(
+                (string) ($_POST['source_path'] ?? ''),
+                (string) ($_POST['target_url'] ?? ''),
+                (string) ($_POST['status_code'] ?? ''),
+            );
+        } catch (\InvalidArgumentException $e) {
+            $this->ctx->redirect('', $e->getMessage(), 'error');
+            return;
         }
 
-        if ($source === '' || $target === '') {
-            $this->ctx->redirect('', 'Source and target are required.', 'error');
-            return;
+        if (str_starts_with($source, '~')) {
+            $count = $this->ctx->db()->pdo()->query(
+                "SELECT COUNT(*) FROM redirects WHERE source_path LIKE '~%'"
+            )->fetchColumn();
+            if ((int) $count >= RegexPattern::MAX_RULES) {
+                $this->ctx->redirect(
+                    '',
+                    sprintf(
+                        'No more than %d regular-expression rules may be active.',
+                        RegexPattern::MAX_RULES,
+                    ),
+                    'error',
+                );
+                return;
+            }
         }
 
         $this->ctx->db()->pdo()->prepare(

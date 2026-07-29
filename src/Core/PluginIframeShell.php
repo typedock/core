@@ -34,7 +34,11 @@ class PluginIframeShell extends BaseAdminController
 
     private function pluginTitle(): string
     {
-        foreach (\Flight::plugin_admin_menu()->all() as $item) {
+        $user = \Flight::get('current_user');
+        foreach (\Flight::plugin_admin_menu()->visibleTo(
+            is_array($user) ? $user : null,
+            \Flight::permissions(),
+        ) as $item) {
             if ($item['slug'] === $this->pluginSlug) {
                 return $item['label'];
             }

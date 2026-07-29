@@ -18,8 +18,6 @@ namespace TypeDock\Plugin\Redirect;
  */
 final class RedirectImport
 {
-    private const STATUS_CODES = [301, 302, 307, 308];
-
     /** Column names accepted in a CSV header row or as JSON object keys. */
     private const SOURCE_KEYS = ['from', 'source', 'source_path'];
     private const TARGET_KEYS = ['to', 'target', 'target_url'];
@@ -39,7 +37,16 @@ final class RedirectImport
      */
     private const COMMIT_EVERY = 500;
 
-    public function __construct(private readonly \PDO $pdo) {}
+    /** Shared-host friendly hard limits: this feature is for redirects, not ETL. */
+    public const MAX_FILE_BYTES = 2 * 1024 * 1024;
+    public const MAX_ROWS = 5000;
+
+    private readonly RedirectRuleValidator $validator;
+
+    public function __construct(private readonly \PDO $pdo)
+    {
+        $this->validator = new RedirectRuleValidator();
+    }
 
     /**
      * @param  string $path     Readable file on disk.
@@ -48,11 +55,29 @@ final class RedirectImport
      */
     public function importFile(string $path, string $filename): array
     {
-        $rows = str_ends_with(strtolower($filename), '.json')
-            ? $this->readJson($path)
-            : $this->readCsv($path);
+        $size = @filesize($path);
+        if ($size === false) {
+            throw new \RuntimeException('Could not read the uploaded file.');
+        }
+        if ($size > self::MAX_FILE_BYTES) {
+            throw new \RuntimeException('Redirect files may not exceed 2 MB.');
+        }
 
-        return $this->write($rows);
+        if (str_ends_with(strtolower($filename), '.json')) {
+            $rows = $this->readJson($path);
+            $this->assertRowCount(count($rows));
+            return $this->write($rows);
+        }
+
+        // Preflight the row count before the first write. Otherwise a file
+        // above the limit would commit several 500-row batches and then become
+        // impossible to finish on retry.
+        $count = 0;
+        foreach ($this->readCsv($path) as $_row) {
+            $this->assertRowCount(++$count);
+        }
+
+        return $this->write($this->readCsv($path));
     }
 
     /**
@@ -77,44 +102,89 @@ final class RedirectImport
         $updated = 0;
         $skipped = 0;
         $errors  = [];
-        $pending = 0;
         $now     = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $batch   = [];
+        $seenSources = array_fill_keys(array_keys($known), true);
+        $regexCount = count(array_filter(
+            array_keys($known),
+            static fn(string $source): bool => str_starts_with($source, '~'),
+        ));
 
-        // Batched rather than per-row: a few thousand rules committed one at a
-        // time is slow enough on shared hosting to hit the request timeout
-        // half-loaded.
+        foreach ($rows as $row) {
+            try {
+                $rule = $this->validator->validate(
+                    $row['source'],
+                    $row['target'],
+                    $row['status'],
+                );
+                $source = $rule[0];
+                if (str_starts_with($source, '~') && !isset($seenSources[$source])) {
+                    if ($regexCount >= RegexPattern::MAX_RULES) {
+                        throw new \InvalidArgumentException(sprintf(
+                            'no more than %d regular-expression rules may be active.',
+                            RegexPattern::MAX_RULES,
+                        ));
+                    }
+                    $regexCount++;
+                }
+                $seenSources[$source] = true;
+                $batch[] = $rule;
+            } catch (\InvalidArgumentException $e) {
+                $skipped++;
+                if (count($errors) < self::MAX_ERRORS) {
+                    $errors[] = sprintf('Line %d: %s', $row['line'], $e->getMessage());
+                }
+                continue;
+            }
+
+            if (count($batch) >= self::COMMIT_EVERY) {
+                [$added, $changed] = $this->writeBatch($batch, $known, $insert, $update, $now);
+                $created += $added;
+                $updated += $changed;
+                $batch = [];
+            }
+        }
+
+        if ($batch !== []) {
+            [$added, $changed] = $this->writeBatch($batch, $known, $insert, $update, $now);
+            $created += $added;
+            $updated += $changed;
+        }
+
+        return ['created' => $created, 'updated' => $updated, 'skipped' => $skipped, 'errors' => $errors];
+    }
+
+    /**
+     * File parsing and rule validation happen before this method opens the
+     * transaction. Only the bounded write batch holds a DB transaction.
+     *
+     * @param array<int, array{0:string,1:string,2:int}> $batch
+     * @param array<string, string> $known
+     * @return array{0:int,1:int} created, updated
+     */
+    private function writeBatch(
+        array $batch,
+        array &$known,
+        \PDOStatement $insert,
+        \PDOStatement $update,
+        string $now,
+    ): array {
+        $created = 0;
+        $updated = 0;
         $this->pdo->beginTransaction();
 
         try {
-            foreach ($rows as $row) {
-                try {
-                    [$source, $target, $status] = $this->validate($row);
-                } catch (\InvalidArgumentException $e) {
-                    $skipped++;
-                    if (count($errors) < self::MAX_ERRORS) {
-                        $errors[] = sprintf('Line %d: %s', $row['line'], $e->getMessage());
-                    }
-                    continue;
-                }
-
+            foreach ($batch as [$source, $target, $status]) {
                 if (isset($known[$source])) {
                     $update->execute([$target, $status, $known[$source]]);
                     $updated++;
-                } else {
-                    $id = typedock_uuid7();
-                    $insert->execute([$id, $source, $target, $status, $now]);
-                    // Recorded so the same source appearing twice in one file
-                    // updates the row this run just created instead of
-                    // inserting a second one.
-                    $known[$source] = $id;
-                    $created++;
+                    continue;
                 }
 
-                if (++$pending >= self::COMMIT_EVERY) {
-                    $this->pdo->commit();
-                    $this->pdo->beginTransaction();
-                    $pending = 0;
-                }
+                $id = typedock_uuid7();
+                $insert->execute([$id, $source, $target, $status, $now]);
+                $known[$source] = $id;
+                $created++;
             }
 
             $this->pdo->commit();
@@ -125,7 +195,7 @@ final class RedirectImport
             throw $e;
         }
 
-        return ['created' => $created, 'updated' => $updated, 'skipped' => $skipped, 'errors' => $errors];
+        return [$created, $updated];
     }
 
     /**
@@ -146,86 +216,6 @@ final class RedirectImport
         }
 
         return $known;
-    }
-
-    /**
-     * @param  array{line:int, source:string, target:string, status:string} $row
-     * @return array{0: string, 1: string, 2: int}
-     */
-    private function validate(array $row): array
-    {
-        $source = trim($row['source']);
-        $target = trim($row['target']);
-
-        if ($source === '' || $target === '') {
-            throw new \InvalidArgumentException('source and target are both required.');
-        }
-
-        $source = $this->normaliseSource($source);
-        $target = $this->normaliseTarget($target);
-
-        if ($source === $target) {
-            throw new \InvalidArgumentException('source and target are the same, which would loop.');
-        }
-
-        $status = trim($row['status']);
-        if ($status === '') {
-            $status = '301';
-        }
-        if (!in_array((int) $status, self::STATUS_CODES, true) || !ctype_digit($status)) {
-            throw new \InvalidArgumentException(
-                sprintf('"%s" is not one of %s.', $status, implode(', ', self::STATUS_CODES))
-            );
-        }
-
-        return [$source, $target, (int) $status];
-    }
-
-    /**
-     * A source is either a request path or a `~`-prefixed pattern.
-     *
-     * Absolute URLs are reduced to their path because a redirect list written
-     * from an old site is full of them, and a rule stored with a scheme and
-     * host would never match anything — RedirectMiddleware compares paths.
-     */
-    private function normaliseSource(string $source): string
-    {
-        if (str_starts_with($source, '~')) {
-            // RegexResolver runs patterns under `@preg_match`, so a broken one
-            // is stored happily and then silently never fires. Reject it here,
-            // where there is still someone to tell.
-            if (@preg_match('#' . str_replace('#', '\\#', substr($source, 1)) . '#', '') === false) {
-                throw new \InvalidArgumentException('the regular expression does not compile.');
-            }
-
-            return $source;
-        }
-
-        if (preg_match('#^https?://#i', $source) === 1) {
-            $parts = parse_url($source);
-            $path  = is_array($parts) ? (string) ($parts['path'] ?? '') : '';
-            $query = is_array($parts) ? (string) ($parts['query'] ?? '') : '';
-
-            // `/?p=123` style permalinks are identified by their query alone;
-            // emitting the bare path would redirect the site's home page.
-            $source = $path === '' || $path === '/'
-                ? ($query !== '' ? '/?' . $query : '')
-                : $path . ($query !== '' ? '?' . $query : '');
-
-            if ($source === '') {
-                throw new \InvalidArgumentException('the source URL has no path to match on.');
-            }
-        }
-
-        return '/' . ltrim($source, '/');
-    }
-
-    /** Targets may be absolute URLs; anything else is a path on this site. */
-    private function normaliseTarget(string $target): string
-    {
-        return preg_match('#^[a-z][a-z0-9+.-]*://#i', $target) === 1
-            ? $target
-            : '/' . ltrim($target, '/');
     }
 
     /**
@@ -306,9 +296,9 @@ final class RedirectImport
     }
 
     /**
-     * @return \Generator<int, array{line:int, source:string, target:string, status:string}>
+     * @return array<int, array{line:int, source:string, target:string, status:string}>
      */
-    private function readJson(string $path): \Generator
+    private function readJson(string $path): array
     {
         $contents = @file_get_contents($path);
         if ($contents === false) {
@@ -320,18 +310,21 @@ final class RedirectImport
             throw new \RuntimeException('Expected a JSON array of {"from": "…", "to": "…"} objects.');
         }
 
+        $rows = [];
         foreach ($decoded as $index => $entry) {
             if (!is_array($entry)) {
-                continue;
+                $entry = [];
             }
 
-            yield [
+            $rows[] = [
                 'line'   => $index + 1,
                 'source' => $this->firstKey($entry, self::SOURCE_KEYS),
                 'target' => $this->firstKey($entry, self::TARGET_KEYS),
                 'status' => $this->firstKey($entry, self::STATUS_KEYS),
             ];
         }
+
+        return $rows;
     }
 
     /**
@@ -359,5 +352,14 @@ final class RedirectImport
         }
 
         return true;
+    }
+
+    private function assertRowCount(int $count): void
+    {
+        if ($count > self::MAX_ROWS) {
+            throw new \RuntimeException(
+                sprintf('Redirect files may not contain more than %d rules.', self::MAX_ROWS)
+            );
+        }
     }
 }

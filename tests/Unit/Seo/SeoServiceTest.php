@@ -232,6 +232,39 @@ final class SeoServiceTest extends TestCase
         $this->assertStringContainsString('"url":"https://example.test/elsewhere"', $seo->jsonLd);
     }
 
+    public function testStructuredDataCannotCloseItsScriptElement(): void
+    {
+        $payload = '</script><script>globalThis.pwned=1</script>';
+        $this->service->upsert('page', 'page-home', [
+            'canonical_url' => 'https://example.test/' . $payload,
+        ]);
+
+        $row = $this->homePageRow();
+        $row['title'] = $payload;
+        $seo = $this->service->resolveForPage($row);
+
+        $this->assertStringNotContainsString('</script><script>', $seo->jsonLd);
+        $this->assertStringContainsString('\u003C/script\u003E', $seo->jsonLd);
+
+        $document = new \DOMDocument();
+        @$document->loadHTML($seo->jsonLd);
+        $this->assertSame(
+            1,
+            $document->getElementsByTagName('script')->length,
+            'Untrusted JSON-LD values must not create a second executable script element',
+        );
+    }
+
+    public function testStructuredDataSubstitutesInvalidLegacyUtf8(): void
+    {
+        $row = $this->homePageRow();
+        $row['title'] = "Legacy \xFF title";
+
+        $seo = $this->service->resolveForPage($row);
+
+        $this->assertStringContainsString('Legacy � title', $seo->jsonLd);
+    }
+
     /** @return array<string, mixed> */
     private function homePageRow(): array
     {

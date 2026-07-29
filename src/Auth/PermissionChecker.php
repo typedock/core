@@ -44,6 +44,7 @@ class PermissionChecker
         'menus:manage'      => ['admin', 'editor'],
         'categories:manage' => ['admin', 'editor'],
         'tags:manage'       => ['admin', 'editor', 'author'],
+        'redirects:manage'  => ['admin', 'editor'],
 
         // Slots
         'slots:manage'      => ['admin', 'editor'],

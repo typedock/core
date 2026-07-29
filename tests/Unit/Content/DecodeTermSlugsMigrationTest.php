@@ -27,7 +27,14 @@ final class DecodeTermSlugsMigrationTest extends TestCase
         $this->pdo->setAttribute(\PDO::ATTR_DEFAULT_FETCH_MODE, \PDO::FETCH_ASSOC);
 
         foreach (['categories', 'tags'] as $table) {
-            $this->pdo->exec("CREATE TABLE {$table} (id TEXT PRIMARY KEY, slug TEXT NOT NULL)");
+            $this->pdo->exec(
+                "CREATE TABLE {$table} (
+                    id TEXT PRIMARY KEY,
+                    slug TEXT NOT NULL,
+                    locale TEXT NOT NULL DEFAULT 'en',
+                    UNIQUE (slug, locale)
+                )"
+            );
         }
     }
 
@@ -73,6 +80,38 @@ final class DecodeTermSlugsMigrationTest extends TestCase
         $this->migrate();
 
         $this->assertSame(['お知らせ', '%E3%81%8A%E7%9F%A5%E3%82%89%E3%81%9B'], $this->slugs('categories'));
+    }
+
+    public function testCollisionChecksAreScopedToLocale(): void
+    {
+        $stmt = $this->pdo->prepare('INSERT INTO categories (id, slug, locale) VALUES (?, ?, ?)');
+        $stmt->execute(['1', '%E3%81%8A%E7%9F%A5%E3%82%89%E3%81%9B', 'en']);
+        $stmt->execute(['2', 'お知らせ', 'ja']);
+
+        $this->migrate();
+
+        $rows = $this->pdo->query(
+            'SELECT slug, locale FROM categories ORDER BY locale'
+        )->fetchAll(\PDO::FETCH_ASSOC);
+        $this->assertSame([
+            ['slug' => 'お知らせ', 'locale' => 'en'],
+            ['slug' => 'お知らせ', 'locale' => 'ja'],
+        ], $rows);
+    }
+
+    public function testUnsafeDecodedValuesAreLeftEncoded(): void
+    {
+        $stmt = $this->pdo->prepare('INSERT INTO categories (id, slug) VALUES (?, ?)');
+        $stmt->execute(['1', 'bad%00slug']);
+        $stmt->execute(['2', 'nested%2Fterm']);
+        $stmt->execute(['3', '%FF']);
+
+        $this->migrate();
+
+        $this->assertSame(
+            ['bad%00slug', 'nested%2Fterm', '%FF'],
+            $this->slugs('categories'),
+        );
     }
 
     public function testRunningItTwiceChangesNothingTheSecondTime(): void

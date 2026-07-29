@@ -6,6 +6,9 @@ namespace TypeDock\Tests\Unit\Plugin;
 use PHPUnit\Framework\TestCase;
 use TypeDock\Core\Database\HranaHttpClient;
 use TypeDock\Core\Database\LibsqlPdo;
+use TypeDock\Plugin\Redirect\ExactMatchResolver;
+use TypeDock\Plugin\Redirect\RegexPattern;
+use TypeDock\Plugin\Redirect\RegexResolver;
 use TypeDock\Plugin\Redirect\RedirectImport;
 
 /**
@@ -129,6 +132,9 @@ final class RedirectImportTest extends TestCase
         $this->importCsv("from,to\nhttps://old.example.com/?p=123,/blog/hello\n");
 
         $this->assertSame(['/?p=123' => ['/blog/hello', 301]], $this->storedRules());
+        $resolver = new ExactMatchResolver($this->pdo);
+        $this->assertSame(['/blog/hello', 301], $resolver->resolveRequestTarget('/?p=123'));
+        $this->assertNull($resolver->resolve('/'), 'The query rule must not hijack the site root');
     }
 
     public function testRelativeTargetGetsALeadingSlash(): void
@@ -155,6 +161,91 @@ final class RedirectImportTest extends TestCase
         $this->assertStringContainsString('regular expression', $result['errors'][0]);
     }
 
+    public function testRegexLengthIsBounded(): void
+    {
+        $result = $this->importJson([
+            ['from' => '~' . str_repeat('a', RegexPattern::MAX_BYTES + 1), 'to' => '/new'],
+        ]);
+
+        $this->assertSame(1, $result['skipped']);
+        $this->assertSame([], $this->storedRules());
+        $this->assertStringContainsString('safe complexity', $result['errors'][0]);
+    }
+
+    public function testRegexRuntimeCarriesPcreWorkLimits(): void
+    {
+        $regex = RegexPattern::compile('^(a+)+$');
+
+        $this->assertNotNull($regex);
+        $this->assertStringContainsString('(*LIMIT_MATCH=', $regex);
+        $this->assertStringContainsString('(*LIMIT_DEPTH=', $regex);
+        $this->assertFalse(@preg_match($regex, str_repeat('a', 5000) . '!'));
+        $this->assertSame(PREG_BACKTRACK_LIMIT_ERROR, preg_last_error());
+    }
+
+    public function testRegexRuleCountIsBounded(): void
+    {
+        $rows = [];
+        for ($i = 0; $i <= RegexPattern::MAX_RULES; $i++) {
+            $rows[] = ['from' => '~^/old-' . $i . '$', 'to' => '/new-' . $i];
+        }
+
+        $result = $this->importJson($rows);
+
+        $this->assertSame(RegexPattern::MAX_RULES, $result['created']);
+        $this->assertSame(1, $result['skipped']);
+        $this->assertStringContainsString('regular-expression rules', $result['errors'][0]);
+    }
+
+    public function testRegexResolverSkipsUnsafeLegacyPatterns(): void
+    {
+        $insert = $this->pdo->prepare(
+            'INSERT INTO redirects (id, source_path, target_url, status_code, created_at)
+             VALUES (?, ?, ?, 301, ?)'
+        );
+        $insert->execute([
+            'unsafe',
+            '~' . str_repeat('a', RegexPattern::MAX_BYTES + 1),
+            '/must-not-run',
+            '2026-01-01 00:00:00',
+        ]);
+        $insert->execute([
+            'safe',
+            '~^/wanted$',
+            '/resolved',
+            '2026-01-01 00:00:01',
+        ]);
+
+        $this->assertSame(
+            ['/resolved', 301],
+            (new RegexResolver($this->pdo))->resolve('/wanted'),
+        );
+    }
+
+    public function testRegexResolverNeverEvaluatesBeyondTheSiteLimit(): void
+    {
+        $insert = $this->pdo->prepare(
+            'INSERT INTO redirects (id, source_path, target_url, status_code, created_at)
+             VALUES (?, ?, ?, 301, ?)'
+        );
+        for ($i = 0; $i < RegexPattern::MAX_RULES; $i++) {
+            $insert->execute([
+                'bounded-' . $i,
+                '~^/does-not-match-' . $i . '$',
+                '/never',
+                sprintf('%06d', $i),
+            ]);
+        }
+        $insert->execute([
+            'over-limit',
+            '~^/wanted$',
+            '/must-not-run',
+            sprintf('%06d', RegexPattern::MAX_RULES),
+        ]);
+
+        $this->assertNull((new RegexResolver($this->pdo))->resolve('/wanted'));
+    }
+
     public function testUnsupportedStatusCodeIsReportedNotSilentlyCoerced(): void
     {
         $result = $this->importCsv("from,to,status\n/old-page,/new-page,404\n");
@@ -170,6 +261,30 @@ final class RedirectImportTest extends TestCase
 
         $this->assertSame(1, $result['skipped']);
         $this->assertStringContainsString('loop', $result['errors'][0]);
+    }
+
+    public function testNonHttpAbsoluteTargetIsRefused(): void
+    {
+        $result = $this->importJson([
+            ['from' => '/old', 'to' => 'javascript://alert.example/payload'],
+        ]);
+
+        $this->assertSame(1, $result['skipped']);
+        $this->assertSame([], $this->storedRules());
+        $this->assertStringContainsString('http or https', $result['errors'][0]);
+    }
+
+    public function testControlCharactersAndOversizeValuesAreRefused(): void
+    {
+        $result = $this->importJson([
+            ['from' => '/header', 'to' => "/new\r\nX-Injected: yes"],
+            ['from' => '/' . str_repeat('a', 2001), 'to' => '/new'],
+        ]);
+
+        $this->assertSame(2, $result['skipped']);
+        $this->assertSame([], $this->storedRules());
+        $this->assertStringContainsString('control character', $result['errors'][0]);
+        $this->assertStringContainsString('2000-character', $result['errors'][1]);
     }
 
     public function testIncompleteRowIsSkippedWithoutStoppingTheRest(): void
@@ -232,6 +347,34 @@ final class RedirectImportTest extends TestCase
         ), static fn (string $sql): bool => str_starts_with($sql, 'INSERT')));
 
         $this->assertCount(2, $written);
+    }
+
+    public function testFileSizeLimitIsEnforcedBeforeParsing(): void
+    {
+        $file = $this->tmpFile(str_repeat('x', RedirectImport::MAX_FILE_BYTES + 1), 'json');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('2 MB');
+
+        $this->import->importFile($file, basename($file));
+    }
+
+    public function testRowLimitIsEnforcedBeforeAnyWrite(): void
+    {
+        $rows = array_fill(0, RedirectImport::MAX_ROWS + 1, [
+            'from' => '/same',
+            'to'   => '/target',
+        ]);
+        $file = $this->tmpFile((string) json_encode($rows), 'json');
+
+        try {
+            $this->import->importFile($file, basename($file));
+            $this->fail('Expected an oversized rule list to be refused.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString((string) RedirectImport::MAX_ROWS, str_replace(',', '', $e->getMessage()));
+        }
+
+        $this->assertSame([], $this->storedRules(), 'Preflight limits must run before the first batch commits');
     }
 
     // -----------------------------------------------------------------

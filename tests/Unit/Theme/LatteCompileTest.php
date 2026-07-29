@@ -38,6 +38,9 @@ final class LatteCompileTest extends TestCase
             TYPEDOCK_ROOT . '/themes/northline',
             TYPEDOCK_ROOT . '/themes/kawara',
         ];
+        foreach (glob(TYPEDOCK_ROOT . '/plugins/*/templates') ?: [] as $pluginTemplates) {
+            $roots[] = $pluginTemplates;
+        }
 
         foreach ($roots as $root) {
             if (!is_dir($root)) {

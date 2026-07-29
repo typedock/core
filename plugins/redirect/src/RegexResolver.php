@@ -13,7 +13,10 @@ final class RegexResolver implements RedirectResolver
     {
         try {
             $stmt = $this->pdo->prepare(
-                "SELECT source_path, target_url, status_code FROM redirects WHERE source_path LIKE '~%'"
+                "SELECT source_path, target_url, status_code FROM redirects
+                  WHERE source_path LIKE '~%'
+                  ORDER BY created_at ASC
+                  LIMIT " . RegexPattern::MAX_RULES
             );
             $stmt->execute();
             $rows = $stmt->fetchAll();
@@ -23,7 +26,10 @@ final class RegexResolver implements RedirectResolver
 
         foreach ($rows as $row) {
             $pattern = substr((string) $row['source_path'], 1);
-            $regex   = '#' . str_replace('#', '\\#', $pattern) . '#';
+            $regex   = RegexPattern::compile($pattern);
+            if ($regex === null) {
+                continue;
+            }
 
             $matches = [];
             if (@preg_match($regex, $sourcePath, $matches) === 1) {

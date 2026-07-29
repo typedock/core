@@ -3,9 +3,9 @@ declare(strict_types=1);
 
 namespace TypeDock\Plugin\Redirect;
 
-use TypeDock\Contract\RedirectResolver;
+use TypeDock\Contract\QueryAwareRedirectResolver;
 
-final class ExactMatchResolver implements RedirectResolver
+final class ExactMatchResolver implements QueryAwareRedirectResolver
 {
     public function __construct(private readonly \PDO $pdo) {}
 
@@ -25,5 +25,10 @@ final class ExactMatchResolver implements RedirectResolver
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    public function resolveRequestTarget(string $requestTarget): ?array
+    {
+        return $this->resolve($requestTarget);
     }
 }

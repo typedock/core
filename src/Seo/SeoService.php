@@ -481,6 +481,24 @@ class SeoService
             $data['author'] = ['@type' => 'Person', 'name' => $page['author_name']];
         }
 
-        return '<script type="application/ld+json">' . json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . '</script>';
+        // JSON lives inside an HTML <script> raw-text element. HTML parsing
+        // ends that element at a literal `</script>` even when its type is
+        // application/ld+json, so JSON_UNESCAPED_SLASHES alone would let an
+        // article title or explicit canonical break out into executable HTML.
+        // Hex-escape every HTML-significant character before the themes emit
+        // this trusted wrapper with `|noescape`.
+        $json = json_encode(
+            $data,
+            JSON_UNESCAPED_UNICODE
+                | JSON_UNESCAPED_SLASHES
+                | JSON_HEX_TAG
+                | JSON_HEX_AMP
+                | JSON_HEX_APOS
+                | JSON_HEX_QUOT
+                | JSON_INVALID_UTF8_SUBSTITUTE
+                | JSON_THROW_ON_ERROR,
+        );
+
+        return '<script type="application/ld+json">' . $json . '</script>';
     }
 }

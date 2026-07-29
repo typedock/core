@@ -93,7 +93,7 @@ class PluginContext
     /**
      * Register an admin-area route under /admin/plugins/<slug>/. Wraps the
      * handler with:
-     *   - session auth enforcement
+     *   - permission enforcement (admin-only by default)
      *   - CSRF verification on mutating verbs (unless requireCsrf=false)
      *   - iframe shell rendering on top-level GETs (doc28 §2.1): the first
      *     time a safe GET hits the plugin, Core returns the admin chrome +
@@ -104,7 +104,8 @@ class PluginContext
         string $method,
         string $path,
         callable $handler,
-        bool $requireCsrf = true
+        bool $requireCsrf = true,
+        string $permission = 'role:admin',
     ): void {
         $this->hasAdminSurface = true;
         $path   = ltrim($path, '/');
@@ -114,8 +115,8 @@ class PluginContext
         $isSafe = in_array($verb, ['GET', 'HEAD'], true);
         $slug   = $this->pluginSlug;
 
-        \Flight::route($verb . ' ' . $full, function (...$args) use ($handler, $isSafe, $requireCsrf, $slug) {
-            (new AuthMiddleware())->requireAuth();
+        \Flight::route($verb . ' ' . $full, function (...$args) use ($handler, $isSafe, $requireCsrf, $slug, $permission) {
+            (new AuthMiddleware())->requirePermission($permission);
             if (!$isSafe && $requireCsrf) {
                 (new CsrfMiddleware())->verifyOrFail();
             }
@@ -131,13 +132,17 @@ class PluginContext
         });
     }
 
-    public function addAdminMenuItem(string $label, string $path): void
+    public function addAdminMenuItem(
+        string $label,
+        string $path,
+        string $permission = 'role:admin',
+    ): void
     {
         $this->hasAdminSurface = true;
         $path = ltrim($path, '/');
         $base = '/admin/plugins/' . $this->pluginSlug;
         $full = $path === '' ? $base : $base . '/' . $path;
-        \Flight::plugin_admin_menu()->add($this->pluginSlug, $label, $full);
+        \Flight::plugin_admin_menu()->add($this->pluginSlug, $label, $full, $permission);
     }
 
     /**
