@@ -28,10 +28,18 @@
     </thead>
     <tbody>
         {foreach $pages as $page}
+        {var $dispStatus = $page['display_status'] ?? $page['status']}
         <tr>
             <td><a href="/admin/pages/{$page['id']}/edit" class="font-medium">{$page['title']}</a></td>
             <td><code>{$page['slug']}</code></td>
-            <td><span class="badge badge-{$page['status']}">{$page['status']|translate}</span></td>
+            <td>
+                <span class="badge badge-{$dispStatus}">
+                    {$dispStatus|translate}
+                    {if $dispStatus === 'scheduled' && !empty($page['published_at'])}
+                        <span class="text-xs font-normal opacity-80">({$page['published_at']|date:'m/d H:i'})</span>
+                    {/if}
+                </span>
+            </td>
             <td class="text-slate-500">{$page['updated_at']|date:'Y/m/d'}</td>
             <td class="actions">
                 <a href="/admin/pages/{$page['id']}/edit" class="btn btn-secondary btn-sm">{_'Edit'}</a>

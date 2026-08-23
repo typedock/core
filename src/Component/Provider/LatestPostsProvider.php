@@ -11,6 +11,7 @@ class LatestPostsProvider implements DataProvider
 {
     public function resolve(array $params, RenderContext $context): array
     {
+        $now   = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $count = min((int) ($params['count'] ?? 5), 20);
         $stmt  = \Flight::db()->prepare(
             "SELECT p.id, p.slug, p.title, p.body, p.excerpt, p.published_at, p.updated_at, p.post_type,
@@ -21,10 +22,11 @@ class LatestPostsProvider implements DataProvider
              LEFT JOIN users u ON u.id = p.author_id
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
              WHERE p.post_type = 'post' AND p.status = 'published'
+               AND (p.published_at IS NULL OR p.published_at <= ?)
                AND p.locale = ?
              ORDER BY p.published_at DESC LIMIT ?"
         );
-        $stmt->execute([$context->locale !== '' ? $context->locale : typedock_current_locale(), $count]);
+        $stmt->execute([$now, $context->locale !== '' ? $context->locale : typedock_current_locale(), $count]);
         return ['posts' => PostView::projectList($stmt->fetchAll())];
     }
 }

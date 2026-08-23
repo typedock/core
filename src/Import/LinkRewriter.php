@@ -81,7 +81,7 @@ final class LinkRewriter
                 continue;
             }
             $map[$key] = (string) $row['post_type'] === PostService::TYPE_PAGE
-                ? '/' . $row['slug']
+                ? slug_path((string) $row['slug'])
                 : post_path((string) $row['slug']);
         }
 

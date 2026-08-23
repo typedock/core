@@ -324,6 +324,8 @@ final class WxrImporter implements ImporterInterface
             return null;
         }
 
+        $url = $this->previewUrl($url, $item) ?? $url;
+
         return new ImportDocument(
             externalId: $this->qualify($this->wpValue($item, 'post_id'), $context),
             type: 'attachment',
@@ -333,6 +335,54 @@ final class WxrImporter implements ImporterInterface
             blocks: [],
             sourceUrl: $url,
         );
+    }
+
+    /**
+     * The image WordPress would actually show for a non-image attachment.
+     *
+     * A PDF can be a post's featured image: WordPress renders the JPEG it
+     * generated beside the file, recorded in `_wp_attachment_metadata` under
+     * the `full` size. `wp:attachment_url` names the PDF, so importing that
+     * faithfully produces a featured image no browser can draw. Prefer the
+     * preview when the export carries one.
+     *
+     * Returns null for ordinary images — their metadata has no `full` entry
+     * and the attachment URL is already the original — and for PDFs exported
+     * without a preview, which ImportWriter then declines to make featured.
+     */
+    private function previewUrl(string $url, \SimpleXMLElement $item): ?string
+    {
+        if (self::isImagePath($url)) {
+            return null;
+        }
+
+        $meta = $this->metaValue($item, '_wp_attachment_metadata');
+        if ($meta === '') {
+            return null;
+        }
+
+        // `allowed_classes: false` matters: an export is attacker-supplied by
+        // definition, and this field is serialized PHP. Without it,
+        // unserialize() would instantiate whatever class the file names.
+        $data = @unserialize($meta, ['allowed_classes' => false]);
+        $file = is_array($data) ? ($data['sizes']['full']['file'] ?? null) : null;
+        if (!is_string($file) || $file === '' || !self::isImagePath($file)) {
+            return null;
+        }
+
+        // The preview sits beside the source file and `file` is a bare name;
+        // basename() keeps a crafted `../` from walking to another host path.
+        $slash = strrpos($url, '/');
+
+        return $slash === false ? null : substr($url, 0, $slash + 1) . basename($file);
+    }
+
+    private static function isImagePath(string $pathOrUrl): bool
+    {
+        $path = parse_url($pathOrUrl, PHP_URL_PATH);
+        $ext  = pathinfo(is_string($path) && $path !== '' ? $path : $pathOrUrl, PATHINFO_EXTENSION);
+
+        return in_array(strtolower($ext), ['jpg', 'jpeg', 'png', 'gif', 'webp'], true);
     }
 
     /**

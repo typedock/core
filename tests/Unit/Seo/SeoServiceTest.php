@@ -177,4 +177,102 @@ final class SeoServiceTest extends TestCase
 
         $this->assertSame('https://cdn.example/2026/explicit.jpg', $seo->ogImageUrl);
     }
+
+    public function testPageServingTheSiteRootAdvertisesTheSiteRoot(): void
+    {
+        $seo = $this->service->resolveForPage($this->homePageRow(), isHome: true);
+
+        // canonical drives <link rel="canonical"> and og:url in both bundled
+        // themes, so all three move together.
+        $this->assertSame('http://localhost/', $seo->canonical);
+        $this->assertStringContainsString('"url":"http://localhost/"', $seo->jsonLd);
+        $this->assertStringNotContainsString('/home', $seo->jsonLd);
+    }
+
+    public function testHomePageKeepsItsOwnTitleAndDescription(): void
+    {
+        $this->service->upsert('page', 'page-home', [
+            'seo_title'        => 'Welcome',
+            'meta_description' => 'The front door',
+        ]);
+
+        $seo = $this->service->resolveForPage($this->homePageRow(), isHome: true);
+
+        $this->assertSame('Welcome', $seo->title);
+        $this->assertSame('The front door', $seo->description);
+        $this->assertSame('Welcome', $seo->ogTitle);
+    }
+
+    public function testBothKindsOfHomeAgreeOnTheCanonicalUrl(): void
+    {
+        $this->assertSame(
+            $this->service->resolveForHome('Blog')->canonical,
+            $this->service->resolveForPage($this->homePageRow(), isHome: true)->canonical,
+            'A static home page and an archive home must not advertise different URLs'
+        );
+    }
+
+    public function testTheSamePageAwayFromTheRootKeepsItsOwnUrl(): void
+    {
+        $seo = $this->service->resolveForPage($this->homePageRow());
+
+        $this->assertSame('http://localhost/home', $seo->canonical);
+        $this->assertStringContainsString('"url":"http://localhost/home"', $seo->jsonLd);
+    }
+
+    public function testStructuredDataFollowsAnExplicitCanonical(): void
+    {
+        $this->service->upsert('page', 'page-home', [
+            'canonical_url' => 'https://example.test/elsewhere',
+        ]);
+
+        $seo = $this->service->resolveForPage($this->homePageRow());
+
+        $this->assertSame('https://example.test/elsewhere', $seo->canonical);
+        $this->assertStringContainsString('"url":"https://example.test/elsewhere"', $seo->jsonLd);
+    }
+
+    public function testStructuredDataCannotCloseItsScriptElement(): void
+    {
+        $payload = '</script><script>globalThis.pwned=1</script>';
+        $this->service->upsert('page', 'page-home', [
+            'canonical_url' => 'https://example.test/' . $payload,
+        ]);
+
+        $row = $this->homePageRow();
+        $row['title'] = $payload;
+        $seo = $this->service->resolveForPage($row);
+
+        $this->assertStringNotContainsString('</script><script>', $seo->jsonLd);
+        $this->assertStringContainsString('\u003C/script\u003E', $seo->jsonLd);
+
+        $document = new \DOMDocument();
+        @$document->loadHTML($seo->jsonLd);
+        $this->assertSame(
+            1,
+            $document->getElementsByTagName('script')->length,
+            'Untrusted JSON-LD values must not create a second executable script element',
+        );
+    }
+
+    public function testStructuredDataSubstitutesInvalidLegacyUtf8(): void
+    {
+        $row = $this->homePageRow();
+        $row['title'] = "Legacy \xFF title";
+
+        $seo = $this->service->resolveForPage($row);
+
+        $this->assertStringContainsString('Legacy � title', $seo->jsonLd);
+    }
+
+    /** @return array<string, mixed> */
+    private function homePageRow(): array
+    {
+        return [
+            'id'        => 'page-home',
+            'post_type' => 'page',
+            'slug'      => 'home',
+            'title'     => 'Home',
+        ];
+    }
 }

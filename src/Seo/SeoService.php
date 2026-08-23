@@ -198,8 +198,10 @@ class SeoService
      * @param array<string, mixed> $page  Page/post row (must include id,
      *     post_type, title, slug; excerpt/published_at/updated_at/author_name
      *     are used when present)
+     * @param bool $isHome This page is serving the site root. Its own slug is
+     *     then not a URL anyone should be sent to — see homeCanonical().
      */
-    public function resolveForPage(array $page): object
+    public function resolveForPage(array $page, bool $isHome = false): object
     {
         $type = (string) ($page['post_type'] ?? 'page');
         $id   = (string) ($page['id'] ?? '');
@@ -224,7 +226,8 @@ class SeoService
         $ogDesc      = $pick('og_description')   ?? $description;
         $twitterCard = $pick('twitter_card')     ?? 'summary_large_image';
         $robots      = $pick('robots');
-        $canonical   = $pick('canonical_url')    ?? $this->defaultCanonical($page);
+        $canonical   = $pick('canonical_url')
+            ?? ($isHome ? self::homeCanonical() : $this->defaultCanonical($page));
         $ogImageUrl  = $this->resolvePageOgImageUrl($page, $raw, $global);
         $schemaType  = $pick('schema_type');
 
@@ -239,8 +242,21 @@ class SeoService
             'ogImageUrl'     => $ogImageUrl,
             'twitterCard'    => $twitterCard,
             'schemaType'     => $schemaType,
-            'jsonLd'         => $this->generateJsonLd($page, $schemaType),
+            // The structured data URL is the canonical, not a second guess at
+            // it. Deriving it from the slug independently let JSON-LD disagree
+            // with <link rel="canonical"> — always for a page serving the site
+            // root, and any time an editor set a canonical by hand.
+            'jsonLd'         => $this->generateJsonLd($page, $schemaType, $canonical),
         ];
+    }
+
+    /**
+     * The site root, with the trailing slash resolveForHome() also emits, so
+     * both kinds of home page advertise the same URL.
+     */
+    private static function homeCanonical(): string
+    {
+        return rtrim((string) config('app.url', ''), '/') . '/';
     }
 
     public function resolveForHome(string $fallbackTitle, string $fallbackDescription = ''): object
@@ -255,7 +271,7 @@ class SeoService
         $description = $pick('meta_description') ?? $fallbackDescription;
         $ogTitle     = $pick('og_title')         ?? $title;
         $ogDesc      = $pick('og_description')   ?? $description;
-        $canonical   = rtrim((string) config('app.url', ''), '/') . '/';
+        $canonical   = self::homeCanonical();
         $ogImageUrl  = $this->resolveOgImageUrl(isset($global['og_image_id']) ? (string) $global['og_image_id'] : null);
 
         return (object) [
@@ -276,9 +292,11 @@ class SeoService
     private function defaultCanonical(array $page): string
     {
         $base = rtrim((string) config('app.url', ''), '/');
-        $slug = ltrim((string) ($page['slug'] ?? ''), '/');
-        $prefix = ($page['post_type'] ?? '') === 'post' ? post_path() . '/' : '/';
-        return $base . $prefix . $slug;
+        $slug = (string) ($page['slug'] ?? '');
+
+        return ($page['post_type'] ?? '') === 'post'
+            ? $base . post_path($slug)
+            : $base . slug_path($slug);
     }
 
     public function resolveOgImageUrl(?string $mediaId): ?string
@@ -425,21 +443,22 @@ class SeoService
      * @param  array<string, mixed> $page
      * @param  string|null          $schemaType Editor-selected Schema.org type;
      *     overrides the default mapping (post→BlogPosting, page→WebPage).
+     * @param  string $url The page's canonical URL. Passed in rather than
+     *     rebuilt from the slug so structured data cannot contradict
+     *     <link rel="canonical">.
      * @return string JSON-LD script tag
      */
-    public function generateJsonLd(array $page, ?string $schemaType = null): string
+    public function generateJsonLd(array $page, ?string $schemaType, string $url): string
     {
-        $siteUrl  = rtrim((string) config('app.url', ''), '/');
         $siteName = config('app.name', 'TypeDock');
 
         $type = $schemaType ?: (($page['post_type'] ?? null) === 'post' ? 'BlogPosting' : 'WebPage');
-        $prefix = ($page['post_type'] ?? null) === 'post' ? post_path() . '/' : '/';
 
         $data = [
             '@context' => 'https://schema.org',
             '@type'    => $type,
             'headline' => $page['title'] ?? '',
-            'url'      => $siteUrl . $prefix . ltrim((string) ($page['slug'] ?? ''), '/'),
+            'url'      => $url,
             'publisher' => [
                 '@type' => 'Organization',
                 'name'  => $siteName,
@@ -462,6 +481,24 @@ class SeoService
             $data['author'] = ['@type' => 'Person', 'name' => $page['author_name']];
         }
 
-        return '<script type="application/ld+json">' . json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . '</script>';
+        // JSON lives inside an HTML <script> raw-text element. HTML parsing
+        // ends that element at a literal `</script>` even when its type is
+        // application/ld+json, so JSON_UNESCAPED_SLASHES alone would let an
+        // article title or explicit canonical break out into executable HTML.
+        // Hex-escape every HTML-significant character before the themes emit
+        // this trusted wrapper with `|noescape`.
+        $json = json_encode(
+            $data,
+            JSON_UNESCAPED_UNICODE
+                | JSON_UNESCAPED_SLASHES
+                | JSON_HEX_TAG
+                | JSON_HEX_AMP
+                | JSON_HEX_APOS
+                | JSON_HEX_QUOT
+                | JSON_INVALID_UTF8_SUBSTITUTE
+                | JSON_THROW_ON_ERROR,
+        );
+
+        return '<script type="application/ld+json">' . $json . '</script>';
     }
 }

@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace TypeDock\Tests\Unit\Middleware;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use TypeDock\Middleware\CacheHeadersMiddleware;
 
@@ -59,9 +60,7 @@ class CacheHeadersTest extends TestCase
         );
     }
 
-    /**
-     * @dataProvider privatePathProvider
-     */
+    #[DataProvider('privatePathProvider')]
     public function testPrivatePathsAreNeverShared(string $path): void
     {
         $this->assertSame(
@@ -96,7 +95,7 @@ class CacheHeadersTest extends TestCase
         );
     }
 
-    /** @dataProvider mutatingMethodProvider */
+    #[DataProvider('mutatingMethodProvider')]
     public function testMutatingMethodsAreNeverShared(string $method): void
     {
         $this->assertSame(

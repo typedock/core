@@ -21,9 +21,20 @@ document.addEventListener('DOMContentLoaded', function () {
     var slugInput  = document.getElementById('post-slug');
     if (titleInput && slugInput && slugInput.value === '') {
         titleInput.addEventListener('input', function () {
+            // Mirrors SlugValidator::titleToSlug(): base letters and digits
+            // from any script survive, everything else is a separator. `\w`
+            // used to erase a Japanese title down to nothing here, so the
+            // field stayed empty and the server fell back to a timestamp.
+            //
+            // No \p{M}: combining marks are refused server-side, because
+            // nothing normalises Unicode and the decomposed form of a
+            // character would become a second row answering the same URL.
+            // The invisible Hangul fillers are dropped for the same reason
+            // SlugValidator names them — they are letters that show nothing.
             slugInput.value = titleInput.value
                 .toLowerCase()
-                .replace(/[^\w\s-]/g, '')
+                .replace(/[\u115F\u1160\u3164\uFFA0]+/g, '')
+                .replace(/[^\p{L}\p{N}\s-]+/gu, '')
                 .replace(/[\s_]+/g, '-')
                 .replace(/^-+|-+$/g, '')
                 .substring(0, 100);

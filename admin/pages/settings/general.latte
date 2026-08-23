@@ -35,6 +35,24 @@
                 <textarea id="site_description" name="site_description" rows="3">{$options['site.description'] ?? ''}</textarea>
             </div>
 
+            <div class="form-group" id="favicon-field">
+                <label>{_'Site Icon / Favicon'}</label>
+                <div class="og-image-control">
+                    <input type="text" name="favicon_id" id="favicon-id" maxlength="36"
+                           value="{$options['site.favicon_id'] ?? ''}"
+                           placeholder="{_'Pick an icon from the library'}"
+                           class="font-mono text-xs" readonly>
+                    <button type="button" class="btn btn-secondary btn-sm" id="favicon-pick">{_'Choose icon'}</button>
+                    <button type="button" class="btn btn-ghost btn-sm" id="favicon-clear" {if empty($options['site.favicon_id'])}hidden{/if}>{_'Clear'}</button>
+                </div>
+                <div id="favicon-preview" class="og-image-preview !w-16 !h-16" {if empty($favicon_preview)}hidden{/if}>
+                    {if !empty($favicon_preview)}
+                        <img src="{$favicon_preview['url']}" alt="{$favicon_preview['alt_text'] ?? ''}" loading="lazy" class="w-full h-full object-contain">
+                    {/if}
+                </div>
+                <small class="form-hint">{_'Used as the browser favicon and app icon. Recommended square PNG or SVG, at least 512×512 px.'}</small>
+            </div>
+
             <div class="form-group">
                 <label>Site Locale</label>
                 <div class="cluster-sm">
@@ -135,4 +153,9 @@
         </form>
     </div>
 </div>
+{/block}
+
+{block scripts}
+<script src="/admin/assets/js/media-picker.js"></script>
+<script src="/admin/assets/js/favicon-picker.js"></script>
 {/block}

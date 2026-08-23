@@ -15,9 +15,27 @@ final class SimpleAiWritingPlugin implements PluginInterface
         $context->registerEditorScript('editor-extension.js');
         $context->registerAdminRoute('GET', '', [$controller, 'edit']);
         $context->registerAdminRoute('POST', '', [$controller, 'update']);
-        $context->registerAdminRoute('POST', 'rewrite-selection', [$controller, 'rewriteSelection']);
-        $context->registerAdminRoute('POST', 'suggest-seo-fields', [$controller, 'suggestSeoFields']);
-        $context->registerAdminRoute('POST', 'draft-article', [$controller, 'draftArticle']);
+        // These are editor actions, not settings routes. The controller keeps
+        // its ownership/content checks; the route-level permission preserves
+        // access for every role that can create or edit its own content.
+        $context->registerAdminRoute(
+            'POST',
+            'rewrite-selection',
+            [$controller, 'rewriteSelection'],
+            permission: 'role:contributor',
+        );
+        $context->registerAdminRoute(
+            'POST',
+            'suggest-seo-fields',
+            [$controller, 'suggestSeoFields'],
+            permission: 'role:contributor',
+        );
+        $context->registerAdminRoute(
+            'POST',
+            'draft-article',
+            [$controller, 'draftArticle'],
+            permission: 'role:contributor',
+        );
         $context->addAdminMenuItem('AI Writing', '');
     }
 

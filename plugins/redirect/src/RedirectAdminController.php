@@ -25,16 +25,32 @@ final class RedirectAdminController
 
     public function store(): void
     {
-        $source = trim((string) ($_POST['source_path'] ?? ''));
-        $target = trim((string) ($_POST['target_url'] ?? ''));
-        $status = (int) ($_POST['status_code'] ?? 301);
-        if (!in_array($status, [301, 302, 307, 308], true)) {
-            $status = 301;
+        try {
+            [$source, $target, $status] = (new RedirectRuleValidator())->validate(
+                (string) ($_POST['source_path'] ?? ''),
+                (string) ($_POST['target_url'] ?? ''),
+                (string) ($_POST['status_code'] ?? ''),
+            );
+        } catch (\InvalidArgumentException $e) {
+            $this->ctx->redirect('', $e->getMessage(), 'error');
+            return;
         }
 
-        if ($source === '' || $target === '') {
-            $this->ctx->redirect('', 'Source and target are required.', 'error');
-            return;
+        if (str_starts_with($source, '~')) {
+            $count = $this->ctx->db()->pdo()->query(
+                "SELECT COUNT(*) FROM redirects WHERE source_path LIKE '~%'"
+            )->fetchColumn();
+            if ((int) $count >= RegexPattern::MAX_RULES) {
+                $this->ctx->redirect(
+                    '',
+                    sprintf(
+                        'No more than %d regular-expression rules may be active.',
+                        RegexPattern::MAX_RULES,
+                    ),
+                    'error',
+                );
+                return;
+            }
         }
 
         $this->ctx->db()->pdo()->prepare(
@@ -49,6 +65,58 @@ final class RedirectAdminController
 
         $this->ctx->log()->info('Redirect added', ['source' => $source, 'target' => $target]);
         $this->ctx->redirect('', 'Redirect added.');
+    }
+
+    /**
+     * Bulk-load rules from a CSV or JSON file — the realistic way to move a
+     * site's worth of old URLs, and a direct home for the redirect map the
+     * content importer hands out after a migration.
+     */
+    public function import(): void
+    {
+        $file = $_FILES['redirect_file'] ?? null;
+        if (!is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            $this->ctx->redirect('', 'Upload failed. The file may be larger than this server allows.', 'error');
+            return;
+        }
+
+        $name = strtolower(basename((string) $file['name']));
+        if (preg_match('/\.(csv|json)$/', $name) !== 1) {
+            $this->ctx->redirect('', 'Only .csv and .json files are accepted.', 'error');
+            return;
+        }
+
+        // The file is read where PHP put it rather than moved, so this is the
+        // guard that keeps a crafted tmp_name from reading anything else.
+        $tmp = (string) $file['tmp_name'];
+        if (!is_uploaded_file($tmp)) {
+            $this->ctx->redirect('', 'Upload failed.', 'error');
+            return;
+        }
+
+        try {
+            $result = (new RedirectImport($this->ctx->db()->pdo()))->importFile($tmp, $name);
+        } catch (\Throwable $e) {
+            $this->ctx->log()->error('Redirect import failed', ['error' => $e->getMessage()]);
+            $this->ctx->redirect('', $e->getMessage(), 'error');
+            return;
+        }
+
+        $this->ctx->log()->info('Redirects imported', $result);
+
+        $this->ctx->flash('success', sprintf(
+            'Imported %d redirect(s): %d added, %d updated, %d skipped.',
+            $result['created'] + $result['updated'],
+            $result['created'],
+            $result['updated'],
+            $result['skipped']
+        ));
+
+        if ($result['errors'] !== []) {
+            $this->ctx->flash('error', 'Skipped rows — ' . implode(' ', $result['errors']));
+        }
+
+        $this->ctx->redirect('');
     }
 
     public function destroy(string $id): void

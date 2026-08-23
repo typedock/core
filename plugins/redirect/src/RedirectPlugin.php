@@ -17,11 +17,17 @@ final class RedirectPlugin implements PluginInterface
         $ctx->addRedirectResolver(new RegexResolver($pdo));
 
         $controller = new RedirectAdminController($ctx);
-        $ctx->registerAdminRoute('GET',  '',           [$controller, 'index']);
-        $ctx->registerAdminRoute('POST', '',           [$controller, 'store']);
-        $ctx->registerAdminRoute('POST', '@id/delete', fn(string $id) => $controller->destroy($id));
+        $ctx->registerAdminRoute('GET',  '',           [$controller, 'index'], permission: 'redirects:manage');
+        $ctx->registerAdminRoute('POST', '',           [$controller, 'store'], permission: 'redirects:manage');
+        $ctx->registerAdminRoute('POST', 'import',     [$controller, 'import'], permission: 'redirects:manage');
+        $ctx->registerAdminRoute(
+            'POST',
+            '@id/delete',
+            fn(string $id) => $controller->destroy($id),
+            permission: 'redirects:manage',
+        );
 
-        $ctx->addAdminMenuItem('Redirects', '');
+        $ctx->addAdminMenuItem('Redirects', '', 'redirects:manage');
     }
 
     public function getName(): string

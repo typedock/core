@@ -174,9 +174,10 @@ class FetchResolver
      */
     private function fetchPosts(array $params, ?string $sort, RenderContext $ctx): array
     {
+        $now   = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $pdo   = \Flight::db();
-        $where = ["p.status = 'published'", "p.post_type = ?", 'p.locale = ?'];
-        $args  = [(string) ($params['post_type'] ?? 'post'), $ctx->locale !== '' ? $ctx->locale : typedock_current_locale()];
+        $where = ["p.status = 'published'", "(p.published_at IS NULL OR p.published_at <= ?)", "p.post_type = ?", 'p.locale = ?'];
+        $args  = [$now, (string) ($params['post_type'] ?? 'post'), $ctx->locale !== '' ? $ctx->locale : typedock_current_locale()];
 
         if (!empty($params['category'])) {
             $where[] = 'EXISTS (SELECT 1 FROM post_categories pc JOIN categories c ON c.id = pc.category_id WHERE pc.post_id = p.id AND c.slug = ? AND c.locale = p.locale)';
@@ -210,6 +211,7 @@ class FetchResolver
      */
     private function fetchCategories(array $params, ?string $sort, RenderContext $ctx): array
     {
+        $now  = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $pdo  = \Flight::db();
         $sql  = "SELECT c.*, (
                     SELECT COUNT(*)
@@ -217,10 +219,11 @@ class FetchResolver
                     JOIN posts p ON p.id = pc.post_id
                     WHERE pc.category_id = c.id
                       AND p.status = 'published'
+                      AND (p.published_at IS NULL OR p.published_at <= ?)
                       AND p.locale = c.locale
                  ) AS post_count FROM categories c";
         $where = ['c.locale = ?'];
-        $args  = [$ctx->locale !== '' ? $ctx->locale : typedock_current_locale()];
+        $args  = [$now, $ctx->locale !== '' ? $ctx->locale : typedock_current_locale()];
 
         if (!empty($params['slugs']) && is_array($params['slugs'])) {
             $placeholders = implode(',', array_fill(0, count($params['slugs']), '?'));
@@ -253,6 +256,7 @@ class FetchResolver
      */
     private function fetchTags(array $params, ?string $sort, RenderContext $ctx): array
     {
+        $now   = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $pdo   = \Flight::db();
         $limit = max(1, (int) ($params['limit'] ?? 50));
         $orderBy = match ((string) ($params['order_by'] ?? 'name')) {
@@ -268,13 +272,14 @@ class FetchResolver
                 JOIN posts p ON p.id = pt.post_id
                 WHERE pt.tag_id = t.id
                   AND p.status = 'published'
+                  AND (p.published_at IS NULL OR p.published_at <= ?)
                   AND p.locale = t.locale
              ) AS post_count
              FROM tags t
              WHERE t.locale = ?
              ORDER BY {$order} LIMIT ?"
         );
-        $stmt->execute([$ctx->locale !== '' ? $ctx->locale : typedock_current_locale(), $limit]);
+        $stmt->execute([$now, $ctx->locale !== '' ? $ctx->locale : typedock_current_locale(), $limit]);
         return $stmt->fetchAll();
     }
 
@@ -303,6 +308,7 @@ class FetchResolver
             return [];
         }
 
+        $now   = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $pdo   = \Flight::db();
         $by    = (string) ($params['by'] ?? 'category');
         $limit = max(1, (int) ($params['limit'] ?? 5));
@@ -318,11 +324,11 @@ class FetchResolver
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
              JOIN {$joinTable} jt1 ON jt1.post_id = p.id
              JOIN {$joinTable} jt2 ON jt2.{$joinCol} = jt1.{$joinCol} AND jt2.post_id = ?
-             WHERE p.id != ? AND p.status = 'published' AND p.locale = ?
+             WHERE p.id != ? AND p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= ?) AND p.locale = ?
              ORDER BY p.published_at DESC
              LIMIT ?"
         );
-        $stmt->execute([$currentId, $currentId, $ctx->locale !== '' ? $ctx->locale : typedock_current_locale(), $limit]);
+        $stmt->execute([$currentId, $currentId, $now, $ctx->locale !== '' ? $ctx->locale : typedock_current_locale(), $limit]);
         return \TypeDock\Content\PostView::projectList($stmt->fetchAll());
     }
 

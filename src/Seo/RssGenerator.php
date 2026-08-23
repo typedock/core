@@ -19,16 +19,17 @@ class RssGenerator
      */
     public function generate(int $limit = 20): string
     {
+        $now  = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $stmt = $this->pdo->prepare(
             "SELECT p.id, p.slug, p.title, p.excerpt, p.post_type, p.published_at, p.updated_at,
                     u.name as author_name
              FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
-             WHERE p.post_type = 'post' AND p.status = 'published'
+             WHERE p.post_type = 'post' AND p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= ?)
              ORDER BY p.published_at DESC
              LIMIT ?"
         );
-        $stmt->execute([$limit]);
+        $stmt->execute([$now, $limit]);
         $posts = $stmt->fetchAll();
 
         $feedUrl   = $this->siteUrl . '/feed';

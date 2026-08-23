@@ -53,9 +53,20 @@ class Router
             });
         }
 
-        // Sitemap
+        // Sitemap. The index lists the three child sitemaps by path, so each
+        // needs a route of its own — without them the index advertises URLs
+        // that fall through to the page catch-all and 404.
         \Flight::route('GET /sitemap.xml', function () {
             (new \TypeDock\Seo\SitemapController())->index();
+        });
+        \Flight::route('GET /sitemap-pages.xml', function () {
+            (new \TypeDock\Seo\SitemapController())->pages();
+        });
+        \Flight::route('GET /sitemap-posts.xml', function () {
+            (new \TypeDock\Seo\SitemapController())->posts();
+        });
+        \Flight::route('GET /sitemap-categories.xml', function () {
+            (new \TypeDock\Seo\SitemapController())->categories();
         });
 
         // RSS feed
@@ -68,6 +79,22 @@ class Router
             header('Content-Type: text/plain');
             $rules = "User-agent: *\nAllow: /\nSitemap: " . config('app.url') . "/sitemap.xml\n";
             echo $rules;
+        });
+
+        // Favicon fallback
+        \Flight::route('GET /favicon.ico', function () {
+            $site = new \TypeDock\Content\SiteService(\Flight::db());
+            $url  = $site->faviconUrl;
+            if ($url) {
+                \Flight::redirect($url, 302);
+                return;
+            }
+            if (file_exists(TYPEDOCK_ROOT . '/public/favicon.ico')) {
+                header('Content-Type: image/x-icon');
+                readfile(TYPEDOCK_ROOT . '/public/favicon.ico');
+                return;
+            }
+            http_response_code(404);
         });
     }
 

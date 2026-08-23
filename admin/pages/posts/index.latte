@@ -23,6 +23,7 @@
         <option value="">{_'All statuses'}</option>
         <option value="draft"     {$filters['status']==='draft'     ? 'selected' : ''}>{_'Draft'}</option>
         <option value="review"    {$filters['status']==='review'    ? 'selected' : ''}>{_'In Review'}</option>
+        <option value="scheduled" {$filters['status']==='scheduled' ? 'selected' : ''}>{_'Scheduled'}</option>
         <option value="published" {$filters['status']==='published' ? 'selected' : ''}>{_'Published'}</option>
         <option value="trash"     {$filters['status']==='trash'     ? 'selected' : ''}>{_'Trash'}</option>
     </select>
@@ -49,14 +50,22 @@
     </thead>
     <tbody>
         {foreach $posts as $post}
+        {var $dispStatus = $post['display_status'] ?? $post['status']}
         <tr>
             <td>
                 <a href="/admin/posts/{$post['id']}/edit" class="font-medium">{$post['title']}</a>
-                {if $post['status'] === 'published'}
+                {if $dispStatus === 'published'}
                     <a href="{post_path($post['slug'])}" target="_blank" rel="noopener" class="preview-link" title="{_'Open public page'}">↗</a>
                 {/if}
             </td>
-            <td><span class="badge badge-{$post['status']}">{$post['status']|translate}</span></td>
+            <td>
+                <span class="badge badge-{$dispStatus}">
+                    {$dispStatus|translate}
+                    {if $dispStatus === 'scheduled' && !empty($post['published_at'])}
+                        <span class="text-xs font-normal opacity-80">({$post['published_at']|date:'m/d H:i'})</span>
+                    {/if}
+                </span>
+            </td>
             <td class="text-slate-500">{$post['author_name'] ?? '—'}</td>
             <td class="text-slate-500">{$post['updated_at']|date:'Y/m/d'}</td>
             <td class="actions">

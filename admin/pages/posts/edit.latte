@@ -26,7 +26,7 @@
     <div class="editor-publishbar">
         <label class="pb-field">
             <span>{_'Status'}</span>
-            <select name="status">
+            <select name="status" id="post-status">
                 <option value="draft"     {($post['status'] ?? 'draft')==='draft'     ? 'selected' : ''}>{_'Draft'}</option>
                 <option value="review"    {($post['status'] ?? '')==='review'         ? 'selected' : ''}>{_'In Review'}</option>
                 <option value="published" {($post['status'] ?? '')==='published'      ? 'selected' : ''}>{_'Published'}</option>
@@ -36,23 +36,28 @@
         <label class="pb-field">
             <span>{_'Publish Date'}</span>
             {var $publishedAtRaw = $post['published_at'] ?? ''}
+            {var $isScheduled = ($post['status'] ?? '') === 'published' && $publishedAtRaw && $publishedAtRaw > date('Y-m-d H:i:s')}
             {* datetime-local expects `YYYY-MM-DDTHH:MM`; DB stores `YYYY-MM-DD HH:MM:SS`. *}
-            <input type="datetime-local" name="published_at"
+            <input type="datetime-local" name="published_at" id="post-published-at"
                    value="{$publishedAtRaw ? str_replace(' ', 'T', substr($publishedAtRaw, 0, 16)) : ''}">
         </label>
 
-        {if isset($public_url) && ($post['status'] ?? '') === 'published'}
+        {if isset($public_url) && ($post['status'] ?? '') === 'published' && !$isScheduled}
             <a class="pb-view" href="{$public_url}" target="_blank" rel="noopener"
                title="{_'Open public URL'}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="m10 14 11-11"/></svg>
                 <code class="overflow-hidden text-ellipsis">{$public_url}</code>
             </a>
+        {elseif $isScheduled}
+            <span class="badge badge-info" id="scheduled-badge" title="{_'Scheduled for future publication'}">
+                {_'Scheduled'}: {$publishedAtRaw|date:'Y/m/d H:i'}
+            </span>
         {/if}
 
         <div class="pb-actions">
-            <button type="submit" class="btn btn-primary">
+            <button type="submit" class="btn btn-primary" id="save-btn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                <span>{_'Save'}</span>
+                <span id="save-btn-text">{$isScheduled ? __('Schedule') : __('Save')}</span>
             </button>
         </div>
     </div>
@@ -262,4 +267,32 @@
 <script src="{$scriptSrc}" defer></script>
 {/foreach}
 <script src="/admin/assets/js/seo-og-image.js"></script>
+<script>
+(function() {
+  const statusEl = document.getElementById('post-status');
+  const pubDateEl = document.getElementById('post-published-at');
+  const saveTextEl = document.getElementById('save-btn-text');
+  if (!statusEl || !pubDateEl || !saveTextEl) return;
+
+  function updateButtonLabel() {
+    const isPublished = statusEl.value === 'published';
+    const val = pubDateEl.value;
+    let isFuture = false;
+    if (val) {
+      const selected = new Date(val).getTime();
+      const now = Date.now();
+      isFuture = selected > now;
+    }
+    if (isPublished && isFuture) {
+      saveTextEl.textContent = {_'Schedule'};
+    } else {
+      saveTextEl.textContent = {_'Save'};
+    }
+  }
+
+  statusEl.addEventListener('change', updateButtonLabel);
+  pubDateEl.addEventListener('input', updateButtonLabel);
+  pubDateEl.addEventListener('change', updateButtonLabel);
+})();
+</script>
 {/block}

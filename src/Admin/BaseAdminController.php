@@ -22,7 +22,10 @@ abstract class BaseAdminController
             'current_path'      => (string) ($_SERVER['REQUEST_URI'] ?? ''),
             'admin_locale'      => \Flight::admin_locale(),
             'admin_locales'     => \Flight::admin_locale_resolver()->locales(),
-            'plugin_admin_menu' => \Flight::plugin_admin_menu()->all(),
+            'plugin_admin_menu' => \Flight::plugin_admin_menu()->visibleTo(
+                is_array($user) ? $user : null,
+                \Flight::permissions(),
+            ),
             'editor_extension_scripts' => \Flight::editor_extensions()->scripts(),
             'editor_asset_version' => $this->editorAssetVersion(),
         ];

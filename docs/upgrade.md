@@ -214,6 +214,79 @@ The agent must:
 The agent should report exactly what changed, what was preserved, and
 where backups were written.
 
+## Breaking Changes
+
+### After `1.0.0-rc6`: non-ASCII slugs
+
+Page and post slugs now accept letters from any script, so a Japanese, Greek or
+Cyrillic site can use its own words in a URL. A title in one of those scripts
+used to be stripped to nothing and fall back to a timestamp
+(`post-20260728151311`), which is what made migrating a non-English WordPress
+site lose every inbound link.
+
+Slugs are stored **decoded** (`お知らせ`, not `%E3%81%8A%E7%9F%A5%E3%82%89%E3%81%9B`)
+and percent-encoded only when written into a URL. This is a change for category
+and tag slugs, which were previously stored encoded — a form no request could
+match, since the router hands controllers the decoded value, so every non-ASCII
+category and tag archive returned 404. A migration rewrites those rows on
+upgrade; ASCII slugs are untouched, and a row whose decoded form is already
+taken is left alone rather than failing the upgrade.
+
+If anything on your side reads `categories.slug` or `tags.slug` directly and
+expects the escaped form, decode on output instead. Themes using `$post->url`
+or `$post->slug` need no change: `url` is encoded, `slug` is the stored value.
+
+What a slug may contain, and why:
+
+- **Base letters and digits from any script**, plus `-` and `/`. Characters
+  with meaning in a URL — `?`, `#`, `%`, `.`, whitespace — stay out, so a
+  stored slug never has to be parsed to be understood.
+- **No combining marks.** Nothing normalises Unicode here, so allowing them
+  would let `が` exist twice — precomposed (U+304C) and decomposed
+  (U+304B U+3099) — as two rows that look identical and answer to different
+  URLs. Refusing the decomposed form is what makes a byte comparison a correct
+  comparison. Scripts whose marks are structural rather than optional
+  (Devanagari, Thai) therefore cannot be used in a slug yet.
+- **No invisible letters.** The Hangul fillers (U+115F, U+1160, U+3164,
+  U+FFA0) are ordinary letters as far as Unicode categories are concerned, but
+  render as nothing, so a slug built from them would be invisible in an admin
+  list, a sitemap and a URL bar alike.
+- Modifier letters such as U+30FC (`コーヒー`) and U+3005 (`人々`) are allowed:
+  they are ordinary Japanese.
+
+A request whose path decodes to something that cannot be a slug — invalid
+UTF-8, a NUL or control character, or more than 1000 bytes — is answered with
+404 before any database lookup, rather than being passed to a UTF-8 column that
+would reject it.
+
+### After `1.0.0-rc6`: sitemap URLs
+
+The sitemap index has always listed `/sitemap-pages.xml`, `/sitemap-posts.xml`
+and `/sitemap-categories.xml`, but only `/sitemap.xml` had a route, so those
+three 404'd. They are now served, and the undocumented `?type=pages` form that
+stood in for them has been removed. If anything on your side fetched
+`/sitemap.xml?type=posts`, point it at `/sitemap-posts.xml`.
+
+### After `1.0.0-rc6`: home page canonical
+
+A static page assigned to the site root (Settings → General, home mode "page")
+previously advertised its own slug — `canonical`, `og:url` and the JSON-LD
+`url` all read `/home` while the page was served from `/`. All three now point
+at the site root, matching what an archive home page has always emitted. The
+page keeps its own title, description and OG image.
+
+If you worked around this in a theme by overriding canonical, OG/Twitter and
+JSON-LD for the home page, that override can now be removed.
+
+`SeoService::generateJsonLd()` takes the canonical URL as a third argument
+instead of rebuilding one from the page slug. Plugins calling it directly need
+to pass the URL.
+
+Post URLs in the posts sitemap now include the configured posts archive slug
+(`/blog/example-post`, or `/articles/example-post` if you changed it under
+Settings → General). Previously they were emitted as `/example-post`, which
+does not resolve. Resubmit your sitemap after upgrading.
+
 ## Rollback
 
 If a caught error occurs after live replacement starts, TypeDock automatically

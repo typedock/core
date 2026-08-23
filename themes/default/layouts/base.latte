@@ -35,6 +35,11 @@
         <meta name="description" content="{block description}{/block}">
     {/if}
 
+    {if $site->faviconUrl}
+        <link rel="icon" href="{$site->faviconUrl}">
+        <link rel="apple-touch-icon" href="{$site->faviconUrl}">
+    {/if}
+
     {block head}{/block}
     <link rel="stylesheet" href="{$theme->url}/assets/css/style.css">
     <link rel="alternate" type="application/rss+xml" title="{$site->name} RSS" href="/feed">

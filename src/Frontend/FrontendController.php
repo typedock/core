@@ -6,6 +6,7 @@ namespace TypeDock\Frontend;
 use TypeDock\Content\BlockRenderer;
 use TypeDock\Component\ComponentRenderer;
 use TypeDock\Content\PostService;
+use TypeDock\Content\SlugValidator;
 use TypeDock\Content\CategoryService;
 use TypeDock\Content\PostView;
 use TypeDock\Content\TagService;
@@ -59,12 +60,18 @@ class FrontendController
     public function page(): void
     {
         $uri  = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
-        $slug = ltrim($uri, '/');
+        // Decoded to match how slugs are stored, and to match what Flight
+        // hands every other route — it urldecodes named parameters, but this
+        // catch-all reads the raw request path itself. Without this a page
+        // slugged `お知らせ` is looked up as `%E3%81%8A…` and 404s.
+        $slug = rawurldecode(ltrim($uri, '/'));
 
         if ($slug === '') {
             $this->homepage();
             return;
         }
+
+        $this->requireResolvableSlug($slug, 'Page');
 
         if (str_ends_with($slug, '.md')) {
             $slug = substr($slug, 0, -3);
@@ -89,14 +96,17 @@ class FrontendController
 
     public function blogPostMarkdown(string $slug): void
     {
+        $this->requireResolvableSlug($slug, 'Post');
+
+        $now  = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $pdo  = \Flight::db();
         $stmt = $pdo->prepare(
             "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
-             WHERE p.slug = ? AND p.post_type = 'post' AND p.status = 'published' AND p.locale = ? LIMIT 1"
+             WHERE p.slug = ? AND p.post_type = 'post' AND p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= ?) AND p.locale = ? LIMIT 1"
         );
-        $stmt->execute([$slug, typedock_current_locale()]);
+        $stmt->execute([$slug, $now, typedock_current_locale()]);
         $page = $stmt->fetch();
 
         if ($page === false) {
@@ -148,14 +158,17 @@ class FrontendController
 
     public function blogPost(string $slug): void
     {
+        $this->requireResolvableSlug($slug, 'Post');
+
+        $now  = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $pdo  = \Flight::db();
         $stmt = $pdo->prepare(
             "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
-             WHERE p.slug = ? AND p.post_type = 'post' AND p.status = 'published' AND p.locale = ? LIMIT 1"
+             WHERE p.slug = ? AND p.post_type = 'post' AND p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= ?) AND p.locale = ? LIMIT 1"
         );
-        $stmt->execute([$slug, typedock_current_locale()]);
+        $stmt->execute([$slug, $now, typedock_current_locale()]);
         $page = $stmt->fetch();
 
         if ($page === false) {
@@ -167,6 +180,8 @@ class FrontendController
 
     public function categoryArchive(string $slug, int $page = 1): void
     {
+        $this->requireResolvableSlug($slug, 'Category');
+
         $catService = new CategoryService(\Flight::db());
         $locale     = typedock_current_locale();
         $category   = $catService->findBySlug($slug, $locale);
@@ -178,13 +193,14 @@ class FrontendController
         $perPage = self::POSTS_PER_PAGE;
         $offset  = ($page - 1) * $perPage;
 
-        $pdo  = \Flight::db();
-        $stmt = $pdo->prepare(
+        $now     = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $pdo     = \Flight::db();
+        $stmt    = $pdo->prepare(
             "SELECT COUNT(*) FROM posts p
              JOIN post_categories pc ON pc.post_id = p.id
-             WHERE pc.category_id = ? AND p.status = 'published' AND p.locale = ?"
+             WHERE pc.category_id = ? AND p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= ?) AND p.locale = ?"
         );
-        $stmt->execute([$category['id'], $locale]);
+        $stmt->execute([$category['id'], $now, $locale]);
         $total = (int) $stmt->fetchColumn();
 
         $stmt = $pdo->prepare(
@@ -192,10 +208,10 @@ class FrontendController
              LEFT JOIN users u ON u.id = p.author_id
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
              JOIN post_categories pc ON pc.post_id = p.id
-             WHERE pc.category_id = ? AND p.status = 'published' AND p.locale = ?
+             WHERE pc.category_id = ? AND p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= ?) AND p.locale = ?
              ORDER BY p.published_at DESC LIMIT ? OFFSET ?"
         );
-        $stmt->execute([$category['id'], $locale, $perPage, $offset]);
+        $stmt->execute([$category['id'], $now, $locale, $perPage, $offset]);
         $posts = PostView::projectList($stmt->fetchAll());
 
         $this->setPageContext(null, 'archive', $category, 'archive');
@@ -217,6 +233,8 @@ class FrontendController
 
     public function tagArchive(string $slug, int $page = 1): void
     {
+        $this->requireResolvableSlug($slug, 'Tag');
+
         $tagService = new TagService(\Flight::db());
         $locale     = typedock_current_locale();
         $tag        = $tagService->findBySlug($slug, $locale);
@@ -228,13 +246,14 @@ class FrontendController
         $perPage = self::POSTS_PER_PAGE;
         $offset  = ($page - 1) * $perPage;
 
-        $pdo  = \Flight::db();
-        $stmt = $pdo->prepare(
+        $now     = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $pdo     = \Flight::db();
+        $stmt    = $pdo->prepare(
             "SELECT COUNT(*) FROM posts p
              JOIN post_tags pt ON pt.post_id = p.id
-             WHERE pt.tag_id = ? AND p.status = 'published' AND p.locale = ?"
+             WHERE pt.tag_id = ? AND p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= ?) AND p.locale = ?"
         );
-        $stmt->execute([$tag['id'], $locale]);
+        $stmt->execute([$tag['id'], $now, $locale]);
         $total = (int) $stmt->fetchColumn();
 
         $stmt = $pdo->prepare(
@@ -242,10 +261,10 @@ class FrontendController
              LEFT JOIN users u ON u.id = p.author_id
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
              JOIN post_tags pt ON pt.post_id = p.id
-             WHERE pt.tag_id = ? AND p.status = 'published' AND p.locale = ?
+             WHERE pt.tag_id = ? AND p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= ?) AND p.locale = ?
              ORDER BY p.published_at DESC LIMIT ? OFFSET ?"
         );
-        $stmt->execute([$tag['id'], $locale, $perPage, $offset]);
+        $stmt->execute([$tag['id'], $now, $locale, $perPage, $offset]);
         $posts = PostView::projectList($stmt->fetchAll());
 
         $this->setPageContext(null, 'archive', $tag, 'archive');
@@ -299,6 +318,8 @@ class FrontendController
 
     public function authorArchive(string $slug, int $page = 1): void
     {
+        $this->requireResolvableSlug($slug, 'Author');
+
         $author = $this->getAuthorBySlug($slug);
         if ($author === null) {
             throw new \TypeDock\Exception\NotFoundException("Author not found: {$slug}");
@@ -308,11 +329,12 @@ class FrontendController
         $offset  = ($page - 1) * $perPage;
         $pdo     = \Flight::db();
 
-        $stmt = $pdo->prepare(
+        $now     = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $stmt    = $pdo->prepare(
             "SELECT COUNT(*) FROM posts
-             WHERE author_id = ? AND post_type = 'post' AND status = 'published' AND locale = ?"
+             WHERE author_id = ? AND post_type = 'post' AND status = 'published' AND (published_at IS NULL OR published_at <= ?) AND locale = ?"
         );
-        $stmt->execute([$author['id'], typedock_current_locale()]);
+        $stmt->execute([$author['id'], $now, typedock_current_locale()]);
         $total = (int) $stmt->fetchColumn();
 
         $stmt = $pdo->prepare(
@@ -320,10 +342,10 @@ class FrontendController
              FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
-             WHERE p.author_id = ? AND p.post_type = 'post' AND p.status = 'published' AND p.locale = ?
+             WHERE p.author_id = ? AND p.post_type = 'post' AND p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= ?) AND p.locale = ?
              ORDER BY p.published_at DESC LIMIT ? OFFSET ?"
         );
-        $stmt->execute([$author['id'], typedock_current_locale(), $perPage, $offset]);
+        $stmt->execute([$author['id'], $now, typedock_current_locale(), $perPage, $offset]);
 
         $this->setPageContext(null, 'archive', null, 'author');
         $this->renderLatte('layouts/author.latte', [
@@ -392,7 +414,7 @@ class FrontendController
 
         $this->renderLatte($layout, [
             'page'        => PostView::projectSingle($page, $renderedBody, $categories, $tags),
-            'seo'         => (new SeoService(\Flight::db()))->resolveForPage($page),
+            'seo'         => (new SeoService(\Flight::db()))->resolveForPage($page, $isHome),
             'breadcrumbs' => $breadcrumbs,
             'body_class'  => $isHome
                 ? 'home ' . ($postType === 'post' ? 'single-post' : 'page')
@@ -589,18 +611,38 @@ HTML;
 
 
     /**
+     * Refuse a slug that cannot identify a row, before it reaches the
+     * database.
+     *
+     * Every public entry point above is handed a decoded string: Flight
+     * urldecodes named route parameters, and page() decodes the request path
+     * itself. So the bytes are an anonymous caller's choice, and `/%FF` would
+     * otherwise arrive at a UTF-8 column as an invalid sequence — a 500 on
+     * PostgreSQL rather than the 404 it is.
+     */
+    private function requireResolvableSlug(string $slug, string $what): void
+    {
+        if (!SlugValidator::isResolvable($slug)) {
+            // The slug is deliberately not echoed back: it is exactly the
+            // input that is known to be malformed.
+            throw new \TypeDock\Exception\NotFoundException("{$what} not found.");
+        }
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     private function getPageBySlug(string $slug): ?array
     {
+        $now  = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $pdo  = \Flight::db();
         $stmt = $pdo->prepare(
             "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
-             WHERE p.slug = ? AND p.post_type = 'page' AND p.status = 'published' AND p.locale = ? LIMIT 1"
+             WHERE p.slug = ? AND p.post_type = 'page' AND p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= ?) AND p.locale = ? LIMIT 1"
         );
-        $stmt->execute([$slug, typedock_current_locale()]);
+        $stmt->execute([$slug, $now, typedock_current_locale()]);
         $row = $stmt->fetch();
         return $row !== false ? $row : null;
     }
@@ -614,14 +656,15 @@ HTML;
      */
     private function getPageById(string $id): ?array
     {
+        $now  = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $pdo  = \Flight::db();
         $stmt = $pdo->prepare(
             "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
-             WHERE p.id = ? AND p.post_type = 'page' AND p.status = 'published' LIMIT 1"
+             WHERE p.id = ? AND p.post_type = 'page' AND p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= ?) LIMIT 1"
         );
-        $stmt->execute([$id]);
+        $stmt->execute([$id, $now]);
         $row = $stmt->fetch();
         return $row !== false ? $row : null;
     }

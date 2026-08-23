@@ -410,6 +410,27 @@ if (!function_exists('posts_archive_slug')) {
     }
 }
 
+if (!function_exists('slug_path')) {
+    /**
+     * Turn a stored slug into the path form that belongs in a URL.
+     *
+     * Slugs are stored decoded, because that is what the router hands a
+     * controller (Flight urldecodes route parameters) and therefore what a
+     * lookup has to match. A URL is the other direction: `<loc>` in a sitemap
+     * and `<link>` in a feed are specified as URI-escaped, so a slug like
+     * `お知らせ` has to be percent-encoded on the way out.
+     *
+     * Each segment is encoded separately so a hierarchical page slug keeps its
+     * separators. Pure-ASCII slugs come back unchanged.
+     */
+    function slug_path(string $slug): string
+    {
+        $segments = explode('/', trim($slug, '/'));
+
+        return '/' . implode('/', array_map('rawurlencode', $segments));
+    }
+}
+
 if (!function_exists('post_path')) {
     /**
      * Build a root-relative URL for a post slug, honouring the configured
@@ -419,6 +440,6 @@ if (!function_exists('post_path')) {
     function post_path(string $slug = ''): string
     {
         $prefix = '/' . posts_archive_slug();
-        return $slug === '' ? $prefix : $prefix . '/' . ltrim($slug, '/');
+        return $slug === '' ? $prefix : $prefix . slug_path($slug);
     }
 }
