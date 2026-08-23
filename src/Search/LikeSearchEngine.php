@@ -20,8 +20,9 @@ class LikeSearchEngine implements SearchEngine
         }
 
         $terms  = $this->parseQuery($query);
-        $where  = ["p.status = 'published'"];
-        $params = [];
+        $now    = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $where  = ["p.status = 'published'", "(p.published_at IS NULL OR p.published_at <= ?)"];
+        $params = [$now];
 
         if (!empty($options['post_type'])) {
             $where[]  = 'p.post_type = ?';

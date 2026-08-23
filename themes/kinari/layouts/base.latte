@@ -28,6 +28,11 @@
         <meta name="description" content="{block description}{/block}">
     {/if}
 
+    {if $site->faviconUrl}
+        <link rel="icon" href="{$site->faviconUrl}">
+        <link rel="apple-touch-icon" href="{$site->faviconUrl}">
+    {/if}
+
     {block head}{/block}
 
     {var $fontStyle = $theme->setting('typography.font_family', 'serif')}

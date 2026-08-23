@@ -65,6 +65,15 @@ final class SitemapGeneratorTest extends TestCase
         $this->assertStringNotContainsString('draft-post', $this->generator->generatePosts());
     }
 
+    public function testScheduledFuturePostsAreNotListedInSitemap(): void
+    {
+        $this->pdo->exec(
+            "INSERT INTO posts (slug, post_type, status, updated_at, published_at) VALUES
+                ('future-scheduled-post', 'post', 'published', '2026-08-23 10:00:00', '2099-01-01 10:00:00')"
+        );
+        $this->assertStringNotContainsString('future-scheduled-post', $this->generator->generatePosts());
+    }
+
     public function testPageKeepsItsFullPath(): void
     {
         $this->assertStringContainsString(

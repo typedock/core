@@ -27,13 +27,15 @@ class SettingsController extends BaseAdminController
             $sources = [];
         }
 
+        $options = $this->getOptions('general');
         $this->render('pages/settings/general.latte', [
-            'options'       => $this->getOptions('general'),
-            'site_locale'   => $this->siteLocaleStatus(),
-            'pages'         => $pages,
+            'options'          => $options,
+            'favicon_preview'  => $this->mediaPreview($options['site.favicon_id'] ?? null),
+            'site_locale'      => $this->siteLocaleStatus(),
+            'pages'            => $pages,
             'external_sources' => $sources,
-            'flash_success' => $this->getFlash('success'),
-            'flash_error'   => $this->getFlash('error'),
+            'flash_success'    => $this->getFlash('success'),
+            'flash_error'      => $this->getFlash('error'),
         ]);
     }
 
@@ -41,6 +43,8 @@ class SettingsController extends BaseAdminController
     {
         $this->setOption('site.name', $_POST['site_name'] ?? '', 'general');
         $this->setOption('site.description', $_POST['site_description'] ?? '', 'general');
+        $faviconId = trim((string) ($_POST['favicon_id'] ?? ''));
+        $this->setOption('site.favicon_id', $faviconId !== '' ? $faviconId : null, 'general');
         $this->setOption('scripts.head', $_POST['scripts_head'] ?? '', 'general');
         $this->setOption('scripts.body', $_POST['scripts_body'] ?? '', 'general');
 

@@ -80,6 +80,22 @@ class Router
             $rules = "User-agent: *\nAllow: /\nSitemap: " . config('app.url') . "/sitemap.xml\n";
             echo $rules;
         });
+
+        // Favicon fallback
+        \Flight::route('GET /favicon.ico', function () {
+            $site = new \TypeDock\Content\SiteService(\Flight::db());
+            $url  = $site->faviconUrl;
+            if ($url) {
+                \Flight::redirect($url, 302);
+                return;
+            }
+            if (file_exists(TYPEDOCK_ROOT . '/public/favicon.ico')) {
+                header('Content-Type: image/x-icon');
+                readfile(TYPEDOCK_ROOT . '/public/favicon.ico');
+                return;
+            }
+            http_response_code(404);
+        });
     }
 
     private function registerAdminRoutes(): void

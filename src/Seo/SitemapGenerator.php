@@ -74,12 +74,13 @@ class SitemapGenerator
     /** @return array<int, array<string, mixed>> */
     private function publishedRows(string $postType): array
     {
+        $now  = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $stmt = $this->pdo->prepare(
             "SELECT slug, updated_at, published_at FROM posts
-             WHERE post_type = ? AND status = 'published'
+             WHERE post_type = ? AND status = 'published' AND (published_at IS NULL OR published_at <= ?)
              ORDER BY updated_at DESC LIMIT 1000"
         );
-        $stmt->execute([$postType]);
+        $stmt->execute([$postType, $now]);
 
         return $stmt->fetchAll();
     }

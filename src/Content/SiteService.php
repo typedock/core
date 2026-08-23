@@ -29,6 +29,8 @@ class SiteService
             'homePageId'        => $this->options['site.home_page_id'] ?? null,
             'postsArchiveSlug'  => $this->postsArchiveSlug(),
             'postsArchiveLabel' => $this->options['site.posts_archive_label'] ?? 'Blog',
+            'faviconId'         => $this->options['site.favicon_id'] ?? null,
+            'faviconUrl'        => $this->faviconUrl(),
             default             => null,
         };
     }
@@ -37,7 +39,7 @@ class SiteService
     {
         return in_array(
             $name,
-            ['name', 'url', 'locale', 'homeMode', 'homePageId', 'postsArchiveSlug', 'postsArchiveLabel'],
+            ['name', 'url', 'locale', 'homeMode', 'homePageId', 'postsArchiveSlug', 'postsArchiveLabel', 'faviconId', 'faviconUrl'],
             true
         );
     }
@@ -57,6 +59,39 @@ class SiteService
         // value goes straight into an href.
         $prefix = '/' . $this->postsArchiveSlug();
         return $slug === '' ? $prefix : $prefix . slug_path($slug);
+    }
+
+    /**
+     * Resolve the public URL of the site favicon / icon if set.
+     */
+    public function faviconUrl(): ?string
+    {
+        $id = $this->options['site.favicon_id'] ?? null;
+        if (!is_string($id) || trim($id) === '') {
+            return null;
+        }
+        try {
+            if (class_exists('\Flight', false) && \Flight::has('media_service')) {
+                $media = \Flight::media_service()->find(trim($id));
+                if ($media !== null && !empty($media['url'])) {
+                    return (string) $media['url'];
+                }
+            }
+            $stmt = $this->pdo->prepare('SELECT path FROM media WHERE id = ? LIMIT 1');
+            $stmt->execute([trim($id)]);
+            $row = $stmt->fetch();
+            if ($row === false) {
+                return null;
+            }
+            $path = (string) $row['path'];
+            if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+                return $path;
+            }
+            $baseUrl = rtrim((string) config('app.url', ''), '/');
+            return $baseUrl . '/uploads/' . ltrim($path, '/');
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     private function postsArchiveSlug(): string

@@ -27,15 +27,24 @@ class PostService
      */
     public function list(array $options = []): array
     {
+        $now      = (string) ($options['now'] ?? (new \DateTimeImmutable())->format('Y-m-d H:i:s'));
         $where    = ['p.status != ?'];
         $params   = [self::STATUS_TRASH];
         $perPage  = min((int) ($options['per_page'] ?? 20), 100);
         $page     = max(1, (int) ($options['page'] ?? 1));
         $offset   = ($page - 1) * $perPage;
 
-        if (isset($options['status'])) {
-            $where[]  = 'p.status = ?';
-            $params[] = $options['status'];
+        if (isset($options['status']) && $options['status'] !== '') {
+            if ($options['status'] === self::STATUS_SCHEDULED) {
+                $where[]  = "(p.status = 'scheduled' OR (p.status = 'published' AND p.published_at IS NOT NULL AND p.published_at > ?))";
+                $params[] = $now;
+            } elseif ($options['status'] === self::STATUS_PUBLISHED) {
+                $where[]  = "p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= ?)";
+                $params[] = $now;
+            } else {
+                $where[]  = 'p.status = ?';
+                $params[] = $options['status'];
+            }
         }
         if (isset($options['post_type'])) {
             $where[]  = 'p.post_type = ?';
@@ -384,16 +393,37 @@ class PostService
     }
 
     /**
+     * Compute display status: draft, review, scheduled (future published_at or status=scheduled), published, trash.
+     */
+    public static function computeDisplayStatus(string $status, ?string $publishedAt, ?string $now = null): string
+    {
+        $now ??= (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        if ($status === self::STATUS_SCHEDULED) {
+            return self::STATUS_SCHEDULED;
+        }
+        if ($status === self::STATUS_PUBLISHED && $publishedAt !== null && $publishedAt !== '' && $publishedAt > $now) {
+            return self::STATUS_SCHEDULED;
+        }
+        return $status;
+    }
+
+    /**
      * @param array<array<string, mixed>> $rows
      * @return array<array<string, mixed>>
      */
-    private function decorateRows(array $rows): array
+    private function decorateRows(array $rows, ?string $now = null): array
     {
+        $now ??= (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $seo = new \TypeDock\Seo\SeoService($this->pdo);
         $global = $seo->findByTarget('global', null) ?? [];
         $globalOgImageId = isset($global['og_image_id']) ? (string) $global['og_image_id'] : null;
         foreach ($rows as &$row) {
             $row['excerpt'] = self::excerptFromRow($row);
+            $row['display_status'] = self::computeDisplayStatus(
+                (string) ($row['status'] ?? 'draft'),
+                !empty($row['published_at']) ? (string) $row['published_at'] : null,
+                $now
+            );
             $ogImageId = !empty($row['og_image_id']) ? (string) $row['og_image_id'] : $globalOgImageId;
             $row['og_image_url'] = $seo->resolveOgImageUrl($ogImageId);
         }

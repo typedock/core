@@ -98,14 +98,15 @@ class FrontendController
     {
         $this->requireResolvableSlug($slug, 'Post');
 
+        $now  = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $pdo  = \Flight::db();
         $stmt = $pdo->prepare(
             "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
-             WHERE p.slug = ? AND p.post_type = 'post' AND p.status = 'published' AND p.locale = ? LIMIT 1"
+             WHERE p.slug = ? AND p.post_type = 'post' AND p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= ?) AND p.locale = ? LIMIT 1"
         );
-        $stmt->execute([$slug, typedock_current_locale()]);
+        $stmt->execute([$slug, $now, typedock_current_locale()]);
         $page = $stmt->fetch();
 
         if ($page === false) {
@@ -159,14 +160,15 @@ class FrontendController
     {
         $this->requireResolvableSlug($slug, 'Post');
 
+        $now  = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $pdo  = \Flight::db();
         $stmt = $pdo->prepare(
             "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
-             WHERE p.slug = ? AND p.post_type = 'post' AND p.status = 'published' AND p.locale = ? LIMIT 1"
+             WHERE p.slug = ? AND p.post_type = 'post' AND p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= ?) AND p.locale = ? LIMIT 1"
         );
-        $stmt->execute([$slug, typedock_current_locale()]);
+        $stmt->execute([$slug, $now, typedock_current_locale()]);
         $page = $stmt->fetch();
 
         if ($page === false) {
@@ -191,13 +193,14 @@ class FrontendController
         $perPage = self::POSTS_PER_PAGE;
         $offset  = ($page - 1) * $perPage;
 
-        $pdo  = \Flight::db();
-        $stmt = $pdo->prepare(
+        $now     = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $pdo     = \Flight::db();
+        $stmt    = $pdo->prepare(
             "SELECT COUNT(*) FROM posts p
              JOIN post_categories pc ON pc.post_id = p.id
-             WHERE pc.category_id = ? AND p.status = 'published' AND p.locale = ?"
+             WHERE pc.category_id = ? AND p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= ?) AND p.locale = ?"
         );
-        $stmt->execute([$category['id'], $locale]);
+        $stmt->execute([$category['id'], $now, $locale]);
         $total = (int) $stmt->fetchColumn();
 
         $stmt = $pdo->prepare(
@@ -205,10 +208,10 @@ class FrontendController
              LEFT JOIN users u ON u.id = p.author_id
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
              JOIN post_categories pc ON pc.post_id = p.id
-             WHERE pc.category_id = ? AND p.status = 'published' AND p.locale = ?
+             WHERE pc.category_id = ? AND p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= ?) AND p.locale = ?
              ORDER BY p.published_at DESC LIMIT ? OFFSET ?"
         );
-        $stmt->execute([$category['id'], $locale, $perPage, $offset]);
+        $stmt->execute([$category['id'], $now, $locale, $perPage, $offset]);
         $posts = PostView::projectList($stmt->fetchAll());
 
         $this->setPageContext(null, 'archive', $category, 'archive');
@@ -243,13 +246,14 @@ class FrontendController
         $perPage = self::POSTS_PER_PAGE;
         $offset  = ($page - 1) * $perPage;
 
-        $pdo  = \Flight::db();
-        $stmt = $pdo->prepare(
+        $now     = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $pdo     = \Flight::db();
+        $stmt    = $pdo->prepare(
             "SELECT COUNT(*) FROM posts p
              JOIN post_tags pt ON pt.post_id = p.id
-             WHERE pt.tag_id = ? AND p.status = 'published' AND p.locale = ?"
+             WHERE pt.tag_id = ? AND p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= ?) AND p.locale = ?"
         );
-        $stmt->execute([$tag['id'], $locale]);
+        $stmt->execute([$tag['id'], $now, $locale]);
         $total = (int) $stmt->fetchColumn();
 
         $stmt = $pdo->prepare(
@@ -257,10 +261,10 @@ class FrontendController
              LEFT JOIN users u ON u.id = p.author_id
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
              JOIN post_tags pt ON pt.post_id = p.id
-             WHERE pt.tag_id = ? AND p.status = 'published' AND p.locale = ?
+             WHERE pt.tag_id = ? AND p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= ?) AND p.locale = ?
              ORDER BY p.published_at DESC LIMIT ? OFFSET ?"
         );
-        $stmt->execute([$tag['id'], $locale, $perPage, $offset]);
+        $stmt->execute([$tag['id'], $now, $locale, $perPage, $offset]);
         $posts = PostView::projectList($stmt->fetchAll());
 
         $this->setPageContext(null, 'archive', $tag, 'archive');
@@ -325,11 +329,12 @@ class FrontendController
         $offset  = ($page - 1) * $perPage;
         $pdo     = \Flight::db();
 
-        $stmt = $pdo->prepare(
+        $now     = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $stmt    = $pdo->prepare(
             "SELECT COUNT(*) FROM posts
-             WHERE author_id = ? AND post_type = 'post' AND status = 'published' AND locale = ?"
+             WHERE author_id = ? AND post_type = 'post' AND status = 'published' AND (published_at IS NULL OR published_at <= ?) AND locale = ?"
         );
-        $stmt->execute([$author['id'], typedock_current_locale()]);
+        $stmt->execute([$author['id'], $now, typedock_current_locale()]);
         $total = (int) $stmt->fetchColumn();
 
         $stmt = $pdo->prepare(
@@ -337,10 +342,10 @@ class FrontendController
              FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
-             WHERE p.author_id = ? AND p.post_type = 'post' AND p.status = 'published' AND p.locale = ?
+             WHERE p.author_id = ? AND p.post_type = 'post' AND p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= ?) AND p.locale = ?
              ORDER BY p.published_at DESC LIMIT ? OFFSET ?"
         );
-        $stmt->execute([$author['id'], typedock_current_locale(), $perPage, $offset]);
+        $stmt->execute([$author['id'], $now, typedock_current_locale(), $perPage, $offset]);
 
         $this->setPageContext(null, 'archive', null, 'author');
         $this->renderLatte('layouts/author.latte', [
@@ -629,14 +634,15 @@ HTML;
      */
     private function getPageBySlug(string $slug): ?array
     {
+        $now  = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $pdo  = \Flight::db();
         $stmt = $pdo->prepare(
             "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
-             WHERE p.slug = ? AND p.post_type = 'page' AND p.status = 'published' AND p.locale = ? LIMIT 1"
+             WHERE p.slug = ? AND p.post_type = 'page' AND p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= ?) AND p.locale = ? LIMIT 1"
         );
-        $stmt->execute([$slug, typedock_current_locale()]);
+        $stmt->execute([$slug, $now, typedock_current_locale()]);
         $row = $stmt->fetch();
         return $row !== false ? $row : null;
     }
@@ -650,14 +656,15 @@ HTML;
      */
     private function getPageById(string $id): ?array
     {
+        $now  = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $pdo  = \Flight::db();
         $stmt = $pdo->prepare(
             "SELECT p.*, COALESCE(NULLIF(u.display_name, ''), u.name) as author_name, u.slug as author_slug, sm.og_image_id FROM posts p
              LEFT JOIN users u ON u.id = p.author_id
              LEFT JOIN seo_meta sm ON sm.target_type = p.post_type AND sm.target_id = p.id
-             WHERE p.id = ? AND p.post_type = 'page' AND p.status = 'published' LIMIT 1"
+             WHERE p.id = ? AND p.post_type = 'page' AND p.status = 'published' AND (p.published_at IS NULL OR p.published_at <= ?) LIMIT 1"
         );
-        $stmt->execute([$id]);
+        $stmt->execute([$id, $now]);
         $row = $stmt->fetch();
         return $row !== false ? $row : null;
     }

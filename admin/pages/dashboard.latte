@@ -105,9 +105,17 @@
             </thead>
             <tbody>
                 {foreach $recent_posts as $post}
+                {var $dispStatus = $post['display_status'] ?? $post['status']}
                 <tr>
                     <td><a href="/admin/posts/{$post['id']}/edit" class="font-medium">{$post['title']}</a></td>
-                    <td><span class="badge badge-{$post['status']}">{$post['status']|translate}</span></td>
+                    <td>
+                        <span class="badge badge-{$dispStatus}">
+                            {$dispStatus|translate}
+                            {if $dispStatus === 'scheduled' && !empty($post['published_at'])}
+                                <span class="text-xs font-normal opacity-80">({$post['published_at']|date:'m/d H:i'})</span>
+                            {/if}
+                        </span>
+                    </td>
                     <td class="text-slate-500">{$post['updated_at']|date:'Y/m/d'}</td>
                     <td class="actions">
                         <a href="/admin/posts/{$post['id']}/edit" class="btn btn-secondary btn-sm">{_'Edit'}</a>
