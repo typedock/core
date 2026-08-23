@@ -140,6 +140,7 @@
     .badge-draft     { @apply bg-slate-100  text-slate-600; }
     .badge-review    { @apply bg-amber-100  text-amber-800; }
     .badge-published { @apply bg-emerald-100 text-emerald-800; }
+    .badge-scheduled { @apply bg-purple-100 text-purple-800; }
     .badge-trash     { @apply bg-red-100    text-red-700; }
     .badge-success   { @apply bg-emerald-100 text-emerald-800; }
     .badge-muted     { @apply bg-slate-100  text-slate-500; }
