@@ -95,8 +95,8 @@ Verify a downloaded release with Cosign, substituting the actual version and
 tag:
 
 ```bash
-VERSION=1.0.0-rc6
-TAG=v1.0.0-rc6
+VERSION=1.0.0-rc7
+TAG=v1.0.0-rc7
 cosign verify-blob "typedock-shared-${VERSION}.zip" \
   --bundle "typedock-shared-${VERSION}.zip.sigstore.json" \
   --certificate-identity \

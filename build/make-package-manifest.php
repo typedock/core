@@ -61,7 +61,7 @@ ksort($fileHashes);
 
 $manifest = [
     'schema_version' => 1,
-    'version' => isset($options['version']) ? (string) $options['version'] : (getenv('VERSION') ?: '1.0.0-rc6'),
+    'version' => isset($options['version']) ? (string) $options['version'] : (getenv('VERSION') ?: '1.0.0-rc7'),
     'managed_paths' => $managedPaths,
     'bundled_themes' => $bundledThemes,
     'bundled_plugins' => $bundledPlugins,

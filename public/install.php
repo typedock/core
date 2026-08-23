@@ -256,7 +256,7 @@ if ($method === 'POST') {
                 }
 
                 // 5. Lock.
-                $installer->lock(defined('TYPEDOCK_VERSION') ? TYPEDOCK_VERSION : '1.0.0-rc6');
+                $installer->lock(defined('TYPEDOCK_VERSION') ? TYPEDOCK_VERSION : '1.0.0-rc7');
 
                 // 6. Optional self-delete.
                 if (!empty($_POST['delete_installer'])) {

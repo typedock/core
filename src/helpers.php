@@ -12,7 +12,7 @@ declare(strict_types=1);
  * exactly one line.
  */
 if (!defined('TYPEDOCK_VERSION')) {
-    define('TYPEDOCK_VERSION', '1.0.0-rc6');
+    define('TYPEDOCK_VERSION', '1.0.0-rc7');
 }
 
 // CLI entry points in the shared-hosting package execute from typedock/ while
